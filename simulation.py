@@ -1,29 +1,27 @@
 #!/usr/bin/env python
 
 import csv
+import json
 import networkx as nx
 import EoN
 
 
-def get_simulation_data():
-    N = 10**5
-    G = nx.barabasi_albert_graph(N, 5)  #create a barabasi-albert graph
-    tmax = 20
-    tau = 0.1  #transmission rate
-    gamma = 1.0  #recovery rate
-    rho = 0.005  #random fraction initially infected
-    sim_inv = EoN.fast_SIR(G,
-                           tau,
-                           gamma,
-                           rho=rho,
-                           tmax=tmax,
+def get_simulation_data(params):
+    network = nx.barabasi_albert_graph(params["population-size"], 5)
+    sim_inv = EoN.fast_SIR(network,
+                           params["transmission-rate"],
+                           params["recovery-rate"],
+                           rho=params["seed-proportion"],
+                           tmax=params["tmax"],
                            return_full_data=True)
     return sim_inv
 
 
 def main():
     print "Hello"
-    simulation = get_simulation_data()
+    with open("sim-params.json", "r") as parameter_file:
+        params = json.load(parameter_file)
+    simulation = get_simulation_data(params)
     with open("transmissions.csv", "w") as output_file:
         writer = csv.DictWriter(output_file,
                                 fieldnames=["time", "infector", "infectee"])

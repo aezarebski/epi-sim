@@ -12,3 +12,4 @@ pytz==2019.3
 scipy==1.2.3
 six==1.14.0
 subprocess32==3.5.4
+yapf==0.29.0

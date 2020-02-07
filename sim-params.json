@@ -1,7 +1,10 @@
 {
-"population-size": 1000,
-"tmax": 20,
-"transmission-rate": 0.1,
-"recovery-rate": 1.0,
-"seed-proportion": 0.005
+  "population-size": 1000,
+  "tmax": 20,
+  "transmission-rate": 0.1,
+  "recovery-rate": 1,
+  "seed-proportion": 0.005,
+  "output-files": {
+    "transmissions": "transmissions.csv"
+  }
 }

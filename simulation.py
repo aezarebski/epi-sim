@@ -48,7 +48,7 @@ def get_simulation_data(network, params):
 
 
 def main():
-    print "Hello"
+    print("Hello")
     with open("sim-params.json", "r") as parameter_file:
         params = json.load(parameter_file)
     network = get_random_network(params["population-size"])
@@ -64,7 +64,7 @@ def main():
         } for t, u, v in simulation.transmissions()]
         for td in transmission_dicts:
             writer.writerow(td)
-    print "Goodbye"
+    print("Goodbye")
 
 
 if __name__ == "__main__":

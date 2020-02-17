@@ -1,5 +1,7 @@
+{-# LANGUAGE DeriveGeneric #-}
 module Epidemic where
 
+import GHC.Generics (Generic)
 import qualified Data.Vector as V
 
 type Time = Double
@@ -10,12 +12,12 @@ type Rate = Double
 
 data Person =
   Person Identifier
-  deriving (Show)
+  deriving (Show,Generic)
 
 data Event
   = InfectionEvent Time Person Person
   | RemovalEvent Time Person
-  deriving (Show)
+  deriving (Show,Generic)
 
 class ModelParameters a where
   rNaught :: a -> Double

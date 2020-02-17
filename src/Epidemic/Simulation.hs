@@ -20,13 +20,14 @@ initialIdentifier = 1
 newPerson :: Identifier -> (Person, Identifier)
 newPerson identifier = (Person identifier, identifier + 1)
 
-selectElem :: V.Vector a -> Int -> (a,V.Vector a)
+selectElem :: V.Vector a -> Int -> (a, V.Vector a)
 selectElem v n
-  | n == 0 = (V.head v,V.tail v)
-  | otherwise = let (foo,bar) = V.splitAt n v
-                in (V.head bar,foo V.++ (V.tail bar))
+  | n == 0 = (V.head v, V.tail v)
+  | otherwise =
+    let (foo, bar) = V.splitAt n v
+     in (V.head bar, foo V.++ (V.tail bar))
 
-randomPerson :: V.Vector Person -> GenIO -> IO (Person,V.Vector Person)
+randomPerson :: V.Vector Person -> GenIO -> IO (Person, V.Vector Person)
 randomPerson persons gen = do
   u <- uniform gen
   return $ selectElem persons (floor (u * numPersons))

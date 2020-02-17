@@ -8,13 +8,14 @@ type Identifier = Integer
 
 type Rate = Double
 
-
 data Person =
-  Person Identifier deriving (Show)
+  Person Identifier
+  deriving (Show)
 
 data Event
   = InfectionEvent Time Person Person
-  | RemovalEvent Time Person deriving (Show)
+  | RemovalEvent Time Person
+  deriving (Show)
 
 class ModelParameters a where
   rNaught :: a -> Double

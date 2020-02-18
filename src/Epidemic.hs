@@ -15,9 +15,13 @@ data Person =
   deriving (Show,Generic)
 
 data Event
-  = InfectionEvent Time Person Person
+  = InfectionEvent Time Person Person -- infection time, infector, infectee
   | RemovalEvent Time Person
   deriving (Show,Generic)
+
+isInfection :: Event -> Bool
+isInfection (InfectionEvent _ _ _) = True
+isInfection _ = False
 
 class ModelParameters a where
   rNaught :: a -> Double

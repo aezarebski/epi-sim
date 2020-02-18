@@ -1,8 +1,9 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Epidemic.Simulation where
+module Epidemic.Utility where
 
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Char8 as Char8
 import GHC.Generics (Generic)
 import Data.Csv
 import qualified Data.Vector as V
@@ -46,3 +47,23 @@ instance ToRecord Event where
   toRecord e = case e of
     (InfectionEvent t p1 p2) -> record ["infection", toField t, toField p1, toField p2]
     (RemovalEvent t p1) -> record ["removal", toField t, toField p1, "NA"]
+
+
+eventAsTreeObject :: Event -> Char8.ByteString
+eventAsTreeObject e =
+  case e of
+    (RemovalEvent _ _) -> B.empty
+    (InfectionEvent t (Person infectorId) (Person infecteeId)) ->
+      B.concat
+        ["{", infecteeByteString, infectorByteString, timeByteString, "}"]
+      where infecteeByteString =
+              Char8.pack ("\"id\":" ++ (Prelude.show infecteeId))
+            infectorByteString =
+              Char8.pack (",\"parent\":" ++ (Prelude.show infectorId))
+            timeByteString = Char8.pack (",\"time\":" ++ (Prelude.show t))
+
+eventsAsJsonTree :: [Event] -> Char8.ByteString
+eventsAsJsonTree es =
+  let objects =
+        B.intercalate "," $ [eventAsTreeObject e | e <- es, isInfection e]
+   in B.concat ["[", objects, ",{\"id\":1,\"time\":0}", "]"]

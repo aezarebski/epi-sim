@@ -7,7 +7,7 @@ import System.Random.MWC
 import System.Random.MWC.Distributions (bernoulli, exponential)
 
 import Epidemic
-import Epidemic.Simulation
+import Epidemic.Utility
 
 data BDRates =
   BDRates Rate Rate

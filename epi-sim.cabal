@@ -4,10 +4,10 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 8aea9a94bca584f0c90610ca3ad038ee2e237350c2be1dfbc5bcb9210abb14ea
+-- hash: 054007e025964cce14ac7b0f012159092d135c1510d38ddce28803eea84b9a85
 
 name:           epi-sim
-version:        0.1.1.0
+version:        0.1.2.0
 description:    Please see the README on GitHub at <https://github.com/githubuser/epi-sim#readme>
 homepage:       https://github.com/azarebski/epi-sim#readme
 bug-reports:    https://github.com/azarebski/epi-sim/issues
@@ -20,6 +20,7 @@ build-type:     Simple
 extra-source-files:
     README.md
     ChangeLog.md
+    vis/infection-tree.vg.json
 
 source-repository head
   type: git
@@ -29,7 +30,7 @@ library
   exposed-modules:
       Epidemic
       Epidemic.BirthDeath
-      Epidemic.Simulation
+      Epidemic.Utility
   other-modules:
       Paths_epi_sim
   hs-source-dirs:

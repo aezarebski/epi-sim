@@ -1,8 +1,9 @@
 {-# LANGUAGE DeriveGeneric #-}
+
 module Epidemic where
 
-import GHC.Generics (Generic)
 import qualified Data.Vector as V
+import GHC.Generics (Generic)
 
 type Time = Double
 
@@ -10,24 +11,31 @@ type Identifier = Integer
 
 type Rate = Double
 
-data Person =
+newtype Person =
   Person Identifier
-  deriving (Show,Generic)
+  deriving (Show, Generic)
+
+newtype People = People (V.Vector Person) deriving (Show)
 
 data Event
   = InfectionEvent Time Person Person -- infection time, infector, infectee
   | RemovalEvent Time Person
-  deriving (Show,Generic)
+  | SamplingEvent Time Person
+  | OccurrenceEvent Time Person
+  deriving (Show, Generic)
 
 isInfection :: Event -> Bool
-isInfection (InfectionEvent _ _ _) = True
-isInfection _ = False
+isInfection e =
+  case e of
+    InfectionEvent {} -> True
+    _ -> False
 
 class ModelParameters a where
   rNaught :: a -> Double
+  eventRate :: a -> Double
 
 class Population a where
-  susceptiblePeople :: a -> Maybe (V.Vector Person)
-  infectiousPeople :: a -> Maybe (V.Vector Person)
-  removedPeople :: a -> Maybe (V.Vector Person)
+  susceptiblePeople :: a -> Maybe People
+  infectiousPeople :: a -> Maybe People
+  removedPeople :: a -> Maybe People
   isInfected :: a -> Bool

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 054007e025964cce14ac7b0f012159092d135c1510d38ddce28803eea84b9a85
+-- hash: f3aea2e475523c164a714a41eb14897a740033badc8adea18066471cee051ed2
 
 name:           epi-sim
 version:        0.1.2.0
@@ -30,6 +30,8 @@ library
   exposed-modules:
       Epidemic
       Epidemic.BirthDeath
+      Epidemic.BirthDeathSampling
+      Epidemic.BirthDeathSamplingOccurrence
       Epidemic.Utility
   other-modules:
       Paths_epi_sim

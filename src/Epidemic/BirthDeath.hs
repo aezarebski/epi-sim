@@ -14,26 +14,27 @@ data BDRates =
 
 instance ModelParameters BDRates where
   rNaught (BDRates birthRate deathRate) = birthRate / deathRate
+  eventRate (BDRates birthRate deathRate) = birthRate + deathRate
 
-data BDPopulation =
-  BDPopulation (V.Vector Person)
+newtype BDPopulation =
+  BDPopulation People
   deriving (Show)
 
 instance Population BDPopulation where
   susceptiblePeople _ = Nothing
   infectiousPeople (BDPopulation people) = Just people
   removedPeople _ = Nothing
-  isInfected (BDPopulation people) = not $ V.null people
+  isInfected (BDPopulation (People people)) = not $ V.null people
 
 birthDeathRates :: Rate -> Rate -> BDRates
-birthDeathRates birthRate deathRate = BDRates birthRate deathRate
+birthDeathRates = BDRates -- birthRate deathRate
 
 birthDeathConfig ::
      Time -> Rate -> Rate -> SimulationConfiguration BDRates BDPopulation
 birthDeathConfig maxTime birthRate deathRate =
   let bdRates = birthDeathRates birthRate deathRate
       (seedPerson, newId) = newPerson initialIdentifier
-      bdPop = BDPopulation (V.singleton seedPerson)
+      bdPop = BDPopulation (People $ V.singleton seedPerson)
    in SimulationConfiguration bdRates bdPop newId maxTime
 
 randomBirthDeathEvent ::
@@ -43,8 +44,8 @@ randomBirthDeathEvent ::
   -> Identifier
   -> GenIO
   -> IO (Time, Event, BDPopulation, Identifier)
-randomBirthDeathEvent (BDRates br dr) currTime currPop@(BDPopulation currPeople) currId gen = do
-  delay <- exponential ((fromIntegral $ V.length currPeople) * (br + dr)) gen
+randomBirthDeathEvent (BDRates br dr) currTime (BDPopulation (People currPeople)) currId gen = do
+  delay <- exponential (fromIntegral (V.length currPeople) * (br + dr)) gen
   isBirth <- bernoulli (br / (br + dr)) gen
   (selectedPerson, unselectedPeople) <- randomPerson currPeople gen
   return $
@@ -54,11 +55,11 @@ randomBirthDeathEvent (BDRates br dr) currTime currPop@(BDPopulation currPeople)
                event = InfectionEvent newTime selectedPerson birthedPerson
             in ( newTime
                , event
-               , BDPopulation (V.cons birthedPerson currPeople)
+               , BDPopulation (People $ V.cons birthedPerson currPeople)
                , newId)
       else let newTime = currTime + delay
                event = RemovalEvent newTime selectedPerson
-            in (newTime, event, BDPopulation unselectedPeople, currId)
+            in (newTime, event, BDPopulation (People unselectedPeople), currId)
 
 birthDeathEvents ::
      BDRates

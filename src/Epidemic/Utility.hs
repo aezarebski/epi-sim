@@ -47,6 +47,8 @@ instance ToRecord Event where
   toRecord e = case e of
     (InfectionEvent t p1 p2) -> record ["infection", toField t, toField p1, toField p2]
     (RemovalEvent t p1) -> record ["removal", toField t, toField p1, "NA"]
+    (SamplingEvent t p1) -> record ["sample", toField t, toField p1, "NA"]
+    (OccurrenceEvent t p1) -> record ["occurrence", toField t, toField p1, "NA"]
 
 
 eventAsTreeObject :: Event -> Char8.ByteString

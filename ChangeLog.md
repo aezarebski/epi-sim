@@ -1,5 +1,9 @@
 # Changelog for epi-sim
 
+## 0.1.4.0
+
+- Implement a parser and printer for Newick in `Epidemic.Utility`.
+
 ## 0.1.3.0
 
 - Implement a birth-death-sampling-occurrence model in `Epidemic.BirthDeathSamplingOccurrence`.

@@ -1,5 +1,5 @@
 name:                epi-sim
-version:             0.1.3.0
+version:             0.1.4.0
 github:              "azarebski/epi-sim"
 license:             BSD3
 author:              "Alexander Zarebski"
@@ -26,6 +26,7 @@ dependencies:
 - cassava
 - mwc-random
 - vector
+- trifecta
 
 library:
   source-dirs: src

@@ -4,10 +4,10 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f3aea2e475523c164a714a41eb14897a740033badc8adea18066471cee051ed2
+-- hash: a294b5d4ce45a27102046abc3486a96f37ebc194bfc1ff2d828201862dc91d43
 
 name:           epi-sim
-version:        0.1.2.0
+version:        0.1.3.0
 description:    Please see the README on GitHub at <https://github.com/githubuser/epi-sim#readme>
 homepage:       https://github.com/azarebski/epi-sim#readme
 bug-reports:    https://github.com/azarebski/epi-sim/issues
@@ -42,6 +42,7 @@ library
     , bytestring
     , cassava
     , mwc-random
+    , trifecta
     , vector
   default-language: Haskell2010
 
@@ -58,6 +59,7 @@ executable epi-sim-exe
     , cassava
     , epi-sim
     , mwc-random
+    , trifecta
     , vector
   default-language: Haskell2010
 
@@ -75,5 +77,6 @@ test-suite epi-sim-test
     , cassava
     , epi-sim
     , mwc-random
+    , trifecta
     , vector
   default-language: Haskell2010

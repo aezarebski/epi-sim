@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Epidemic.Utility where
 
+import qualified Data.Maybe as Maybe
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as Char8
 import GHC.Generics (Generic)
@@ -9,6 +10,9 @@ import Data.Csv
 import qualified Data.Vector as V
 import System.Random.MWC
 import System.Random.MWC.Distributions
+
+import Control.Applicative
+import Text.Trifecta
 
 import Epidemic
 
@@ -69,3 +73,66 @@ eventsAsJsonTree es =
   let objects =
         B.intercalate "," $ [eventAsTreeObject e | e <- es, isInfection e]
    in B.concat ["[", objects, ",{\"id\":1,\"time\":0}", "]"]
+
+
+
+type NName = Maybe String
+
+type NLength = Maybe Double
+
+data NBranch = NBranch NSubtree NLength deriving (Show)
+
+data NBranchSet = NBranchSet [NBranch] deriving (Show)
+
+data NSubtree = NLeaf NName | NInternal NBranchSet deriving (Show)
+
+data NTree = NTree [NBranch] deriving (Show)
+
+
+-- Name → empty | string
+newickName :: (Monad f, CharParsing f) => f NName
+newickName = optional (some alphaNum) >>= pure
+
+-- Leaf → Name
+newickLeaf :: (Monad f, CharParsing f) => f NSubtree
+newickLeaf = do
+  n <- newickName
+  pure (NLeaf n)
+
+-- Length → empty | ":" number
+newickLength :: (TokenParsing f, Monad f, CharParsing f) => f NLength
+newickLength = do
+  maybeLength <- optional ((symbolic ':') >> double)
+  pure maybeLength
+
+-- Branch → Subtree Length
+newickBranch :: (TokenParsing f, Monad f, CharParsing f) => f NBranch
+newickBranch = do
+  st <- newickSubtree
+  l <- newickLength
+  pure (NBranch st l)
+
+-- BranchSet → Branch | Branch "," BranchSet
+newickBranchSet :: (TokenParsing f, Monad f, CharParsing f) => f NBranchSet
+newickBranchSet = do
+  bs <- sepBy1 newickBranch comma
+  pure (NBranchSet bs)
+
+-- Internal → "(" BranchSet ")" Name
+newickInternal :: (TokenParsing f, Monad f, CharParsing f) => f NSubtree
+newickInternal = do
+  bs <- parens newickBranchSet
+  pure (NInternal bs)
+
+-- Subtree → Leaf | Internal
+newickSubtree :: (TokenParsing f, Monad f, CharParsing f) => f NSubtree
+newickSubtree = choice [newickInternal,newickLeaf]
+
+-- Tree → Subtree ";" | Branch ";"
+newickTree :: (TokenParsing f, Monad f, CharParsing f) => f NTree
+newickTree = do
+  (NBranchSet bs) <- parens newickBranchSet
+  symbolic ';'
+  pure (NTree bs)
+
+-- | Example run ->>> foo = parseString newickTree mempty "((foo:1.1,bar:1.2):1.3,baz:1.4);"

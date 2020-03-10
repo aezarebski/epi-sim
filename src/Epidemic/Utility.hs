@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Epidemic.Utility where
 
+import qualified Data.List as List
 import qualified Data.Maybe as Maybe
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as Char8
@@ -80,14 +81,28 @@ type NName = Maybe String
 
 type NLength = Maybe Double
 
-data NBranch = NBranch NSubtree NLength deriving (Show)
+data NBranch = NBranch NSubtree NLength deriving (Eq)
 
-data NBranchSet = NBranchSet [NBranch] deriving (Show)
+instance Show NBranch where
+  show (NBranch st (Just l)) = show st ++ ":" ++ show l
+  show (NBranch st Nothing) = show st
 
-data NSubtree = NLeaf NName | NInternal NBranchSet deriving (Show)
+data NBranchSet = NBranchSet [NBranch] deriving (Eq)
 
-data NTree = NTree [NBranch] deriving (Show)
+instance Show NBranchSet where
+  show (NBranchSet bs) = "(" ++ (List.intercalate "," (map show bs)) ++ ")"
 
+data NSubtree = NLeaf NName | NInternal NBranchSet deriving (Eq)
+
+instance Show NSubtree where
+  show (NLeaf (Just n)) = n
+  show (NLeaf Nothing) = ""
+  show (NInternal bs) = show bs
+
+data NTree = NTree [NBranch] deriving (Eq)
+
+instance Show NTree where
+  show (NTree bs) = show (NBranchSet bs) ++ ";"
 
 -- Name → empty | string
 newickName :: (Monad f, CharParsing f) => f NName
@@ -135,4 +150,9 @@ newickTree = do
   symbolic ';'
   pure (NTree bs)
 
--- | Example run ->>> foo = parseString newickTree mempty "((foo:1.1,bar:1.2):1.3,baz:1.4);"
+-- | Example run
+--   > (Success foo) = parseString newickTree mempty "((foo:1.1,bar:1.2):1.3,baz:1.4);"
+--   > (Success bar) = parseString newickTree mempty $ show foo
+--   > foo == bar
+--   True
+

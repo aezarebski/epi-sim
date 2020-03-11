@@ -2,6 +2,8 @@
 
 ## 0.1.4.0
 
+- Make `Event` an instance of the `Ord` typeclass.
+- Implement types and conversion functions for a `TransmissionTree` and a `SampleTree`.
 - Implement a parser and printer for Newick in `Epidemic.Utility`.
 
 ## 0.1.3.0

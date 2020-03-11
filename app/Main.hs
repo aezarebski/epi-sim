@@ -2,8 +2,10 @@
 module Main where
 
 import Data.Csv
+import Data.List (sort)
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString as B
+import Epidemic
 import Epidemic.Utility
 import Epidemic.BirthDeathSamplingOccurrence
 
@@ -13,4 +15,5 @@ main = do
   events <- birthDeathSamplingOccurrenceSimulation $ birthDeathSamplingOccurrenceConfig 6 1.3 0.1 0.1 0.2
   L.writeFile "demo-output.csv" (encode events)
   B.writeFile "demo-output.json" (eventsAsJsonTree events)
+  print $ show . sampleTreeEvents . sampleTree $ transmissionTree (reverse events) (Person 1)
   return ()

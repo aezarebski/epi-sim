@@ -31,15 +31,17 @@ instance Population BDSOPopulation where
 birthDeathSamplingOccurrenceRates :: Rate -> Rate -> Rate -> Rate -> BDSORates
 birthDeathSamplingOccurrenceRates = BDSORates -- birthRate deathRate samplingRate occurrenceRate
 
-birthDeathSamplingOccurrenceConfig ::
-     Time
-  -> Rate
-  -> Rate
-  -> Rate
-  -> Rate
-  -> SimulationConfiguration BDSORates BDSOPopulation
-birthDeathSamplingOccurrenceConfig maxTime birthRate deathRate samplingRate occurrenceRate =
-  let bdsoRates = birthDeathSamplingOccurrenceRates birthRate deathRate samplingRate occurrenceRate
+-- | Configuration of a birth-death-sampling-occurrence simulation
+birthDeathSamplingOccurrenceConfig :: Time                  -- ^ Duration of the simulation
+                                   -> (Rate,Rate,Rate,Rate) -- ^ Birth, Death, Sampling and Occurrence rates
+                                   -> SimulationConfiguration BDSORates BDSOPopulation
+birthDeathSamplingOccurrenceConfig maxTime (birthRate, deathRate, samplingRate, occurrenceRate) =
+  let bdsoRates =
+        birthDeathSamplingOccurrenceRates
+          birthRate
+          deathRate
+          samplingRate
+          occurrenceRate
       (seedPerson, newId) = newPerson initialIdentifier
       bdsoPop = BDSOPopulation (People $ V.singleton seedPerson)
    in SimulationConfiguration bdsoRates bdsoPop newId maxTime
@@ -97,10 +99,19 @@ birthDeathSamplingOccurrenceEvents rates maxTime currState@(currTime, currEvents
         else return currState
     else return currState
 
-birthDeathSamplingOccurrenceSimulation ::
-     SimulationConfiguration BDSORates BDSOPopulation -> IO [Event]
+birthDeathSamplingOccurrenceSimulation :: SimulationConfiguration BDSORates BDSOPopulation
+                                       -> IO [Event]
 birthDeathSamplingOccurrenceSimulation SimulationConfiguration {..} = do
   gen <- System.Random.MWC.create :: IO GenIO
   (_, events, _, _) <-
     birthDeathSamplingOccurrenceEvents rates timeLimit (0, [], population, newIdentifier) gen
-  return events
+  return $ sort events
+
+-- | Just the observable events from a list of all the events in a simulation.
+birthDeathSamplingOccurrenceObservedEvents :: [Event] -> [Event]
+birthDeathSamplingOccurrenceObservedEvents events =
+  sort $ occurrenceEvents ++ sampleTreeEvents'
+  where
+    occurrenceEvents = filter isOccurrence events
+    sampleTreeEvents' =
+      sampleTreeEvents . sampleTree $ transmissionTree events (Person 1)

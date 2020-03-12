@@ -4,10 +4,10 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 3d1d95b30747f89d2c3282c4180e1ef44a7f0d01229cceec645aecd3a6021b9b
+-- hash: a02d1c585f95e3226274ac1cb56fe5bf7797844a061c0a2ba038be39ac8085be
 
 name:           epi-sim
-version:        0.1.4.0
+version:        0.1.5.0
 description:    Please see the README on GitHub at <https://github.com/githubuser/epi-sim#readme>
 homepage:       https://github.com/azarebski/epi-sim#readme
 bug-reports:    https://github.com/azarebski/epi-sim/issues
@@ -76,6 +76,7 @@ test-suite epi-sim-test
     , bytestring
     , cassava
     , epi-sim
+    , hspec
     , mwc-random
     , trifecta
     , vector

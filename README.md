@@ -2,8 +2,10 @@
 A tool for simulating epidemics.
 
 ```
+stack clean
 stack build
 stack run
+stack test
 ```
 
 ## Models
@@ -14,4 +16,4 @@ stack run
 
 ## Output
 
-The output is a CSV with a header encoding which events occurred when and to whom: `event,time,primaryPerson,secondaryPerson`. The *primary person* is either the infecting person or the person who has been removed in some manner, the *secondary person* is the person who was infected, or this is a missing value.
+The output is a CSV with a header encoding which events occurred when and to whom: `event,time,primaryPerson,secondaryPerson`. The *primary person* is either the infecting person or the person who has been removed in some manner, the *secondary person* is the person who was infected, or this is a missing value. There are functions to assist in extracting observations from a full simulation: `birthDeathSamplingOccurrenceObservedEvents`.

@@ -1,5 +1,12 @@
 # Changelog for epi-sim
 
+## 0.1.5.0
+
+- Include some testing with `hspec`.
+- The `Epidemic.BirthDeathSamplingOccurrence` module now has a function to extract the observable events.
+- Change the simulation functions to return events in the order they occurred.
+- Change the configuration functions to take tuples of model parameters.
+
 ## 0.1.4.0
 
 - Make `Event` an instance of the `Ord` typeclass.

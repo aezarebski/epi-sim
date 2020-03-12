@@ -30,13 +30,11 @@ instance Population BDSPopulation where
 birthDeathSamplingRates :: Rate -> Rate -> Rate -> BDSRates
 birthDeathSamplingRates = BDSRates -- birthRate deathRate samplingRate
 
-birthDeathSamplingConfig ::
-     Time
-  -> Rate
-  -> Rate
-  -> Rate
-  -> SimulationConfiguration BDSRates BDSPopulation
-birthDeathSamplingConfig maxTime birthRate deathRate samplingRate =
+-- | Configuration of a birth-death-sampling simulation.
+birthDeathSamplingConfig :: Time             -- ^ Duration of the simulation
+                         -> (Rate,Rate,Rate) -- ^ Birth, Death and Sampling rates
+                         -> SimulationConfiguration BDSRates BDSPopulation
+birthDeathSamplingConfig maxTime (birthRate, deathRate, samplingRate) =
   let bdsRates = birthDeathSamplingRates birthRate deathRate samplingRate
       (seedPerson, newId) = newPerson initialIdentifier
       bdsPop = BDSPopulation (People $ V.singleton seedPerson)
@@ -92,10 +90,10 @@ birthDeathSamplingEvents rates maxTime currState@(currTime, currEvents, currPop,
         else return currState
     else return currState
 
-birthDeathSamplingSimulation ::
-     SimulationConfiguration BDSRates BDSPopulation -> IO [Event]
+birthDeathSamplingSimulation :: SimulationConfiguration BDSRates BDSPopulation
+                             -> IO [Event]
 birthDeathSamplingSimulation SimulationConfiguration {..} = do
   gen <- System.Random.MWC.create :: IO GenIO
   (_, events, _, _) <-
     birthDeathSamplingEvents rates timeLimit (0, [], population, newIdentifier) gen
-  return events
+  return $ sort events

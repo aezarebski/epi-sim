@@ -156,3 +156,5 @@ newickTree = do
 --   > foo == bar
 --   True
 
+sort :: Ord a => [a] -> [a]
+sort = List.sort

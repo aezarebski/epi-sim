@@ -1,5 +1,5 @@
 name:                epi-sim
-version:             0.1.5.0
+version:             0.1.5.1
 github:              "azarebski/epi-sim"
 license:             BSD3
 author:              "Alexander Zarebski"
@@ -11,11 +11,9 @@ extra-source-files:
 - ChangeLog.md
 - vis/*.json
 
-# Metadata used when publishing your package
-# synopsis:            Short description of your package
-# category:            Web
+synopsis:            A tool for simulating epidemics.
 
-description:         Please see the README on GitHub at <https://github.com/githubuser/epi-sim#readme>
+description:         Please see the README on GitHub at <https://bitbucket.org/azarebski/epi-sim/src/master/README.md>
 
 dependencies:
 - base >= 4.7 && < 5

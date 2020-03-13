@@ -15,5 +15,5 @@ main = do
   events <- birthDeathSamplingOccurrenceSimulation $ birthDeathSamplingOccurrenceConfig 6 (1.3,0.1,0.1,0.2)
   L.writeFile "demo-output.csv" (encode events)
   B.writeFile "demo-output.json" (eventsAsJsonTree events)
-  L.writeFile "demo-output-sample-tree.csv" $ encode . sampleTreeEvents . sampleTree $ transmissionTree events (Person 1)
+  L.writeFile "demo-output-sample-tree.csv" $ encode $ birthDeathSamplingOccurrenceObservedEvents events
   return ()

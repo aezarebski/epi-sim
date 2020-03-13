@@ -1,5 +1,10 @@
 # Changelog for epi-sim
 
+## 0.1.5.1
+
+- Include a `.gitignore`.
+- Improved documentation with `haddock`.
+
 ## 0.1.5.0
 
 - Include some testing with `hspec`.

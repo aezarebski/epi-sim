@@ -1,11 +1,12 @@
 # epi-sim
-A tool for simulating epidemics.
+A tool for simulating epidemics, with a focus on phylodynamics and observation models.
 
 ```
 stack clean
 stack build
 stack run
 stack test
+stack haddock --open --no-haddock-deps
 ```
 
 ## Models

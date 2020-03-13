@@ -1,6 +1,10 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module Epidemic.BirthDeathSamplingOccurrence where
+module Epidemic.BirthDeathSamplingOccurrence
+  ( birthDeathSamplingOccurrenceSimulation
+  , birthDeathSamplingOccurrenceConfig
+  , birthDeathSamplingOccurrenceObservedEvents
+  ) where
 
 import qualified Data.Vector as V
 import System.Random.MWC
@@ -99,6 +103,7 @@ birthDeathSamplingOccurrenceEvents rates maxTime currState@(currTime, currEvents
         else return currState
     else return currState
 
+-- | Run a simulation described by a configuration object.
 birthDeathSamplingOccurrenceSimulation :: SimulationConfiguration BDSORates BDSOPopulation
                                        -> IO [Event]
 birthDeathSamplingOccurrenceSimulation SimulationConfiguration {..} = do
@@ -108,7 +113,8 @@ birthDeathSamplingOccurrenceSimulation SimulationConfiguration {..} = do
   return $ sort events
 
 -- | Just the observable events from a list of all the events in a simulation.
-birthDeathSamplingOccurrenceObservedEvents :: [Event] -> [Event]
+birthDeathSamplingOccurrenceObservedEvents :: [Event] -- ^ All of the simulation events
+                                           -> [Event]
 birthDeathSamplingOccurrenceObservedEvents events =
   sort $ occurrenceEvents ++ sampleTreeEvents'
   where

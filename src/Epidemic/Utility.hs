@@ -7,7 +7,6 @@ import qualified Data.Maybe as Maybe
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as Char8
 import GHC.Generics (Generic)
-import Data.Csv
 import qualified Data.Vector as V
 import System.Random.MWC
 import System.Random.MWC.Distributions
@@ -45,15 +44,6 @@ randomPerson persons gen = do
   where
     numPersons = fromIntegral $ V.length persons :: Double
 
-instance ToField Person where
-  toField (Person identifier) = toField identifier
-
-instance ToRecord Event where
-  toRecord e = case e of
-    (InfectionEvent t p1 p2) -> record ["infection", toField t, toField p1, toField p2]
-    (RemovalEvent t p1) -> record ["removal", toField t, toField p1, "NA"]
-    (SamplingEvent t p1) -> record ["sample", toField t, toField p1, "NA"]
-    (OccurrenceEvent t p1) -> record ["occurrence", toField t, toField p1, "NA"]
 
 
 eventAsTreeObject :: Event -> Char8.ByteString

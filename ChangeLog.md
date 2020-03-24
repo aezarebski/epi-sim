@@ -1,5 +1,11 @@
 # Changelog for epi-sim
 
+## 0.1.6.0
+
+- Move the `ToField` declarations into the `Epidemic` module to avoid orphaned instance and select a representation for multiple people in the CSV output.
+- Implement a birth-death-sampling-catastrophe-occurrence model in `Epidemic.BirthDeathSamplingCatastropheOccurrence`; it's a shame about the length of the name.
+- Include a contructor for catastrophe events in which multiple people can be sampled simultaneously.
+
 ## 0.1.5.1
 
 - Include a `.gitignore`.

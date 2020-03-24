@@ -1,5 +1,9 @@
 # Changelog for epi-sim
 
+## 0.1.6.1
+
+- Include a visualisation script for the LTT of reconstructed trees: `vis/ltt.R` which is described in the README.
+
 ## 0.1.6.0
 
 - Move the `ToField` declarations into the `Epidemic` module to avoid orphaned instance and select a representation for multiple people in the CSV output.

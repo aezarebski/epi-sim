@@ -133,9 +133,8 @@ bdscoSimulation SimulationConfiguration {..} = do
 -- | Just the observable events from a list of all the events in a simulation.
 bdscoObservedEvents :: [Event] -- ^ All of the simulation events
                     -> [Event]
-bdscoObservedEvents events =
-  sort $ occurrenceEvents ++ sampleTreeEvents'
+bdscoObservedEvents events = sort $ occurrenceEvents ++ sampleTreeEvents''
   where
     occurrenceEvents = filter isOccurrence events
-    sampleTreeEvents' =
+    sampleTreeEvents'' =
       sampleTreeEvents . sampleTree $ transmissionTree events (Person 1)

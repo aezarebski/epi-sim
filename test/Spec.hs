@@ -3,7 +3,8 @@ import Control.Exception (evaluate)
 
 import qualified Data.Vector as V
 import Epidemic
-import Epidemic.BirthDeathSamplingOccurrence
+import qualified Epidemic.BirthDeathSamplingOccurrence as BDSO
+import qualified Epidemic.BirthDeathSamplingCatastropheOccurrence as BDSCO
 
 p1 = Person 1
 p2 = Person 2
@@ -68,12 +69,34 @@ demoSampleEvents02 =
   , OccurrenceEvent 12 p6
   ]
 
+
+-- | Another test set to test that catastrophes are handled correctly.
+demoFullEvents03 =
+  [ InfectionEvent 1 p1 p4
+  , InfectionEvent 2 p1 p2
+  , SamplingEvent 3 p1
+  , InfectionEvent 4 p2 p3
+  , InfectionEvent 5 p4 p5
+  , CatastropheEvent 6 (People $ V.fromList [p2,p3,p4])
+  ]
+
+demoSampleEvents03 =
+  [ InfectionEvent 1 p1 p4
+  , InfectionEvent 2 p1 p2
+  , SamplingEvent 3 p1
+  , InfectionEvent 4 p2 p3
+  , CatastropheEvent 6 (People $ V.fromList [p2,p3,p4])
+  ]
+
+
+
+
 main :: IO ()
 main = hspec $ do
   describe "Post-simulation processing" $ do
     it "Extracting observed events" $ do
-      (demoSampleEvents01 == birthDeathSamplingOccurrenceObservedEvents demoFullEvents01) `shouldBe` True
-      (demoSampleEvents02 == birthDeathSamplingOccurrenceObservedEvents demoFullEvents02) `shouldBe` True
+      (demoSampleEvents01 == BDSO.birthDeathSamplingOccurrenceObservedEvents demoFullEvents01) `shouldBe` True
+      (demoSampleEvents02 == BDSO.birthDeathSamplingOccurrenceObservedEvents demoFullEvents02) `shouldBe` True
   describe "Catastrophe definitions" $ do
     it "Check we can find a catastrophe" $ do
       (noCatastrophe 0 1 []) `shouldBe` True
@@ -88,3 +111,5 @@ main = hspec $ do
       (firstCatastrophe 1 [(2,0.6),(0.5,0.5),(1.5,0.4)]) `shouldBe` Just (1.5,0.4)
     it "Works on a very specific case it seems to not like" $ do
       (noCatastrophe 2.28 (2.28+0.42) [(2.3,0.9)]) `shouldBe` False
+    it "Catastrophes are handled correctly" $ do
+      (demoSampleEvents03 == BDSCO.bdscoObservedEvents demoFullEvents03) `shouldBe` True

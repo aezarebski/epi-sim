@@ -21,4 +21,4 @@ Rscript vis/ltt.R demo-output-sample-tree.csv demo-output.png
 
 The output is a CSV with a header encoding which events occurred when and to whom: `event,time,primaryPerson,secondaryPerson`. The *primary person* is either the infecting person or the person who has been removed in some manner, the *secondary person* is the person who was infected, or this is a missing value. There are functions to assist in extracting observations from a full simulation: `birthDeathSamplingOccurrenceObservedEvents`. In the case of a catastrophe event where multiple individuals may be removed, they are represented as a colon separated list of identifiers in the `primaryPerson` field.
 
-There is also a script `vis/ltt.R` which creates a lineages through time plot of the reconstructed tree.
+There is also a script `vis/ltt.R` which creates a lineages through time plot of the reconstructed tree. Note that for this to work, the output file cannot already exist.

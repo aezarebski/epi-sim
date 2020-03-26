@@ -1,5 +1,10 @@
 # Changelog for epi-sim
 
+## 0.1.6.2
+
+- Update the visualisation code in `vis/ltt.R` such that it parses the catastrophe events to draw the LTT.
+- BUG FIX: In the observed events catastrophes are replicated when they should not be.
+
 ## 0.1.6.1
 
 - Include a visualisation script for the LTT of reconstructed trees: `vis/ltt.R` which is described in the README.

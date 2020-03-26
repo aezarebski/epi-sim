@@ -29,6 +29,10 @@ instance ToField Person where
 nullPeople :: People -> Bool
 nullPeople (People persons) = V.null persons
 
+-- | The number of people
+numPeople :: People -> Int
+numPeople (People persons) = V.length persons
+
 -- | Add a person to a group of people
 addPerson :: Person -> People -> People
 addPerson person (People persons) = People $ V.cons person persons
@@ -251,7 +255,13 @@ sampleTree transTree = case transTree of
   (TTDeath _ e@(CatastropheEvent _ _)) -> STDeath e
   _ -> error "ill-formed transmission tree"
 
+-- | Recurse through the tree and extract all birth and death events.
+sampleTreeEvents' :: SampleTree -> [Event]
+sampleTreeEvents' sTree =
+  case sTree of
+    (STDeath e) -> [e]
+    (STBirth e (s1, s2)) -> e : sampleTreeEvents s1 ++ sampleTreeEvents s2
+
+-- | The unique events in a sample tree.
 sampleTreeEvents :: SampleTree -> [Event]
-sampleTreeEvents sTree = case sTree of
-  (STDeath e) -> [e]
-  (STBirth e (s1,s2)) -> e:sampleTreeEvents s1 ++ sampleTreeEvents s2
+sampleTreeEvents = nub . sampleTreeEvents'

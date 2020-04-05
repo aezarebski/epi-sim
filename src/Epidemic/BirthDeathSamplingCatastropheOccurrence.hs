@@ -1,10 +1,10 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Epidemic.BirthDeathSamplingCatastropheOccurrence
-  ( bdscoSimulation
-  , bdscoConfig
-  , bdscoEvents
-  , bdscoObservedEvents
+  ( simulation
+  , configuration
+  , allEvents
+  , observedEvents
   ) where
 
 import Data.List (minimumBy)
@@ -38,10 +38,10 @@ instance Population BDSCOPopulation where
   isInfected (BDSCOPopulation (People people)) = not $ V.null people
 
 -- | Configuration of a birth-death-sampling-occurrence simulation
-bdscoConfig :: Time                                       -- ^ Duration of the simulation
+configuration :: Time                                       -- ^ Duration of the simulation
             -> (Rate,Rate,Rate,[(Time,Probability)],Rate) -- ^ Birth, Death, Sampling, Catastrophe probability and Occurrence rates
             -> SimulationConfiguration BDSCOParameters BDSCOPopulation
-bdscoConfig maxTime (birthRate, deathRate, samplingRate, catastropheProb, occurrenceRate) =
+configuration maxTime (birthRate, deathRate, samplingRate, catastropheProb, occurrenceRate) =
   let bdscoParams =
         BDSCOParameters
           birthRate
@@ -63,11 +63,11 @@ randomBdscoEvent ::
   -> IO (Time, Event, BDSCOPopulation, Identifier)
 randomBdscoEvent params@(BDSCOParameters br dr sr catastInfo occr) currTime currPop@(BDSCOPopulation (People currPeople)) currId gen =
   let netEventRate = eventRate params
-      eventWeights = V.fromList [br,dr,sr,occr]
+      eventWeights = V.fromList [br, dr, sr, occr]
    in
     do delay <- exponential (fromIntegral (V.length currPeople) * netEventRate) gen
        nextTime <- pure $ currTime + delay
-       if noCatastrophe currTime nextTime catastInfo
+       if noScheduledEvent currTime nextTime catastInfo
          then do eventIx <- categorical eventWeights gen
                  (selectedPerson, unselectedPeople) <- randomPerson currPeople gen
                  return $ case eventIx of
@@ -80,8 +80,8 @@ randomBdscoEvent params@(BDSCOParameters br dr sr catastInfo occr) currTime curr
                    1 -> (nextTime, RemovalEvent nextTime selectedPerson, BDSCOPopulation (People unselectedPeople), currId)
                    2 -> (nextTime, SamplingEvent nextTime selectedPerson, BDSCOPopulation (People unselectedPeople), currId)
                    3 -> (nextTime, OccurrenceEvent nextTime selectedPerson, BDSCOPopulation (People unselectedPeople), currId)
-                   _ -> error "no birth-death-sampling-occurrence event selected."
-         else let (Just (catastTime,catastProb)) = firstCatastrophe currTime catastInfo
+                   _ -> error "no birth, death, sampling, occurrence event selected."
+         else let (Just (catastTime,catastProb)) = firstScheduled currTime catastInfo
                in do (catastEvent,postCatastPop) <- randomCatastropheEvent (catastTime,catastProb) currPop gen
                      return (catastTime,catastEvent,postCatastPop,currId)
 
@@ -93,7 +93,6 @@ randomCatastropheEvent :: (Time,Probability) -- ^ Time and probability of sampli
                        -> IO (Event,BDSCOPopulation)
 randomCatastropheEvent (catastTime, rhoProb) (BDSCOPopulation (People currPeople)) gen = do
   rhoBernoullis <- G.replicateM (V.length currPeople) (bernoulli rhoProb gen)
-  print rhoBernoullis
   let filterZip predicate a b = fst . V.unzip . V.filter predicate $ V.zip a b
       sampledPeople = filterZip snd currPeople rhoBernoullis
       unsampledPeople = filterZip (not . snd) currPeople rhoBernoullis
@@ -101,19 +100,19 @@ randomCatastropheEvent (catastTime, rhoProb) (BDSCOPopulation (People currPeople
         ( CatastropheEvent catastTime (People sampledPeople)
         , BDSCOPopulation (People unsampledPeople))
 
-bdscoEvents ::
+allEvents ::
      BDSCOParameters
   -> Time
   -> (Time, [Event], BDSCOPopulation, Identifier)
   -> GenIO
   -> IO (Time, [Event], BDSCOPopulation, Identifier)
-bdscoEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
+allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
   if isInfected currPop
     then do
       (newTime, event, newPop, newId) <-
         randomBdscoEvent rates currTime currPop currId gen
       if newTime < maxTime
-        then bdscoEvents
+        then allEvents
                rates
                maxTime
                (newTime, event : currEvents, newPop, newId)
@@ -122,18 +121,18 @@ bdscoEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen 
     else return currState
 
 -- | Run a simulation described by a configuration object.
-bdscoSimulation :: SimulationConfiguration BDSCOParameters BDSCOPopulation
+simulation :: SimulationConfiguration BDSCOParameters BDSCOPopulation
                                        -> IO [Event]
-bdscoSimulation SimulationConfiguration {..} = do
+simulation SimulationConfiguration {..} = do
   gen <- System.Random.MWC.create :: IO GenIO
   (_, events, _, _) <-
-    bdscoEvents rates timeLimit (0, [], population, newIdentifier) gen
+    allEvents rates timeLimit (0, [], population, newIdentifier) gen
   return $ sort events
 
 -- | Just the observable events from a list of all the events in a simulation.
-bdscoObservedEvents :: [Event] -- ^ All of the simulation events
+observedEvents :: [Event] -- ^ All of the simulation events
                     -> [Event]
-bdscoObservedEvents events = sort $ occurrenceEvents ++ sampleTreeEvents''
+observedEvents events = sort $ occurrenceEvents ++ sampleTreeEvents''
   where
     occurrenceEvents = filter isOccurrence events
     sampleTreeEvents'' =

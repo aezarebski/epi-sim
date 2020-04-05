@@ -5,6 +5,7 @@ import qualified Data.Vector as V
 import Epidemic
 import qualified Epidemic.BirthDeathSamplingOccurrence as BDSO
 import qualified Epidemic.BirthDeathSamplingCatastropheOccurrence as BDSCO
+import qualified Epidemic.BDSCOD as BDSCOD
 
 p1 = Person 1
 p2 = Person 2
@@ -89,6 +90,27 @@ demoSampleEvents03 =
   ]
 
 
+-- | Another test to make sure that disasters are handled.
+demoFullEvents04 =
+  [ InfectionEvent 1 p1 p4
+  , InfectionEvent 2 p1 p2
+  , SamplingEvent 3 p1
+  , InfectionEvent 4 p2 p3
+  , InfectionEvent 5 p4 p5
+  , CatastropheEvent 6 (People $ V.fromList [p2,p3,p4])
+  , InfectionEvent 7 p5 p6
+  , InfectionEvent 8 p5 p7
+  , DisasterEvent 9 (People $ V.fromList [p5,p6])
+  ]
+
+demoSampleEvents04 =
+  [ InfectionEvent 1 p1 p4
+  , InfectionEvent 2 p1 p2
+  , SamplingEvent 3 p1
+  , InfectionEvent 4 p2 p3
+  , CatastropheEvent 6 (People $ V.fromList [p2,p3,p4])
+  , DisasterEvent 9 (People $ V.fromList [p5,p6])
+  ]
 
 
 main :: IO ()
@@ -99,17 +121,26 @@ main = hspec $ do
       (demoSampleEvents02 == BDSO.birthDeathSamplingOccurrenceObservedEvents demoFullEvents02) `shouldBe` True
   describe "Catastrophe definitions" $ do
     it "Check we can find a catastrophe" $ do
-      (noCatastrophe 0 1 []) `shouldBe` True
-      (noCatastrophe 0 1 [(2,0.5)]) `shouldBe` True
-      (noCatastrophe 0 1 [(0.5,0.5)]) `shouldBe` False
-      (noCatastrophe 0 1 [(2,0.6),(0.5,0.5)]) `shouldBe` False
+      (noScheduledEvent 0 1 []) `shouldBe` True
+      (noScheduledEvent 0 1 [(2,0.5)]) `shouldBe` True
+      (noScheduledEvent 0 1 [(0.5,0.5)]) `shouldBe` False
+      (noScheduledEvent 0 1 [(2,0.6),(0.5,0.5)]) `shouldBe` False
     it "Check we can find a particular catastrophe" $ do
-      (firstCatastrophe 1 []) `shouldBe` Nothing
-      (firstCatastrophe 1 [(2,0.5)]) `shouldBe` Just (2,0.5)
-      (firstCatastrophe 1 [(0.5,0.5)]) `shouldBe` Nothing
-      (firstCatastrophe 1 [(2,0.6),(0.5,0.5)]) `shouldBe` Just (2,0.6)
-      (firstCatastrophe 1 [(2,0.6),(0.5,0.5),(1.5,0.4)]) `shouldBe` Just (1.5,0.4)
+      (firstScheduled 1 []) `shouldBe` Nothing
+      (firstScheduled 1 [(2,0.5)]) `shouldBe` Just (2,0.5)
+      (firstScheduled 1 [(0.5,0.5)]) `shouldBe` Nothing
+      (firstScheduled 1 [(2,0.6),(0.5,0.5)]) `shouldBe` Just (2,0.6)
+      (firstScheduled 1 [(2,0.6),(0.5,0.5),(1.5,0.4)]) `shouldBe` Just (1.5,0.4)
     it "Works on a very specific case it seems to not like" $ do
-      (noCatastrophe 2.28 (2.28+0.42) [(2.3,0.9)]) `shouldBe` False
+      (noScheduledEvent 2.28 (2.28+0.42) [(2.3,0.9)]) `shouldBe` False
     it "Catastrophes are handled correctly" $ do
-      (demoSampleEvents03 == BDSCO.bdscoObservedEvents demoFullEvents03) `shouldBe` True
+      (demoSampleEvents03 == BDSCO.observedEvents demoFullEvents03) `shouldBe` True
+    it "Catastrophes can be simulated" $ do
+      demoSim <- BDSCO.simulation $ BDSCO.configuration 4 (1.3,0.1,0.1,[(3,0.5)],0.2)
+      length demoSim > 1 `shouldBe` True
+  describe "Disaster definitions" $ do
+    it "Disasters are handled correctly" $ do
+      (demoSampleEvents04 == BDSCOD.observedEvents demoFullEvents04) `shouldBe` True
+    it "Disasters can be simulated" $ do
+      demoSim <- BDSCOD.simulation $ BDSCOD.configuration 4 (1.3,0.1,0.1,[(3,0.5)],0.2,[(3.5,0.5)])
+      length demoSim > 1 `shouldBe` True

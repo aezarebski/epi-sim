@@ -1,5 +1,14 @@
 # Changelog for epi-sim
 
+## 0.1.7.0
+
+- Provide `vis/ott.R` to visualise observations through time and make `vis/ltt.R` ignore disasters.
+- Replace some Catastrophe specific functions with equivalents for handling scheduled events more generally
+  + `noCatastrophe` becomes `noScheduledEvent`
+  + `firstCatastrophe` becoes `firstScheduled`
+- Change the naming of the BDSCO model to be consistent with the new BDSCOD model.
+- Implement a birth-death-sampling-catastrophe-occurrence-disaster model in `Epidemic.BDSCOD`.
+
 ## 0.1.6.2
 
 - Update the visualisation code in `vis/ltt.R` such that it parses the catastrophe events to draw the LTT.

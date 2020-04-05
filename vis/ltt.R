@@ -9,11 +9,6 @@
 #'
 #'   $ Rscript vis/ltt.R observed-events.csv output-figure.png
 #'
-#' Changelog
-#' ---------
-#'
-#' See the `ChangeLog.md` file.
-#'
 library(ggplot2)
 
 #' Return the number of lineages that where removed in each catastrophe.
@@ -83,8 +78,8 @@ main <- function(observed_events_csv, figure_png) {
     "second_person"
   )
   x <- subset(x,
-    subset = event != "occurrence"
-  )
+              subset = event != "occurrence" & event != "disaster"
+              )
 
   fig <- phylo_ltt_plot(phylo_ltt(x$event, x$time, x$first_person))
 

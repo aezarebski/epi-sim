@@ -47,6 +47,7 @@ data Event
   | SamplingEvent Time Person
   | CatastropheEvent Time People
   | OccurrenceEvent Time Person
+  | DisasterEvent Time People
   deriving (Show, Generic, Eq)
 
 instance ToRecord Event where
@@ -56,6 +57,7 @@ instance ToRecord Event where
     (SamplingEvent t p1) -> record ["sample", toField t, toField p1, "NA"]
     (CatastropheEvent t (People persons)) -> record ["catastrophe", toField t, B.intercalate ":" . map toField $ V.toList persons, "NA"]
     (OccurrenceEvent t p1) -> record ["occurrence", toField t, toField p1, "NA"]
+    (DisasterEvent t (People persons)) -> record ["disaster", toField t, B.intercalate ":" . map toField $ V.toList persons, "NA"]
 
 eventTime :: Event -> Time
 eventTime e = case e of
@@ -64,32 +66,33 @@ eventTime e = case e of
   SamplingEvent time _ -> time
   CatastropheEvent time _ -> time
   OccurrenceEvent time _ -> time
+  DisasterEvent time _ -> time
 
--- | The first catastrophe time after the given time.
-firstCatastrophe :: Time                 -- ^ The given time
-                 -> [(Time,Probability)] -- ^ The information about all scheduled catastrophes
-                 -> Maybe (Time,Probability)
-firstCatastrophe _ [] = Nothing
-firstCatastrophe currTime (catast@(catastTime, _):catasts)
-  | catastTime == currTime = Just catast
-  | catastTime < currTime = firstCatastrophe currTime catasts
-  | catastTime > currTime =
-    let maybeFirstCatast = firstCatastrophe currTime catasts
-     in case maybeFirstCatast of
-          Nothing -> Just catast
-          (Just (catastTime', _)) ->
-            if catastTime < catastTime'
-              then Just catast
-              else maybeFirstCatast
+-- | The first scheduled event after a given time.
+firstScheduled :: Time                 -- ^ The given time
+               -> [(Time,Probability)] -- ^ The information about all scheduled events
+               -> Maybe (Time,Probability)
+firstScheduled _ [] = Nothing
+firstScheduled currTime (sched@(schedTime, _):scheduledEvents)
+  | schedTime == currTime = Just sched
+  | schedTime < currTime = firstScheduled currTime scheduledEvents
+  | schedTime > currTime =
+    let maybeFirstSched = firstScheduled currTime scheduledEvents
+     in case maybeFirstSched of
+          Nothing -> Just sched
+          (Just (schedTime', _)) ->
+            if schedTime < schedTime'
+              then Just sched
+              else maybeFirstSched
 
--- | Predicate for whether a catastrophe is scheduled for an interval of time.
-noCatastrophe :: Time                 -- ^ Start time for interval
-               -> Time                 -- ^ End time for interval
-               -> [(Time,Probability)] -- ^ Information about all scheduled catastrophes
-               -> Bool
-noCatastrophe _ _ [] = True
-noCatastrophe a b ((catastTime, _):catasts) =
-  not (a < catastTime && catastTime <= b) && noCatastrophe a b catasts
+-- | Predicate for whether there is a scheduled event during an interval.
+noScheduledEvent :: Time                 -- ^ Start time for interval
+                 -> Time                 -- ^ End time for interval
+                 -> [(Time,Probability)] -- ^ Information about all scheduled events
+                 -> Bool
+noScheduledEvent _ _ [] = True
+noScheduledEvent a b ((shedTime, _):scheduledEvents) =
+  not (a < shedTime && shedTime <= b) && noScheduledEvent a b scheduledEvents
 
 instance Ord Event where
   e1 <= e2 = eventTime e1 <= eventTime e2
@@ -101,6 +104,7 @@ personsInEvent e = case e of
   (SamplingEvent _ p) -> [p]
   (CatastropheEvent _ (People persons)) -> V.toList persons
   (OccurrenceEvent _ p) -> [p]
+  (DisasterEvent _ (People persons)) -> V.toList persons
 
 peopleInEvents :: [Event] -> People
 peopleInEvents events =
@@ -193,6 +197,11 @@ isOccurrence e = case e of
   OccurrenceEvent {} -> True
   _ -> False
 
+isDisaster :: Event -> Bool
+isDisaster e = case e of
+  DisasterEvent {} -> True
+  _ -> False
+
 class ModelParameters a where
   rNaught :: a -> Double
   eventRate :: a -> Double
@@ -227,6 +236,9 @@ transmissionTree (e@(CatastropheEvent _ (People people)):es) person
   | otherwise = transmissionTree es person
 transmissionTree (e@(OccurrenceEvent _ p1):es) person
   | p1 == person = TTDeath (peopleInEvents [e]) e
+  | otherwise = transmissionTree es person
+transmissionTree (e@(DisasterEvent _ (People people)):es) person
+  | person `V.elem` people = TTDeath (People people) e
   | otherwise = transmissionTree es person
 transmissionTree [] person = TTUnresolved person
 

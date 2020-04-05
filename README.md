@@ -7,7 +7,8 @@ stack build
 stack run
 stack test
 stack haddock --open --no-haddock-deps
-Rscript vis/ltt.R demo-output-sample-tree.csv demo-output.png
+Rscript vis/ltt.R demo-output-observed-events.csv demo-output-ltt.png
+Rscript vis/ott.R demo-output-observed-events.csv demo-output-ott.png
 ```
 
 ## Models
@@ -16,6 +17,7 @@ Rscript vis/ltt.R demo-output-sample-tree.csv demo-output.png
 2. Birth-Death-Sampling (see `Epidemic.BirthDeathSampling`)
 3. Birth-Death-Sampling-Occurrence (see `Epidemic.BirthDeathSamplingOccurrence`)
 4. Birth-Death-Sampling-Catastrophe-Occurrence (see `Epidemic.BirthDeathSamplingCatastropheOccurrence`)
+4. Birth-Death-Sampling-Catastrophe-Occurrence-Disaster (see `Epidemic.BDSCOD`)
 
 ## Output
 

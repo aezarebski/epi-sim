@@ -4,10 +4,10 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: dcd0ba480304ded0e97963e3aa10e29016720383c7392415eb810abe7fb01c36
+-- hash: 516c2da1d6532107d176430b065efe4fa6b7f41b5edd5cf5668fcb9308f18a8e
 
 name:           epi-sim
-version:        0.1.6.2
+version:        0.1.7.0
 synopsis:       A tool for simulating epidemics.
 description:    Please see the README on GitHub at <https://bitbucket.org/azarebski/epi-sim/src/master/README.md>
 homepage:       https://github.com/azarebski/epi-sim#readme
@@ -30,6 +30,7 @@ source-repository head
 library
   exposed-modules:
       Epidemic
+      Epidemic.BDSCOD
       Epidemic.BirthDeath
       Epidemic.BirthDeathSampling
       Epidemic.BirthDeathSamplingCatastropheOccurrence
@@ -43,6 +44,7 @@ library
       base >=4.7 && <5
     , bytestring
     , cassava
+    , hspec
     , mwc-random
     , trifecta
     , vector
@@ -60,6 +62,7 @@ executable epi-sim-exe
     , bytestring
     , cassava
     , epi-sim
+    , hspec
     , mwc-random
     , trifecta
     , vector

@@ -1,5 +1,9 @@
 # Changelog for epi-sim
 
+## 0.1.7.1
+
+- Provide `vis/birth-death-lines.R` which visualises a simulation.
+
 ## 0.1.7.0
 
 - Provide `vis/ott.R` to visualise observations through time and make `vis/ltt.R` ignore disasters.

@@ -4,10 +4,10 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 516c2da1d6532107d176430b065efe4fa6b7f41b5edd5cf5668fcb9308f18a8e
+-- hash: fc6a1246b040311846a783f68b88581958acc337c5c7c5de1e68d8467e06030d
 
 name:           epi-sim
-version:        0.1.7.0
+version:        0.1.7.1
 synopsis:       A tool for simulating epidemics.
 description:    Please see the README on GitHub at <https://bitbucket.org/azarebski/epi-sim/src/master/README.md>
 homepage:       https://github.com/azarebski/epi-sim#readme

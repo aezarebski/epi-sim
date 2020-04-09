@@ -7,9 +7,17 @@ stack build
 stack run
 stack test
 stack haddock --open --no-haddock-deps
+```
+
+The for some nice visualisations
+
+```
 Rscript vis/ltt.R demo-output-observed-events.csv demo-output-ltt.png
 Rscript vis/ott.R demo-output-observed-events.csv demo-output-ott.png
+Rscript vis/birth-death-lines.R demo-output-all-events.csv demo-output-full-sim.png
 ```
+
+![](vis/demo-simulation.png)
 
 ## Models
 

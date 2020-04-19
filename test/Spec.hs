@@ -1,7 +1,8 @@
 import Test.Hspec
 import Control.Exception (evaluate)
 
-import Data.Maybe (isJust)
+import Control.Monad
+import Data.Maybe (isJust, fromJust)
 import qualified Data.Vector as V
 import Epidemic
 import Epidemic.Utility
@@ -9,6 +10,10 @@ import qualified Epidemic.BirthDeath as BD
 import qualified Epidemic.BirthDeathSamplingOccurrence as BDSO
 import qualified Epidemic.BirthDeathSamplingCatastropheOccurrence as BDSCO
 import qualified Epidemic.BDSCOD as BDSCOD
+
+
+withinNPercent n x y = x - d < y && y < x + d where d = n * x / 100
+
 
 p1 = Person 1
 p2 = Person 2
@@ -158,6 +163,14 @@ birthDeathTests = do
       (isJust (BD.configuration 1 ((-1),1))) `shouldBe` False
       (isJust (BD.configuration 1 (1,(-1)))) `shouldBe` False
       (isJust (BD.configuration 1 ((-1),(-1)))) `shouldBe` False
+    it "Mean behaviour is approximately correct" $
+      let mean xs = fromIntegral (sum xs) / (fromIntegral $ length xs)
+          meanFinalSize = exp ((2.1 - 0.2) * 1.5)
+          randomBDEvents = simulationWithSystemRandom (fromJust $ BD.configuration 1.5 (2.1, 0.2)) BD.allEvents
+          numRepeats = 1000
+       in do
+        finalSizes <- replicateM numRepeats (finalSize <$> randomBDEvents)
+        (withinNPercent 5 (mean finalSizes) meanFinalSize) `shouldBe` True
 
 main :: IO ()
 main = hspec $ do

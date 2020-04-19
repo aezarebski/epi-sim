@@ -1,8 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Epidemic.BDSCOD
-  ( simulation
-  , configuration
+  ( configuration
   , allEvents
   , observedEvents
   ) where
@@ -22,9 +21,9 @@ data BDSCODParameters
   = BDSCODParameters Rate Rate Rate [(Time,Probability)] Rate [(Time,Probability)]
 
 instance ModelParameters BDSCODParameters where
-  rNaught (BDSCODParameters birthRate deathRate samplingRate _ occurrenceRate _) =
+  rNaught (BDSCODParameters birthRate deathRate samplingRate _ occurrenceRate _) _ =
     birthRate / (deathRate + samplingRate + occurrenceRate)
-  eventRate (BDSCODParameters birthRate deathRate samplingRate _ occurrenceRate _) =
+  eventRate (BDSCODParameters birthRate deathRate samplingRate _ occurrenceRate _) _ =
     birthRate + deathRate + samplingRate + occurrenceRate
 
 newtype BDSCODPopulation =
@@ -62,7 +61,7 @@ randomEvent :: BDSCODParameters  -- ^ Parameters of the process
             -> GenIO             -- ^ The current state of the PRNG
             -> IO (Time, Event, BDSCODPopulation, Identifier)
 randomEvent params@(BDSCODParameters br dr sr catastInfo occr disastInfo) currTime currPop@(BDSCODPopulation (People currPeople)) currId gen =
-  let netEventRate = eventRate params
+  let netEventRate = eventRate params Nothing
       eventWeights = V.fromList [br, dr, sr, occr]
    in do delay <- exponential (fromIntegral (V.length currPeople) * netEventRate) gen
          nextTime <- pure $ currTime + delay
@@ -145,14 +144,6 @@ allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
         else return currState
     else return currState
 
--- | Run a simulation described by a configuration object.
-simulation :: SimulationConfiguration BDSCODParameters BDSCODPopulation
-           -> IO [Event]
-simulation SimulationConfiguration {..} = do
-  gen <- System.Random.MWC.create :: IO GenIO
-  (_, events, _, _) <-
-    allEvents rates timeLimit (0, [], population, newIdentifier) gen
-  return $ sort events
 
 -- | Just the observable events from a list of all the events in a simulation.
 observedEvents :: [Event] -- ^ All of the simulation events

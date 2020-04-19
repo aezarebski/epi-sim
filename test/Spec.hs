@@ -1,8 +1,11 @@
 import Test.Hspec
 import Control.Exception (evaluate)
 
+import Data.Maybe (isJust)
 import qualified Data.Vector as V
 import Epidemic
+import Epidemic.Utility
+import qualified Epidemic.BirthDeath as BD
 import qualified Epidemic.BirthDeathSamplingOccurrence as BDSO
 import qualified Epidemic.BirthDeathSamplingCatastropheOccurrence as BDSCO
 import qualified Epidemic.BDSCOD as BDSCOD
@@ -113,12 +116,12 @@ demoSampleEvents04 =
   ]
 
 
-main :: IO ()
-main = hspec $ do
+
+eventHandlingTests = do
   describe "Post-simulation processing" $ do
     it "Extracting observed events" $ do
-      (demoSampleEvents01 == BDSO.birthDeathSamplingOccurrenceObservedEvents demoFullEvents01) `shouldBe` True
-      (demoSampleEvents02 == BDSO.birthDeathSamplingOccurrenceObservedEvents demoFullEvents02) `shouldBe` True
+      (demoSampleEvents01 == BDSO.observedEvents demoFullEvents01) `shouldBe` True
+      (demoSampleEvents02 == BDSO.observedEvents demoFullEvents02) `shouldBe` True
   describe "Catastrophe definitions" $ do
     it "Check we can find a catastrophe" $ do
       (noScheduledEvent 0 1 []) `shouldBe` True
@@ -136,11 +139,27 @@ main = hspec $ do
     it "Catastrophes are handled correctly" $ do
       (demoSampleEvents03 == BDSCO.observedEvents demoFullEvents03) `shouldBe` True
     it "Catastrophes can be simulated" $ do
-      demoSim <- BDSCO.simulation $ BDSCO.configuration 4 (1.3,0.1,0.1,[(3,0.5)],0.2)
+      demoSim <- simulation (BDSCO.configuration 4 (1.3,0.1,0.1,[(3,0.5)],0.2)) BDSCO.allEvents
       length demoSim > 1 `shouldBe` True
   describe "Disaster definitions" $ do
     it "Disasters are handled correctly" $ do
       (demoSampleEvents04 == BDSCOD.observedEvents demoFullEvents04) `shouldBe` True
     it "Disasters can be simulated" $ do
-      demoSim <- BDSCOD.simulation $ BDSCOD.configuration 4 (1.3,0.1,0.1,[(3,0.5)],0.2,[(3.5,0.5)])
+      demoSim <- simulation (BDSCOD.configuration 4 (1.3,0.1,0.1,[(3,0.5)],0.2,[(3.5,0.5)])) BDSCOD.allEvents
       length demoSim > 1 `shouldBe` True
+
+
+
+birthDeathTests = do
+  describe "BirthDeath module tests" $ do
+    it "Construct a simulation configuration" $ do
+      (isJust (BD.configuration 1 (1,1))) `shouldBe` True
+      (isJust (BD.configuration (-1) (1,1))) `shouldBe` False
+      (isJust (BD.configuration 1 ((-1),1))) `shouldBe` False
+      (isJust (BD.configuration 1 (1,(-1)))) `shouldBe` False
+      (isJust (BD.configuration 1 ((-1),(-1)))) `shouldBe` False
+
+main :: IO ()
+main = hspec $ do
+  eventHandlingTests
+  birthDeathTests

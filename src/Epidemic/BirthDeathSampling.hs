@@ -1,6 +1,9 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module Epidemic.BirthDeathSampling where
+module Epidemic.BirthDeathSampling
+  ( configuration
+  , allEvents
+  ) where
 
 import qualified Data.Vector as V
 import System.Random.MWC
@@ -13,9 +16,9 @@ data BDSRates =
   BDSRates Rate Rate Rate
 
 instance ModelParameters BDSRates where
-  rNaught (BDSRates birthRate deathRate samplingRate) =
+  rNaught (BDSRates birthRate deathRate samplingRate) _ =
     birthRate / (deathRate + samplingRate)
-  eventRate (BDSRates birthRate deathRate samplingRate) = birthRate + deathRate + samplingRate
+  eventRate (BDSRates birthRate deathRate samplingRate) _ = birthRate + deathRate + samplingRate
 
 newtype BDSPopulation =
   BDSPopulation People
@@ -31,10 +34,10 @@ birthDeathSamplingRates :: Rate -> Rate -> Rate -> BDSRates
 birthDeathSamplingRates = BDSRates -- birthRate deathRate samplingRate
 
 -- | Configuration of a birth-death-sampling simulation.
-birthDeathSamplingConfig :: Time             -- ^ Duration of the simulation
-                         -> (Rate,Rate,Rate) -- ^ Birth, Death and Sampling rates
-                         -> SimulationConfiguration BDSRates BDSPopulation
-birthDeathSamplingConfig maxTime (birthRate, deathRate, samplingRate) =
+configuration :: Time             -- ^ Duration of the simulation
+              -> (Rate,Rate,Rate) -- ^ Birth, Death and Sampling rates
+              -> SimulationConfiguration BDSRates BDSPopulation
+configuration maxTime (birthRate, deathRate, samplingRate) =
   let bdsRates = birthDeathSamplingRates birthRate deathRate samplingRate
       (seedPerson, newId) = newPerson initialIdentifier
       bdsPop = BDSPopulation (People $ V.singleton seedPerson)
@@ -48,7 +51,7 @@ randomBirthDeathSamplingEvent ::
   -> GenIO
   -> IO (Time, Event, BDSPopulation, Identifier)
 randomBirthDeathSamplingEvent rates@(BDSRates br dr sr) currTime (BDSPopulation (People currPeople)) currId gen =
-  let netEventRate = eventRate rates
+  let netEventRate = eventRate rates Nothing
       eventWeights = V.fromList [br,dr,sr]
    in
     do delay <- exponential (fromIntegral (V.length currPeople) * netEventRate) gen
@@ -70,19 +73,19 @@ randomBirthDeathSamplingEvent rates@(BDSRates br dr sr) currTime (BDSPopulation 
               in (newTime, event, BDSPopulation (People unselectedPeople), currId)
          _ -> error "no birth-death-sampling event selected."
 
-birthDeathSamplingEvents ::
+allEvents ::
      BDSRates
   -> Time
   -> (Time, [Event], BDSPopulation, Identifier)
   -> GenIO
   -> IO (Time, [Event], BDSPopulation, Identifier)
-birthDeathSamplingEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
+allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
   if isInfected currPop
     then do
       (newTime, event, newPop, newId) <-
         randomBirthDeathSamplingEvent rates currTime currPop currId gen
       if newTime < maxTime
-        then birthDeathSamplingEvents
+        then allEvents
                rates
                maxTime
                (newTime, event : currEvents, newPop, newId)
@@ -90,10 +93,3 @@ birthDeathSamplingEvents rates maxTime currState@(currTime, currEvents, currPop,
         else return currState
     else return currState
 
-birthDeathSamplingSimulation :: SimulationConfiguration BDSRates BDSPopulation
-                             -> IO [Event]
-birthDeathSamplingSimulation SimulationConfiguration {..} = do
-  gen <- System.Random.MWC.create :: IO GenIO
-  (_, events, _, _) <-
-    birthDeathSamplingEvents rates timeLimit (0, [], population, newIdentifier) gen
-  return $ sort events

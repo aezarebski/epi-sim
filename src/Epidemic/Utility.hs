@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Epidemic.Utility where
@@ -148,3 +149,15 @@ newickTree = do
 
 sort :: Ord a => [a] -> [a]
 sort = List.sort
+
+
+
+-- | Run a simulation described by a configuration object.
+simulation :: (ModelParameters a) => SimulationConfiguration a b
+           -> (a -> Time -> (Time, [Event], b, Identifier) -> GenIO -> IO (Time, [Event], b, Identifier))
+           -> IO [Event]
+simulation SimulationConfiguration {..} allEvents = do
+  gen <- System.Random.MWC.create :: IO GenIO
+  (_, events, _, _) <-
+    allEvents rates timeLimit (0, [], population, newIdentifier) gen
+  return $ sort events

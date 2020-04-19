@@ -59,6 +59,7 @@ instance ToRecord Event where
     (OccurrenceEvent t p1) -> record ["occurrence", toField t, toField p1, "NA"]
     (DisasterEvent t (People persons)) -> record ["disaster", toField t, B.intercalate ":" . map toField $ V.toList persons, "NA"]
 
+-- | The absolute time an event occurred.
 eventTime :: Event -> Time
 eventTime e = case e of
   InfectionEvent time _ _ -> time
@@ -67,6 +68,16 @@ eventTime e = case e of
   CatastropheEvent time _ -> time
   OccurrenceEvent time _ -> time
   DisasterEvent time _ -> time
+
+-- | The number of people added or removed in an event.
+eventPopDelta :: Event -> Integer
+eventPopDelta e = case e of
+  InfectionEvent{} -> 1
+  RemovalEvent _ _ -> -1
+  SamplingEvent _ _ -> -1
+  CatastropheEvent _ people -> fromIntegral $ numPeople people
+  OccurrenceEvent _ _ -> -1
+  DisasterEvent _ people -> fromIntegral $ numPeople people
 
 -- | The first scheduled event after a given time.
 firstScheduled :: Time                 -- ^ The given time

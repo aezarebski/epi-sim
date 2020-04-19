@@ -2,6 +2,9 @@
 
 ## 0.1.8.0
 
+- Include a `Timed` type for time varying values.
+- Include a test that the final size of a birth-death simulation is
+  approximately correct.
 - Format the changelog to make it easier to read outside of a browser.
 - Fix naming convention and exports in the `BirthDeath`, `BirthDeathSampling`
   and `BirthDeathSamplingOccurrence`modules to conform to the pattern used in

@@ -176,3 +176,32 @@ simulationWithSystemRandom SimulationConfiguration {..} allEvents = do
 finalSize :: [Event] -- ^ The events from the simulation
           -> Integer
 finalSize = foldl (\x y -> x + eventPopDelta y) 1
+
+
+
+-- | Construct a timed list if possible.
+asTimed :: [(Time,a)] -> Maybe (Timed a)
+asTimed tas = if isAscending $ map fst tas then Just tas else Nothing
+
+-- | Predicate to check if a list of orderable objects is in ascending order.
+isAscending :: Ord a => [a] -> Bool
+isAscending xs = case xs of
+  [] -> True
+  [_] -> True
+  (x:y:xs') -> x <= y && isAscending (y:xs')
+
+-- | Evaluate the timed object treating it as a cadlag function
+cadlagValue :: Timed a -> Time -> Maybe a
+cadlagValue = undefined
+
+-- | Evaluate the timed object treating it as a direct delta function
+diracDeltaValue :: Timed a -> Time -> Maybe a
+diracDeltaValue = undefined
+
+-- | Check if there is a pair at a particular time
+hasTime :: Timed a -> Time -> Bool
+hasTime = undefined
+
+-- | Return the value of the next time if possible
+nextTime :: Timed a -> Time -> Maybe Time
+nextTime = undefined

@@ -172,7 +172,50 @@ birthDeathTests = do
         finalSizes <- replicateM numRepeats (finalSize <$> randomBDEvents)
         (withinNPercent 5 (mean finalSizes) meanFinalSize) `shouldBe` True
 
+helperFuncTests = do
+  describe "Helpers in Utility" $ do
+    it "the isAscending function works" $ do
+      (isAscending ([] :: [Time])) `shouldBe` True
+      (isAscending [-1.0]) `shouldBe` True
+      (isAscending [1.0]) `shouldBe` True
+      (isAscending [1.0,2.0]) `shouldBe` True
+      (isAscending [1.0,2.0,3.0]) `shouldBe` True
+      (isAscending [1.0,-2.0]) `shouldBe` False
+      (isAscending [1.0,-2.0,3.0]) `shouldBe` False
+      (isAscending [1.0,2.0,-3.0]) `shouldBe` False
+    it "the asTimed function works" $ do
+      (isJust $ asTimed []) `shouldBe` True
+      (isJust $ asTimed [(0,1)]) `shouldBe` True
+      (isJust $ asTimed [(0,1),(1,3)]) `shouldBe` True
+      (isJust $ asTimed [(0,3),(1,1)]) `shouldBe` True
+      (isJust $ asTimed [(1,3),(0,1)]) `shouldBe` False
+    let demoTimed = fromJust $ asTimed [(0, 1.2), (1, 3.1), (2, 2.7)]
+     in do
+      it "the cadlagValue function works" $ do
+        (isJust $ cadlagValue demoTimed (-1.0)) `shouldBe` False
+        ((== 1.2) . fromJust $ cadlagValue demoTimed 0.0) `shouldBe` True
+        ((== 1.2) . fromJust $ cadlagValue demoTimed 0.5) `shouldBe` True
+        ((== 3.1) . fromJust $ cadlagValue demoTimed 1.5) `shouldBe` True
+      it "the diracDeltaValue function works" $ do
+        ((== 1.2) . fromJust $ diracDeltaValue demoTimed 0) `shouldBe` True
+        (isJust $ diracDeltaValue demoTimed 1) `shouldBe` True
+        (isJust $ diracDeltaValue demoTimed 0.9) `shouldBe` False
+        (isJust $ diracDeltaValue demoTimed 1.1) `shouldBe` False
+      it "the hasTime function works" $ do
+        (hasTime demoTimed 0) `shouldBe` True
+        (hasTime demoTimed 0.5) `shouldBe` False
+        (hasTime demoTimed 1) `shouldBe` True
+        (hasTime demoTimed 1.5) `shouldBe` False
+      it "the nextTime function works" $ do
+        (0 == (fromJust $ nextTime demoTimed (-1))) `shouldBe` True
+        (1 == (fromJust $ nextTime demoTimed (0))) `shouldBe` True
+        (1 == (fromJust $ nextTime demoTimed (0.5))) `shouldBe` True
+        (isJust $ nextTime demoTimed (2.5)) `shouldBe` False
+
+
+
 main :: IO ()
 main = hspec $ do
   eventHandlingTests
   birthDeathTests
+  helperFuncTests

@@ -14,6 +14,8 @@ type Identifier = Integer
 
 type Rate = Double
 
+type Timed a = [(Time, a)]
+
 type Probability = Double
 
 newtype Person =
@@ -80,8 +82,8 @@ eventPopDelta e = case e of
   DisasterEvent _ people -> fromIntegral $ numPeople people
 
 -- | The first scheduled event after a given time.
-firstScheduled :: Time                 -- ^ The given time
-               -> [(Time,Probability)] -- ^ The information about all scheduled events
+firstScheduled :: Time               -- ^ The given time
+               -> Timed Probability  -- ^ The information about all scheduled events
                -> Maybe (Time,Probability)
 firstScheduled _ [] = Nothing
 firstScheduled currTime (sched@(schedTime, _):scheduledEvents)
@@ -99,7 +101,7 @@ firstScheduled currTime (sched@(schedTime, _):scheduledEvents)
 -- | Predicate for whether there is a scheduled event during an interval.
 noScheduledEvent :: Time                 -- ^ Start time for interval
                  -> Time                 -- ^ End time for interval
-                 -> [(Time,Probability)] -- ^ Information about all scheduled events
+                 -> Timed Probability    -- ^ Information about all scheduled events
                  -> Bool
 noScheduledEvent _ _ [] = True
 noScheduledEvent a b ((shedTime, _):scheduledEvents) =

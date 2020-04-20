@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Epidemic where
 
@@ -18,12 +19,18 @@ type Probability = Double
 
 newtype Person =
   Person Identifier
-  deriving (Show, Generic,Eq)
-
-newtype People = People (V.Vector Person) deriving (Show,Eq)
+  deriving (Show, Generic, Eq)
 
 instance ToField Person where
-  toField (Person identifier) = toField identifier
+  toField (Person n) = toField n
+
+instance FromField Person where
+  parseField f = Person <$> (parseField f :: Parser Identifier)
+
+newtype People =
+  People (V.Vector Person)
+  deriving (Show, Eq, ToField, FromField)
+
 
 -- | Predicate for wther there are any people
 nullPeople :: People -> Bool
@@ -51,13 +58,16 @@ data Event
   deriving (Show, Generic, Eq)
 
 instance ToRecord Event where
-  toRecord e = case e of
-    (InfectionEvent t p1 p2) -> record ["infection", toField t, toField p1, toField p2]
-    (RemovalEvent t p1) -> record ["removal", toField t, toField p1, "NA"]
-    (SamplingEvent t p1) -> record ["sample", toField t, toField p1, "NA"]
-    (CatastropheEvent t (People persons)) -> record ["catastrophe", toField t, B.intercalate ":" . map toField $ V.toList persons, "NA"]
-    (OccurrenceEvent t p1) -> record ["occurrence", toField t, toField p1, "NA"]
-    (DisasterEvent t (People persons)) -> record ["disaster", toField t, B.intercalate ":" . map toField $ V.toList persons, "NA"]
+  toRecord e =
+    case e of
+      (RemovalEvent time person) ->
+        record ["removal", toField time, toField person, "NA"]
+      _ -> undefined
+
+instance FromRecord Event where
+  parseRecord r
+    | length r == 4 = RemovalEvent <$> (r .! 1) <*> (Person <$> (r .! 2))
+    | otherwise = undefined
 
 eventTime :: Event -> Time
 eventTime e = case e of

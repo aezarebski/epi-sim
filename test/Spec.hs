@@ -1,11 +1,15 @@
-import Test.Hspec
-import Control.Exception (evaluate)
+{-# LANGUAGE OverloadedStrings #-}
 
+import Control.Exception (evaluate)
+import Test.Hspec
+
+import Data.Csv
 import qualified Data.Vector as V
+import qualified Data.ByteString as B
 import Epidemic
-import qualified Epidemic.BirthDeathSamplingOccurrence as BDSO
-import qualified Epidemic.BirthDeathSamplingCatastropheOccurrence as BDSCO
 import qualified Epidemic.BDSCOD as BDSCOD
+import qualified Epidemic.BirthDeathSamplingCatastropheOccurrence as BDSCO
+import qualified Epidemic.BirthDeathSamplingOccurrence as BDSO
 
 p1 = Person 1
 p2 = Person 2
@@ -144,3 +148,20 @@ main = hspec $ do
     it "Disasters can be simulated" $ do
       demoSim <- BDSCOD.simulation $ BDSCOD.configuration 4 (1.3,0.1,0.1,[(3,0.5)],0.2,[(3.5,0.5)])
       length demoSim > 1 `shouldBe` True
+
+
+main' :: IO ()
+main' = hspec $ do
+  describe "Change Event read/write" $ do
+    it "check we can writte an event" $
+      let demoPerson = Person 3
+          demoPersonField = toField demoPerson
+          demoPersonField' = "3"
+          demoEvent = RemovalEvent 1.0 demoPerson
+          demoRecord = toRecord demoEvent
+          demoRecord' = V.fromList ["removal", "1.0", "3", "NA"] :: Record
+          (Right demoEvent') = runParser (parseRecord demoRecord) :: Either String Event
+       in do
+        (demoPersonField' == demoPersonField) `shouldBe` True
+        (demoRecord' == demoRecord) `shouldBe` True
+        (demoEvent' == demoEvent) `shouldBe` True

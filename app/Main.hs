@@ -1,16 +1,31 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
+import Control.Monad
 import Data.Csv
+import Data.Maybe (fromJust)
 import qualified Data.ByteString.Lazy as L
 import Epidemic
 import Epidemic.Utility
-import qualified Epidemic.BDSCOD as BDSCOD
+import qualified Epidemic.BirthDeath as Model
+
+mean xs = fromIntegral (sum xs) / (fromIntegral $ length xs)
+
+meanFinalSize = exp ((2.1 - 0.2) * 1.5)
+
+randomBDEvents =
+  simulationWithSystemRandom
+    (fromJust $ Model.configuration 1.5 (2.1, 0.2))
+    Model.allEvents
 
 
-main :: IO ()
-main = do
-  events <- simulation (BDSCOD.configuration 4.5 (2.1,0.2,0.1,[(3,0.5), (4,0.5)],0.2,[(3.5,0.5)])) BDSCOD.allEvents
-  L.writeFile "demo-output-all-events.csv" (encode events)
-  L.writeFile "demo-output-observed-events.csv" . encode $ BDSCOD.observedEvents events
-  return ()
+withinNPercent n x y = x - d < y && y < x + d where d = n * x / 100
+
+-- main :: IO ()
+main =
+  let numRepeats = 1000
+   in do finalSizes <- replicateM numRepeats (finalSize <$> randomBDEvents)
+         putStrLn $
+           if withinNPercent 5 (mean finalSizes) meanFinalSize
+             then "Correct!"
+             else "Fail :("

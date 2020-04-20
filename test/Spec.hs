@@ -161,7 +161,15 @@ main' = hspec $ do
           demoRecord = toRecord demoEvent
           demoRecord' = V.fromList ["removal", "1.0", "3", "NA"] :: Record
           (Right demoEvent') = runParser (parseRecord demoRecord) :: Either String Event
+          demoRecord2 = toRecord (CatastropheEvent 1.0 (People (V.fromList [p2,p3])))
+          (Right demoEvent2@(CatastropheEvent _ people2)) = runParser (parseRecord demoRecord2) :: Either String Event
+          demoRecord2' = toRecord demoEvent2
        in do
         (demoPersonField' == demoPersonField) `shouldBe` True
         (demoRecord' == demoRecord) `shouldBe` True
         (demoEvent' == demoEvent) `shouldBe` True
+        (demoRecord2' == demoRecord2) `shouldBe` True
+        (numPeople people2 == 2) `shouldBe` True
+
+
+

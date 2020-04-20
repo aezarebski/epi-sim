@@ -3,8 +3,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Epidemic where
 
+import Data.Word
+import Control.Monad
 import qualified Data.Vector as V
 import qualified Data.ByteString as B
+import Data.ByteString.Internal (c2w)
 import Data.Csv
 import Data.List (nub)
 import GHC.Generics (Generic)
@@ -29,8 +32,15 @@ instance FromField Person where
 
 newtype People =
   People (V.Vector Person)
-  deriving (Show, Eq, ToField, FromField)
+  deriving (Show, Eq)
 
+instance ToField People where
+  toField (People persons) =
+    B.intercalate ":" $ V.toList $ V.map toField persons
+
+instance FromField People where
+  parseField f =
+    (People . V.fromList) <$> (mapM parseField $ B.split (c2w ':') f)
 
 -- | Predicate for wther there are any people
 nullPeople :: People -> Bool
@@ -62,10 +72,27 @@ instance ToRecord Event where
     case e of
       (RemovalEvent time person) ->
         record ["removal", toField time, toField person, "NA"]
+      (SamplingEvent time person) ->
+        record ["sampling", toField time, toField person, "NA"]
+      (CatastropheEvent time people) ->
+        record ["catastrophe", toField time, toField people, "NA"]
+      (OccurrenceEvent time person) ->
+        record ["sampling", toField time, toField person, "NA"]
+      (DisasterEvent time people) ->
+        record ["catastrophe", toField time, toField people, "NA"]
       _ -> undefined
+
+
+et :: B.ByteString -> Record -> Bool
+et bs r = (==bs) . head $ V.toList r
 
 instance FromRecord Event where
   parseRecord r
+    | et "removal" r = RemovalEvent <$> (r .! 1) <*> (Person <$> (r .! 2))
+    | et "sampling" r = SamplingEvent <$> (r .! 1) <*> (Person <$> (r .! 2))
+    | et "catastrophe" r = CatastropheEvent <$> (r .! 1) <*> (r .! 2)
+    | et "occurrence" r = OccurrenceEvent <$> (r .! 1) <*> (Person <$> (r .! 2))
+    | et "disaster" r = DisasterEvent <$> (r .! 1) <*> (r .! 2)
     | length r == 4 = RemovalEvent <$> (r .! 1) <*> (Person <$> (r .! 2))
     | otherwise = undefined
 

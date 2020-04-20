@@ -1,5 +1,9 @@
 # Changelog for epi-sim
 
+## 0.1.7.2
+
+- Make `Event` an instance of `FromRecord` to match with `ToRecord`.
+
 ## 0.1.7.1
 
 - Provide `vis/birth-death-lines.R` which visualises a simulation.

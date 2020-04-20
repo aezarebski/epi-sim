@@ -70,6 +70,8 @@ data Event
 instance ToRecord Event where
   toRecord e =
     case e of
+      (InfectionEvent time person1 person2) ->
+        record ["infection", toField time, toField person1, toField person2]
       (RemovalEvent time person) ->
         record ["removal", toField time, toField person, "NA"]
       (SamplingEvent time person) ->
@@ -80,14 +82,15 @@ instance ToRecord Event where
         record ["sampling", toField time, toField person, "NA"]
       (DisasterEvent time people) ->
         record ["catastrophe", toField time, toField people, "NA"]
-      _ -> undefined
-
 
 et :: B.ByteString -> Record -> Bool
 et bs r = (==bs) . head $ V.toList r
 
 instance FromRecord Event where
   parseRecord r
+    | et "infection" r =
+      InfectionEvent <$> (r .! 1) <*> (Person <$> (r .! 2)) <*>
+      (Person <$> (r .! 3))
     | et "removal" r = RemovalEvent <$> (r .! 1) <*> (Person <$> (r .! 2))
     | et "sampling" r = SamplingEvent <$> (r .! 1) <*> (Person <$> (r .! 2))
     | et "catastrophe" r = CatastropheEvent <$> (r .! 1) <*> (r .! 2)

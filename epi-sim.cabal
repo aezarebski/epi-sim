@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 83b6b2d70e55e41875e37e4a2fbd841e13ceba2d0be20749baa8e96150bff208
+-- hash: 7b162cabcbb18a8de95b9d02a64fd112d60f4eacce01160813cbe2c92cbb8977
 
 name:           epi-sim
 version:        0.1.7.2

@@ -79,9 +79,9 @@ instance ToRecord Event where
       (CatastropheEvent time people) ->
         record ["catastrophe", toField time, toField people, "NA"]
       (OccurrenceEvent time person) ->
-        record ["sampling", toField time, toField person, "NA"]
+        record ["occurrence", toField time, toField person, "NA"]
       (DisasterEvent time people) ->
-        record ["catastrophe", toField time, toField people, "NA"]
+        record ["disaster", toField time, toField people, "NA"]
 
 et :: B.ByteString -> Record -> Bool
 et bs r = (==bs) . head $ V.toList r
@@ -96,7 +96,6 @@ instance FromRecord Event where
     | et "catastrophe" r = CatastropheEvent <$> (r .! 1) <*> (r .! 2)
     | et "occurrence" r = OccurrenceEvent <$> (r .! 1) <*> (Person <$> (r .! 2))
     | et "disaster" r = DisasterEvent <$> (r .! 1) <*> (r .! 2)
-    | length r == 4 = RemovalEvent <$> (r .! 1) <*> (Person <$> (r .! 2))
     | otherwise = undefined
 
 eventTime :: Event -> Time

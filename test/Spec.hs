@@ -229,16 +229,9 @@ helperFuncTests = do
              (1 == (fromJust $ nextTime demoTimed (0.5))) `shouldBe` True
              (isJust $ nextTime demoTimed (2.5)) `shouldBe` False
 
-main :: IO ()
-main =
-  hspec $ do
-    eventHandlingTests
-    birthDeathTests
-    helperFuncTests
 
-main' :: IO ()
-main' =
-  hspec $ do
+readwriteTests =
+  do
     describe "Change Event read/write" $ do
       it "check we can writte an event" $
         let demoPerson = Person 3
@@ -259,3 +252,12 @@ main' =
                (demoEvent' == demoEvent) `shouldBe` True
                (demoRecord2' == demoRecord2) `shouldBe` True
                (numPeople people2 == 2) `shouldBe` True
+
+
+main :: IO ()
+main =
+  hspec $ do
+    eventHandlingTests
+    birthDeathTests
+    helperFuncTests
+    readwriteTests

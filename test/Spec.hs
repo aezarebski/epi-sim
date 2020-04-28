@@ -186,7 +186,7 @@ birthDeathTests = do
             simulationWithSystemRandom
               (fromJust $ BD.configuration 1.5 (2.1, 0.2))
               BD.allEvents
-          numRepeats = 1000
+          numRepeats = 3000
        in do finalSizes <- replicateM numRepeats (finalSize <$> randomBDEvents)
              (withinNPercent 5 (mean finalSizes) meanFinalSize) `shouldBe` True
 

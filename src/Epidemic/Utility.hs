@@ -194,23 +194,32 @@ isAscending xs = case xs of
 -- | Evaluate the timed object treating it as a cadlag function
 cadlagValue :: Timed a -> Time -> Maybe a
 cadlagValue [] _ = Nothing
-cadlagValue ((t,x):txs) q =
+cadlagValue ((t, x):txs) q =
   if q < t
-  then Nothing
-  else let nextCLV = cadlagValue txs q
-    in if Maybe.isNothing nextCLV
-       then Just x
-       else nextCLV
+    then Nothing
+    else let nextCLV = cadlagValue txs q
+          in if Maybe.isNothing nextCLV
+               then Just x
+               else nextCLV
 
 
 -- | Evaluate the timed object treating it as a direct delta function
 diracDeltaValue :: Timed a -> Time -> Maybe a
-diracDeltaValue = undefined
+diracDeltaValue [] _ = Nothing
+diracDeltaValue ((t, x):txs) q =
+  if t == q
+    then Just x
+    else diracDeltaValue txs q
 
 -- | Check if there is a pair at a particular time
 hasTime :: Timed a -> Time -> Bool
-hasTime = undefined
+hasTime [] _ = False
+hasTime ((t, _):txs) q = t == q || hasTime txs q
 
 -- | Return the value of the next time if possible
 nextTime :: Timed a -> Time -> Maybe Time
-nextTime = undefined
+nextTime [] _ = Nothing
+nextTime ((t, _):txs) q =
+  if q < t
+    then Just t
+    else nextTime txs q

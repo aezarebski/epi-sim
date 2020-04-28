@@ -180,7 +180,8 @@ finalSize = foldl (\x y -> x + eventPopDelta y) 1
 
 
 -- | Construct a timed list if possible.
-asTimed :: [(Time,a)] -> Maybe (Timed a)
+asTimed :: [(Time,a)] -- ^ list of ascending times and values
+        -> Maybe (Timed a)
 asTimed tas = if isAscending $ map fst tas then Just tas else Nothing
 
 -- | Predicate to check if a list of orderable objects is in ascending order.
@@ -192,7 +193,15 @@ isAscending xs = case xs of
 
 -- | Evaluate the timed object treating it as a cadlag function
 cadlagValue :: Timed a -> Time -> Maybe a
-cadlagValue = undefined
+cadlagValue [] _ = Nothing
+cadlagValue ((t,x):txs) q =
+  if q < t
+  then Nothing
+  else let nextCLV = cadlagValue txs q
+    in if Maybe.isNothing nextCLV
+       then Just x
+       else nextCLV
+
 
 -- | Evaluate the timed object treating it as a direct delta function
 diracDeltaValue :: Timed a -> Time -> Maybe a

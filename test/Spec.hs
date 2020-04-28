@@ -1,26 +1,37 @@
-import Test.Hspec
-import Control.Exception (evaluate)
+{-# LANGUAGE OverloadedStrings #-}
 
+import Control.Exception (evaluate)
 import Control.Monad
-import Data.Maybe (isJust, fromJust)
+import qualified Data.ByteString as B
+import Data.Csv
+import Data.Maybe (fromJust, isJust)
 import qualified Data.Vector as V
 import Epidemic
-import Epidemic.Utility
-import qualified Epidemic.BirthDeath as BD
-import qualified Epidemic.BirthDeathSamplingOccurrence as BDSO
-import qualified Epidemic.BirthDeathSamplingCatastropheOccurrence as BDSCO
 import qualified Epidemic.BDSCOD as BDSCOD
+import qualified Epidemic.BirthDeath as BD
+import qualified Epidemic.BirthDeathSamplingCatastropheOccurrence as BDSCO
+import qualified Epidemic.BirthDeathSamplingCatastropheOccurrence as BDSCO
+import qualified Epidemic.BirthDeathSamplingOccurrence as BDSO
+import qualified Epidemic.BirthDeathSamplingOccurrence as BDSO
+import Epidemic.Utility
+import Test.Hspec
 
-
-withinNPercent n x y = x - d < y && y < x + d where d = n * x / 100
-
+withinNPercent n x y = x - d < y && y < x + d
+  where
+    d = n * x / 100
 
 p1 = Person 1
+
 p2 = Person 2
+
 p3 = Person 3
+
 p4 = Person 4
+
 p5 = Person 5
+
 p6 = Person 6
+
 p7 = Person 7
 
 -- | The first set of test data does not have any catastrophe events.
@@ -78,7 +89,6 @@ demoSampleEvents02 =
   , OccurrenceEvent 12 p6
   ]
 
-
 -- | Another test set to test that catastrophes are handled correctly.
 demoFullEvents03 =
   [ InfectionEvent 1 p1 p4
@@ -86,7 +96,7 @@ demoFullEvents03 =
   , SamplingEvent 3 p1
   , InfectionEvent 4 p2 p3
   , InfectionEvent 5 p4 p5
-  , CatastropheEvent 6 (People $ V.fromList [p2,p3,p4])
+  , CatastropheEvent 6 (People $ V.fromList [p2, p3, p4])
   ]
 
 demoSampleEvents03 =
@@ -94,9 +104,8 @@ demoSampleEvents03 =
   , InfectionEvent 2 p1 p2
   , SamplingEvent 3 p1
   , InfectionEvent 4 p2 p3
-  , CatastropheEvent 6 (People $ V.fromList [p2,p3,p4])
+  , CatastropheEvent 6 (People $ V.fromList [p2, p3, p4])
   ]
-
 
 -- | Another test to make sure that disasters are handled.
 demoFullEvents04 =
@@ -105,10 +114,10 @@ demoFullEvents04 =
   , SamplingEvent 3 p1
   , InfectionEvent 4 p2 p3
   , InfectionEvent 5 p4 p5
-  , CatastropheEvent 6 (People $ V.fromList [p2,p3,p4])
+  , CatastropheEvent 6 (People $ V.fromList [p2, p3, p4])
   , InfectionEvent 7 p5 p6
   , InfectionEvent 8 p5 p7
-  , DisasterEvent 9 (People $ V.fromList [p5,p6])
+  , DisasterEvent 9 (People $ V.fromList [p5, p6])
   ]
 
 demoSampleEvents04 =
@@ -116,61 +125,70 @@ demoSampleEvents04 =
   , InfectionEvent 2 p1 p2
   , SamplingEvent 3 p1
   , InfectionEvent 4 p2 p3
-  , CatastropheEvent 6 (People $ V.fromList [p2,p3,p4])
-  , DisasterEvent 9 (People $ V.fromList [p5,p6])
+  , CatastropheEvent 6 (People $ V.fromList [p2, p3, p4])
+  , DisasterEvent 9 (People $ V.fromList [p5, p6])
   ]
-
-
 
 eventHandlingTests = do
   describe "Post-simulation processing" $ do
     it "Extracting observed events" $ do
-      (demoSampleEvents01 == BDSO.observedEvents demoFullEvents01) `shouldBe` True
-      (demoSampleEvents02 == BDSO.observedEvents demoFullEvents02) `shouldBe` True
+      (demoSampleEvents01 == BDSO.observedEvents demoFullEvents01) `shouldBe`
+        True
+      (demoSampleEvents02 == BDSO.observedEvents demoFullEvents02) `shouldBe`
+        True
   describe "Catastrophe definitions" $ do
     it "Check we can find a catastrophe" $ do
       (noScheduledEvent 0 1 []) `shouldBe` True
-      (noScheduledEvent 0 1 [(2,0.5)]) `shouldBe` True
-      (noScheduledEvent 0 1 [(0.5,0.5)]) `shouldBe` False
-      (noScheduledEvent 0 1 [(2,0.6),(0.5,0.5)]) `shouldBe` False
+      (noScheduledEvent 0 1 [(2, 0.5)]) `shouldBe` True
+      (noScheduledEvent 0 1 [(0.5, 0.5)]) `shouldBe` False
+      (noScheduledEvent 0 1 [(2, 0.6), (0.5, 0.5)]) `shouldBe` False
     it "Check we can find a particular catastrophe" $ do
       (firstScheduled 1 []) `shouldBe` Nothing
-      (firstScheduled 1 [(2,0.5)]) `shouldBe` Just (2,0.5)
-      (firstScheduled 1 [(0.5,0.5)]) `shouldBe` Nothing
-      (firstScheduled 1 [(2,0.6),(0.5,0.5)]) `shouldBe` Just (2,0.6)
-      (firstScheduled 1 [(2,0.6),(0.5,0.5),(1.5,0.4)]) `shouldBe` Just (1.5,0.4)
+      (firstScheduled 1 [(2, 0.5)]) `shouldBe` Just (2, 0.5)
+      (firstScheduled 1 [(0.5, 0.5)]) `shouldBe` Nothing
+      (firstScheduled 1 [(2, 0.6), (0.5, 0.5)]) `shouldBe` Just (2, 0.6)
+      (firstScheduled 1 [(2, 0.6), (0.5, 0.5), (1.5, 0.4)]) `shouldBe`
+        Just (1.5, 0.4)
     it "Works on a very specific case it seems to not like" $ do
-      (noScheduledEvent 2.28 (2.28+0.42) [(2.3,0.9)]) `shouldBe` False
+      (noScheduledEvent 2.28 (2.28 + 0.42) [(2.3, 0.9)]) `shouldBe` False
     it "Catastrophes are handled correctly" $ do
-      (demoSampleEvents03 == BDSCO.observedEvents demoFullEvents03) `shouldBe` True
+      (demoSampleEvents03 == BDSCO.observedEvents demoFullEvents03) `shouldBe`
+        True
     it "Catastrophes can be simulated" $ do
-      demoSim <- simulation (BDSCO.configuration 4 (1.3,0.1,0.1,[(3,0.5)],0.2)) BDSCO.allEvents
+      demoSim <-
+        simulation
+          (BDSCO.configuration 4 (1.3, 0.1, 0.1, [(3, 0.5)], 0.2))
+          BDSCO.allEvents
       length demoSim > 1 `shouldBe` True
   describe "Disaster definitions" $ do
     it "Disasters are handled correctly" $ do
-      (demoSampleEvents04 == BDSCOD.observedEvents demoFullEvents04) `shouldBe` True
+      (demoSampleEvents04 == BDSCOD.observedEvents demoFullEvents04) `shouldBe`
+        True
     it "Disasters can be simulated" $ do
-      demoSim <- simulation (BDSCOD.configuration 4 (1.3,0.1,0.1,[(3,0.5)],0.2,[(3.5,0.5)])) BDSCOD.allEvents
+      demoSim <-
+        simulation
+          (BDSCOD.configuration 4 (1.3, 0.1, 0.1, [(3, 0.5)], 0.2, [(3.5, 0.5)]))
+          BDSCOD.allEvents
       length demoSim > 1 `shouldBe` True
-
-
 
 birthDeathTests = do
   describe "BirthDeath module tests" $ do
     it "Construct a simulation configuration" $ do
-      (isJust (BD.configuration 1 (1,1))) `shouldBe` True
-      (isJust (BD.configuration (-1) (1,1))) `shouldBe` False
-      (isJust (BD.configuration 1 ((-1),1))) `shouldBe` False
-      (isJust (BD.configuration 1 (1,(-1)))) `shouldBe` False
-      (isJust (BD.configuration 1 ((-1),(-1)))) `shouldBe` False
+      (isJust (BD.configuration 1 (1, 1))) `shouldBe` True
+      (isJust (BD.configuration (-1) (1, 1))) `shouldBe` False
+      (isJust (BD.configuration 1 ((-1), 1))) `shouldBe` False
+      (isJust (BD.configuration 1 (1, (-1)))) `shouldBe` False
+      (isJust (BD.configuration 1 ((-1), (-1)))) `shouldBe` False
     it "Mean behaviour is approximately correct" $
       let mean xs = fromIntegral (sum xs) / (fromIntegral $ length xs)
           meanFinalSize = exp ((2.1 - 0.2) * 1.5)
-          randomBDEvents = simulationWithSystemRandom (fromJust $ BD.configuration 1.5 (2.1, 0.2)) BD.allEvents
+          randomBDEvents =
+            simulationWithSystemRandom
+              (fromJust $ BD.configuration 1.5 (2.1, 0.2))
+              BD.allEvents
           numRepeats = 1000
-       in do
-        finalSizes <- replicateM numRepeats (finalSize <$> randomBDEvents)
-        (withinNPercent 5 (mean finalSizes) meanFinalSize) `shouldBe` True
+       in do finalSizes <- replicateM numRepeats (finalSize <$> randomBDEvents)
+             (withinNPercent 5 (mean finalSizes) meanFinalSize) `shouldBe` True
 
 helperFuncTests = do
   describe "Helpers in Utility" $ do
@@ -178,44 +196,66 @@ helperFuncTests = do
       (isAscending ([] :: [Time])) `shouldBe` True
       (isAscending [-1.0]) `shouldBe` True
       (isAscending [1.0]) `shouldBe` True
-      (isAscending [1.0,2.0]) `shouldBe` True
-      (isAscending [1.0,2.0,3.0]) `shouldBe` True
-      (isAscending [1.0,-2.0]) `shouldBe` False
-      (isAscending [1.0,-2.0,3.0]) `shouldBe` False
-      (isAscending [1.0,2.0,-3.0]) `shouldBe` False
+      (isAscending [1.0, 2.0]) `shouldBe` True
+      (isAscending [1.0, 2.0, 3.0]) `shouldBe` True
+      (isAscending [1.0, -2.0]) `shouldBe` False
+      (isAscending [1.0, -2.0, 3.0]) `shouldBe` False
+      (isAscending [1.0, 2.0, -3.0]) `shouldBe` False
     it "the asTimed function works" $ do
       (isJust $ asTimed []) `shouldBe` True
-      (isJust $ asTimed [(0,1)]) `shouldBe` True
-      (isJust $ asTimed [(0,1),(1,3)]) `shouldBe` True
-      (isJust $ asTimed [(0,3),(1,1)]) `shouldBe` True
-      (isJust $ asTimed [(1,3),(0,1)]) `shouldBe` False
+      (isJust $ asTimed [(0, 1)]) `shouldBe` True
+      (isJust $ asTimed [(0, 1), (1, 3)]) `shouldBe` True
+      (isJust $ asTimed [(0, 3), (1, 1)]) `shouldBe` True
+      (isJust $ asTimed [(1, 3), (0, 1)]) `shouldBe` False
     let demoTimed = fromJust $ asTimed [(0, 1.2), (1, 3.1), (2, 2.7)]
-     in do
-      it "the cadlagValue function works" $ do
-        (isJust $ cadlagValue demoTimed (-1.0)) `shouldBe` False
-        ((== 1.2) . fromJust $ cadlagValue demoTimed 0.0) `shouldBe` True
-        ((== 1.2) . fromJust $ cadlagValue demoTimed 0.5) `shouldBe` True
-        ((== 3.1) . fromJust $ cadlagValue demoTimed 1.5) `shouldBe` True
-      it "the diracDeltaValue function works" $ do
-        ((== 1.2) . fromJust $ diracDeltaValue demoTimed 0) `shouldBe` True
-        (isJust $ diracDeltaValue demoTimed 1) `shouldBe` True
-        (isJust $ diracDeltaValue demoTimed 0.9) `shouldBe` False
-        (isJust $ diracDeltaValue demoTimed 1.1) `shouldBe` False
-      it "the hasTime function works" $ do
-        (hasTime demoTimed 0) `shouldBe` True
-        (hasTime demoTimed 0.5) `shouldBe` False
-        (hasTime demoTimed 1) `shouldBe` True
-        (hasTime demoTimed 1.5) `shouldBe` False
-      it "the nextTime function works" $ do
-        (0 == (fromJust $ nextTime demoTimed (-1))) `shouldBe` True
-        (1 == (fromJust $ nextTime demoTimed (0))) `shouldBe` True
-        (1 == (fromJust $ nextTime demoTimed (0.5))) `shouldBe` True
-        (isJust $ nextTime demoTimed (2.5)) `shouldBe` False
-
-
+     in do it "the cadlagValue function works" $ do
+             (isJust $ cadlagValue demoTimed (-1.0)) `shouldBe` False
+             ((== 1.2) . fromJust $ cadlagValue demoTimed 0.0) `shouldBe` True
+             ((== 1.2) . fromJust $ cadlagValue demoTimed 0.5) `shouldBe` True
+             ((== 3.1) . fromJust $ cadlagValue demoTimed 1.5) `shouldBe` True
+           it "the diracDeltaValue function works" $ do
+             ((== 1.2) . fromJust $ diracDeltaValue demoTimed 0) `shouldBe` True
+             (isJust $ diracDeltaValue demoTimed 1) `shouldBe` True
+             (isJust $ diracDeltaValue demoTimed 0.9) `shouldBe` False
+             (isJust $ diracDeltaValue demoTimed 1.1) `shouldBe` False
+           it "the hasTime function works" $ do
+             (hasTime demoTimed 0) `shouldBe` True
+             (hasTime demoTimed 0.5) `shouldBe` False
+             (hasTime demoTimed 1) `shouldBe` True
+             (hasTime demoTimed 1.5) `shouldBe` False
+           it "the nextTime function works" $ do
+             (0 == (fromJust $ nextTime demoTimed (-1))) `shouldBe` True
+             (1 == (fromJust $ nextTime demoTimed (0))) `shouldBe` True
+             (1 == (fromJust $ nextTime demoTimed (0.5))) `shouldBe` True
+             (isJust $ nextTime demoTimed (2.5)) `shouldBe` False
 
 main :: IO ()
-main = hspec $ do
-  eventHandlingTests
-  birthDeathTests
-  helperFuncTests
+main =
+  hspec $ do
+    eventHandlingTests
+    birthDeathTests
+    helperFuncTests
+
+main' :: IO ()
+main' =
+  hspec $ do
+    describe "Change Event read/write" $ do
+      it "check we can writte an event" $
+        let demoPerson = Person 3
+            demoPersonField = toField demoPerson
+            demoPersonField' = "3"
+            demoEvent = RemovalEvent 1.0 demoPerson
+            demoRecord = toRecord demoEvent
+            demoRecord' = V.fromList ["removal", "1.0", "3", "NA"] :: Record
+            (Right demoEvent') =
+              runParser (parseRecord demoRecord) :: Either String Event
+            demoRecord2 =
+              toRecord (CatastropheEvent 1.0 (People (V.fromList [p2, p3])))
+            (Right demoEvent2@(CatastropheEvent _ people2)) =
+              runParser (parseRecord demoRecord2) :: Either String Event
+            demoRecord2' = toRecord demoEvent2
+         in do (demoPersonField' == demoPersonField) `shouldBe` True
+               (demoRecord' == demoRecord) `shouldBe` True
+               (demoEvent' == demoEvent) `shouldBe` True
+               (demoRecord2' == demoRecord2) `shouldBe` True
+               (numPeople people2 == 2) `shouldBe` True

@@ -1,9 +1,13 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Epidemic where
 
+import Data.Word
+import Control.Monad
 import qualified Data.Vector as V
 import qualified Data.ByteString as B
+import Data.ByteString.Internal (c2w)
 import Data.Csv
 import Data.List (nub)
 import GHC.Generics (Generic)
@@ -20,12 +24,25 @@ type Probability = Double
 
 newtype Person =
   Person Identifier
-  deriving (Show, Generic,Eq)
-
-newtype People = People (V.Vector Person) deriving (Show,Eq)
+  deriving (Show, Generic, Eq)
 
 instance ToField Person where
-  toField (Person identifier) = toField identifier
+  toField (Person n) = toField n
+
+instance FromField Person where
+  parseField f = Person <$> (parseField f :: Parser Identifier)
+
+newtype People =
+  People (V.Vector Person)
+  deriving (Show, Eq)
+
+instance ToField People where
+  toField (People persons) =
+    B.intercalate ":" $ V.toList $ V.map toField persons
+
+instance FromField People where
+  parseField f =
+    (People . V.fromList) <$> (mapM parseField $ B.split (c2w ':') f)
 
 -- | Predicate for wther there are any people
 nullPeople :: People -> Bool
@@ -53,13 +70,35 @@ data Event
   deriving (Show, Generic, Eq)
 
 instance ToRecord Event where
-  toRecord e = case e of
-    (InfectionEvent t p1 p2) -> record ["infection", toField t, toField p1, toField p2]
-    (RemovalEvent t p1) -> record ["removal", toField t, toField p1, "NA"]
-    (SamplingEvent t p1) -> record ["sample", toField t, toField p1, "NA"]
-    (CatastropheEvent t (People persons)) -> record ["catastrophe", toField t, B.intercalate ":" . map toField $ V.toList persons, "NA"]
-    (OccurrenceEvent t p1) -> record ["occurrence", toField t, toField p1, "NA"]
-    (DisasterEvent t (People persons)) -> record ["disaster", toField t, B.intercalate ":" . map toField $ V.toList persons, "NA"]
+  toRecord e =
+    case e of
+      (InfectionEvent time person1 person2) ->
+        record ["infection", toField time, toField person1, toField person2]
+      (RemovalEvent time person) ->
+        record ["removal", toField time, toField person, "NA"]
+      (SamplingEvent time person) ->
+        record ["sampling", toField time, toField person, "NA"]
+      (CatastropheEvent time people) ->
+        record ["catastrophe", toField time, toField people, "NA"]
+      (OccurrenceEvent time person) ->
+        record ["occurrence", toField time, toField person, "NA"]
+      (DisasterEvent time people) ->
+        record ["disaster", toField time, toField people, "NA"]
+
+et :: B.ByteString -> Record -> Bool
+et bs r = (==bs) . head $ V.toList r
+
+instance FromRecord Event where
+  parseRecord r
+    | et "infection" r =
+      InfectionEvent <$> (r .! 1) <*> (Person <$> (r .! 2)) <*>
+      (Person <$> (r .! 3))
+    | et "removal" r = RemovalEvent <$> (r .! 1) <*> (Person <$> (r .! 2))
+    | et "sampling" r = SamplingEvent <$> (r .! 1) <*> (Person <$> (r .! 2))
+    | et "catastrophe" r = CatastropheEvent <$> (r .! 1) <*> (r .! 2)
+    | et "occurrence" r = OccurrenceEvent <$> (r .! 1) <*> (Person <$> (r .! 2))
+    | et "disaster" r = DisasterEvent <$> (r .! 1) <*> (r .! 2)
+    | otherwise = undefined
 
 -- | The absolute time an event occurred.
 eventTime :: Event -> Time

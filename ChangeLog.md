@@ -13,6 +13,10 @@
 - Adjust the type of the `ModelParameters` interface to include potential time
   dependence.
 
+## 0.1.7.2
+
+- Make `Event` an instance of `FromRecord` to match with `ToRecord`.
+
 ## 0.1.7.1
 
 - Provide `vis/birth-death-lines.R` which visualises a simulation.
@@ -24,7 +28,7 @@
 - Replace some Catastrophe specific functions with equivalents for handling
   scheduled events more generally
   + `noCatastrophe` becomes `noScheduledEvent`
-  + `firstCatastrophe` becoes `firstScheduled`
+  + `firstCatastrophe` becomes `firstScheduled`
 - Change the naming of the BDSCO model to be consistent with the new BDSCOD
   model.
 - Implement a birth-death-sampling-catastrophe-occurrence-disaster model in

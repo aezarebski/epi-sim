@@ -14,8 +14,11 @@ import qualified Epidemic.BirthDeathSamplingCatastropheOccurrence as BDSCO
 import qualified Epidemic.BirthDeathSamplingOccurrence as BDSO
 import qualified Epidemic.BirthDeathSamplingOccurrence as BDSO
 import Epidemic.Utility
+import Statistics.Sample
+import qualified System.Random.MWC as MWC
 import Test.Hspec
 
+-- | y is within n% of x from x.
 withinNPercent n x y = x - d < y && y < x + d
   where
     d = n * x / 100
@@ -254,6 +257,37 @@ readwriteTests =
                (numPeople people2 == 2) `shouldBe` True
 
 
+inhomExpTests =
+  describe "Test the inhomogeneous exponential variate generator" $
+  let rate1 = 2.0
+      sF1 = fromJust $ asTimed [(0, rate1)]
+      mean1 = 1 / rate1
+      var1 = 1 / (rate1 ** 2.0)
+      sF2 = fromJust $ asTimed [(0, 1e-6),(1,rate1)]
+      mean2 = 1 / rate1 + 1
+      var2 = var1
+      genAction = MWC.createSystemRandom
+   in do it "check we can get a positive variate out" $
+           do
+             gen <- genAction
+             u1 <- MWC.uniform gen :: IO Double
+             (u1 > 0) `shouldBe` True
+             x1 <- inhomExponential sF1 gen
+             (x1 > 0) `shouldBe` True
+             True `shouldBe` True
+         it "check the mean and variance look sensible" $
+           do gen <- genAction
+              x <- V.replicateM 1000 (inhomExponential sF1 gen)
+              withinNPercent 2 (mean x) mean1 `shouldBe` True
+              withinNPercent 2 (variance x) var1 `shouldBe` True
+         it "check the mean and variance look sensible with delay" $
+           do gen <- genAction
+              x <- V.replicateM 1000 (inhomExponential sF2 gen)
+              withinNPercent 2 (mean x) mean2 `shouldBe` True
+              withinNPercent 2 (variance x) var2 `shouldBe` True
+
+
+
 main :: IO ()
 main =
   hspec $ do
@@ -261,3 +295,4 @@ main =
     birthDeathTests
     helperFuncTests
     readwriteTests
+    inhomExpTests

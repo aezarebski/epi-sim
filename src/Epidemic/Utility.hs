@@ -11,7 +11,7 @@ import GHC.Generics (Generic)
 import qualified Data.Vector as V
 import System.Random.MWC
 import System.Random.MWC.Distributions
-
+import Control.Monad.Primitive (PrimMonad, PrimState)
 import Control.Applicative
 import Text.Trifecta
 
@@ -223,3 +223,10 @@ nextTime ((t, _):txs) q =
   if q < t
     then Just t
     else nextTime txs q
+
+-- | Generate exponentially distributed random variates with inhomogeneous rate.
+inhomExponential :: PrimMonad m
+                 => [(Double,Double)] -- ^ Step function
+                 -> Gen (PrimState m) -- ^ Generator.
+                 -> m Double
+inhomExponential stepFunc gen = undefined

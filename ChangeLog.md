@@ -2,6 +2,9 @@
 
 ## 0.1.8.0
 
+- Define an inhomogeneous birth-death process in `InhomogeneousBD`.
+- Define an inhomogeneous exponential random sampler using `Timed Rate`s.
+- Extend the `ModelParameters` class to have a `birthProb` function.
 - Include a `Timed` type for time varying values.
 - Include a test that the final size of a birth-death simulation is
   approximately correct.

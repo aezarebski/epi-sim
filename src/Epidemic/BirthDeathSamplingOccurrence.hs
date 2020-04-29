@@ -6,6 +6,7 @@ module Epidemic.BirthDeathSamplingOccurrence
   , observedEvents
   ) where
 
+import Data.Maybe (fromJust)
 import qualified Data.Vector as V
 import System.Random.MWC
 import System.Random.MWC.Distributions (categorical, exponential)
@@ -18,9 +19,11 @@ data BDSORates =
 
 instance ModelParameters BDSORates where
   rNaught (BDSORates birthRate deathRate samplingRate occurrenceRate) _ =
-    birthRate / (deathRate + samplingRate + occurrenceRate)
+    Just $ birthRate / (deathRate + samplingRate + occurrenceRate)
   eventRate (BDSORates birthRate deathRate samplingRate occurrenceRate) _ =
-    birthRate + deathRate + samplingRate + occurrenceRate
+    Just $ birthRate + deathRate + samplingRate + occurrenceRate
+  birthProb (BDSORates birthRate deathRate samplingRate occurrenceRate) _ =
+    Just $ birthRate / (birthRate + deathRate + samplingRate + occurrenceRate)
 
 newtype BDSOPopulation =
   BDSOPopulation People
@@ -57,9 +60,9 @@ randomBirthDeathSamplingOccurrenceEvent ::
   -> Identifier
   -> GenIO
   -> IO (Time, Event, BDSOPopulation, Identifier)
-randomBirthDeathSamplingOccurrenceEvent rates@(BDSORates br dr sr or) currTime (BDSOPopulation (People currPeople)) currId gen =
-  let netEventRate = eventRate rates Nothing
-      eventWeights = V.fromList [br,dr,sr,or]
+randomBirthDeathSamplingOccurrenceEvent rates@(BDSORates br dr sr ocr) currTime (BDSOPopulation (People currPeople)) currId gen =
+  let netEventRate = fromJust $ eventRate rates currTime
+      eventWeights = V.fromList [br,dr,sr,ocr]
    in
     do delay <- exponential (fromIntegral (V.length currPeople) * netEventRate) gen
        eventIx <- categorical eventWeights gen
@@ -108,8 +111,8 @@ allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
 observedEvents :: [Event] -- ^ All of the simulation events
                -> [Event]
 observedEvents events =
-  sort $ occurrenceEvents ++ sampleTreeEvents'
+  sort $ occurrenceEvents ++ sampleTreeEvents''
   where
     occurrenceEvents = filter isOccurrence events
-    sampleTreeEvents' =
+    sampleTreeEvents'' =
       sampleTreeEvents . sampleTree $ transmissionTree events (Person 1)

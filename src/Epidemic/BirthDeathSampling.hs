@@ -5,6 +5,7 @@ module Epidemic.BirthDeathSampling
   , allEvents
   ) where
 
+import Data.Maybe (fromJust)
 import qualified Data.Vector as V
 import System.Random.MWC
 import System.Random.MWC.Distributions (categorical, exponential)
@@ -17,8 +18,11 @@ data BDSRates =
 
 instance ModelParameters BDSRates where
   rNaught (BDSRates birthRate deathRate samplingRate) _ =
-    birthRate / (deathRate + samplingRate)
-  eventRate (BDSRates birthRate deathRate samplingRate) _ = birthRate + deathRate + samplingRate
+    Just $ birthRate / (deathRate + samplingRate)
+  eventRate (BDSRates birthRate deathRate samplingRate) _ =
+    Just $ birthRate + deathRate + samplingRate
+  birthProb (BDSRates birthRate deathRate samplingRate) _ =
+    Just $ birthRate / (birthRate + deathRate + samplingRate)
 
 newtype BDSPopulation =
   BDSPopulation People
@@ -51,7 +55,7 @@ randomBirthDeathSamplingEvent ::
   -> GenIO
   -> IO (Time, Event, BDSPopulation, Identifier)
 randomBirthDeathSamplingEvent rates@(BDSRates br dr sr) currTime (BDSPopulation (People currPeople)) currId gen =
-  let netEventRate = eventRate rates Nothing
+  let netEventRate = fromJust $ eventRate rates currTime 
       eventWeights = V.fromList [br,dr,sr]
    in
     do delay <- exponential (fromIntegral (V.length currPeople) * netEventRate) gen

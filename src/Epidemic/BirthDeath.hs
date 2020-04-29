@@ -16,8 +16,9 @@ data BDRates =
   BDRates Rate Rate
 
 instance ModelParameters BDRates where
-  rNaught (BDRates birthRate deathRate) _ = birthRate / deathRate
-  eventRate (BDRates birthRate deathRate) _ = birthRate + deathRate
+  rNaught (BDRates birthRate deathRate) _ = Just $ birthRate / deathRate
+  eventRate (BDRates birthRate deathRate) _ = Just $ birthRate + deathRate
+  birthProb (BDRates birthRate deathRate) _ = Just $ birthRate / (birthRate + deathRate)
 
 newtype BDPopulation =
   BDPopulation People

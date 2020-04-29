@@ -255,8 +255,9 @@ isDisaster e = case e of
   _ -> False
 
 class ModelParameters a where
-  rNaught :: a -> Maybe Time -> Double
-  eventRate :: a -> Maybe Time -> Double
+  rNaught :: a -> Time -> Maybe Double
+  eventRate :: a -> Time -> Maybe Rate
+  birthProb :: a -> Time -> Maybe Probability
 
 class Population a where
   susceptiblePeople :: a -> Maybe People

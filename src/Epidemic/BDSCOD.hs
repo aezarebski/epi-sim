@@ -6,11 +6,11 @@ module Epidemic.BDSCOD
   , observedEvents
   ) where
 
-import Data.List (minimumBy)
+import Data.Maybe (fromJust)
 import qualified Data.Vector as V
 import qualified Data.Vector.Generic as G
 import System.Random.MWC
-import System.Random.MWC.Distributions (categorical, exponential, bernoulli)
+import System.Random.MWC.Distributions (bernoulli, categorical, exponential)
 
 import Epidemic
 import Epidemic.Utility
@@ -22,9 +22,11 @@ data BDSCODParameters
 
 instance ModelParameters BDSCODParameters where
   rNaught (BDSCODParameters birthRate deathRate samplingRate _ occurrenceRate _) _ =
-    birthRate / (deathRate + samplingRate + occurrenceRate)
+    Just $ birthRate / (deathRate + samplingRate + occurrenceRate)
   eventRate (BDSCODParameters birthRate deathRate samplingRate _ occurrenceRate _) _ =
-    birthRate + deathRate + samplingRate + occurrenceRate
+    Just $ birthRate + deathRate + samplingRate + occurrenceRate
+  birthProb (BDSCODParameters birthRate deathRate samplingRate _ occurrenceRate _) _ =
+    Just $ birthRate / (birthRate + deathRate + samplingRate + occurrenceRate)
 
 newtype BDSCODPopulation =
   BDSCODPopulation People
@@ -61,7 +63,7 @@ randomEvent :: BDSCODParameters  -- ^ Parameters of the process
             -> GenIO             -- ^ The current state of the PRNG
             -> IO (Time, Event, BDSCODPopulation, Identifier)
 randomEvent params@(BDSCODParameters br dr sr catastInfo occr disastInfo) currTime currPop@(BDSCODPopulation (People currPeople)) currId gen =
-  let netEventRate = eventRate params Nothing
+  let netEventRate = fromJust $ eventRate params currTime
       eventWeights = V.fromList [br, dr, sr, occr]
    in do delay <- exponential (fromIntegral (V.length currPeople) * netEventRate) gen
          nextTime <- pure $ currTime + delay

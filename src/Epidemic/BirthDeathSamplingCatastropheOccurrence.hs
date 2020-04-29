@@ -1,12 +1,12 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Epidemic.BirthDeathSamplingCatastropheOccurrence
-  ( simulation
-  , configuration
+  ( configuration
   , allEvents
   , observedEvents
   ) where
 
+import Data.Maybe (fromJust)
 import Data.List (minimumBy)
 import qualified Data.Vector as V
 import qualified Data.Vector.Generic as G
@@ -22,10 +22,12 @@ data BDSCOParameters
   = BDSCOParameters Rate Rate Rate [(Time,Probability)] Rate
 
 instance ModelParameters BDSCOParameters where
-  rNaught (BDSCOParameters birthRate deathRate samplingRate _ occurrenceRate) =
-    birthRate / (deathRate + samplingRate + occurrenceRate)
-  eventRate (BDSCOParameters birthRate deathRate samplingRate _ occurrenceRate) =
-    birthRate + deathRate + samplingRate + occurrenceRate
+  rNaught (BDSCOParameters birthRate deathRate samplingRate _ occurrenceRate) _ =
+    Just $ birthRate / (deathRate + samplingRate + occurrenceRate)
+  eventRate (BDSCOParameters birthRate deathRate samplingRate _ occurrenceRate) _ =
+    Just $ birthRate + deathRate + samplingRate + occurrenceRate
+  birthProb (BDSCOParameters birthRate deathRate samplingRate _ occurrenceRate) _ =
+    Just $ birthRate / (birthRate + deathRate + samplingRate + occurrenceRate)
 
 newtype BDSCOPopulation =
   BDSCOPopulation People
@@ -61,21 +63,21 @@ randomBdscoEvent ::
   -> Identifier       -- ^ The current state of the identifier generator
   -> GenIO            -- ^ The current state of the PRNG
   -> IO (Time, Event, BDSCOPopulation, Identifier)
-randomBdscoEvent params@(BDSCOParameters br dr sr catastInfo occr) currTime currPop@(BDSCOPopulation (People currPeople)) currId gen =
-  let netEventRate = eventRate params
+randomBdscoEvent params@(BDSCOParameters br dr sr catastInfo occr) currTime currPop@(BDSCOPopulation (People people)) currId gen =
+  let netEventRate = fromJust $ eventRate params currTime
       eventWeights = V.fromList [br, dr, sr, occr]
    in
-    do delay <- exponential (fromIntegral (V.length currPeople) * netEventRate) gen
+    do delay <- exponential (fromIntegral (V.length people) * netEventRate) gen
        nextTime <- pure $ currTime + delay
        if noScheduledEvent currTime nextTime catastInfo
          then do eventIx <- categorical eventWeights gen
-                 (selectedPerson, unselectedPeople) <- randomPerson currPeople gen
+                 (selectedPerson, unselectedPeople) <- randomPerson people gen
                  return $ case eventIx of
                    0 -> let (birthedPerson, newId) = newPerson currId
                             event = InfectionEvent nextTime selectedPerson birthedPerson
                      in ( nextTime
                         , event
-                        , BDSCOPopulation (People $ V.cons birthedPerson currPeople)
+                        , BDSCOPopulation (People $ V.cons birthedPerson people)
                         , newId)
                    1 -> (nextTime, RemovalEvent nextTime selectedPerson, BDSCOPopulation (People unselectedPeople), currId)
                    2 -> (nextTime, SamplingEvent nextTime selectedPerson, BDSCOPopulation (People unselectedPeople), currId)
@@ -120,14 +122,6 @@ allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
         else return currState
     else return currState
 
--- | Run a simulation described by a configuration object.
-simulation :: SimulationConfiguration BDSCOParameters BDSCOPopulation
-                                       -> IO [Event]
-simulation SimulationConfiguration {..} = do
-  gen <- System.Random.MWC.create :: IO GenIO
-  (_, events, _, _) <-
-    allEvents rates timeLimit (0, [], population, newIdentifier) gen
-  return $ sort events
 
 -- | Just the observable events from a list of all the events in a simulation.
 observedEvents :: [Event] -- ^ All of the simulation events

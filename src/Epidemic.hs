@@ -18,6 +18,8 @@ type Identifier = Integer
 
 type Rate = Double
 
+type Timed a = [(Time, a)]
+
 type Probability = Double
 
 newtype Person =
@@ -98,6 +100,7 @@ instance FromRecord Event where
     | et "disaster" r = DisasterEvent <$> (r .! 1) <*> (r .! 2)
     | otherwise = undefined
 
+-- | The absolute time an event occurred.
 eventTime :: Event -> Time
 eventTime e = case e of
   InfectionEvent time _ _ -> time
@@ -107,9 +110,19 @@ eventTime e = case e of
   OccurrenceEvent time _ -> time
   DisasterEvent time _ -> time
 
+-- | The number of people added or removed in an event.
+eventPopDelta :: Event -> Integer
+eventPopDelta e = case e of
+  InfectionEvent{} -> 1
+  RemovalEvent _ _ -> -1
+  SamplingEvent _ _ -> -1
+  CatastropheEvent _ people -> fromIntegral $ numPeople people
+  OccurrenceEvent _ _ -> -1
+  DisasterEvent _ people -> fromIntegral $ numPeople people
+
 -- | The first scheduled event after a given time.
-firstScheduled :: Time                 -- ^ The given time
-               -> [(Time,Probability)] -- ^ The information about all scheduled events
+firstScheduled :: Time               -- ^ The given time
+               -> Timed Probability  -- ^ The information about all scheduled events
                -> Maybe (Time,Probability)
 firstScheduled _ [] = Nothing
 firstScheduled currTime (sched@(schedTime, _):scheduledEvents)
@@ -127,7 +140,7 @@ firstScheduled currTime (sched@(schedTime, _):scheduledEvents)
 -- | Predicate for whether there is a scheduled event during an interval.
 noScheduledEvent :: Time                 -- ^ Start time for interval
                  -> Time                 -- ^ End time for interval
-                 -> [(Time,Probability)] -- ^ Information about all scheduled events
+                 -> Timed Probability    -- ^ Information about all scheduled events
                  -> Bool
 noScheduledEvent _ _ [] = True
 noScheduledEvent a b ((shedTime, _):scheduledEvents) =
@@ -242,8 +255,9 @@ isDisaster e = case e of
   _ -> False
 
 class ModelParameters a where
-  rNaught :: a -> Double
-  eventRate :: a -> Double
+  rNaught :: a -> Time -> Maybe Double
+  eventRate :: a -> Time -> Maybe Rate
+  birthProb :: a -> Time -> Maybe Probability
 
 class Population a where
   susceptiblePeople :: a -> Maybe People

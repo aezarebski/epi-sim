@@ -1,6 +1,9 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module Epidemic.BirthDeath where
+module Epidemic.BirthDeath
+  ( configuration
+  , allEvents
+  ) where
 
 import qualified Data.Vector as V
 import System.Random.MWC
@@ -13,8 +16,9 @@ data BDRates =
   BDRates Rate Rate
 
 instance ModelParameters BDRates where
-  rNaught (BDRates birthRate deathRate) = birthRate / deathRate
-  eventRate (BDRates birthRate deathRate) = birthRate + deathRate
+  rNaught (BDRates birthRate deathRate) _ = Just $ birthRate / deathRate
+  eventRate (BDRates birthRate deathRate) _ = Just $ birthRate + deathRate
+  birthProb (BDRates birthRate deathRate) _ = Just $ birthRate / (birthRate + deathRate)
 
 newtype BDPopulation =
   BDPopulation People
@@ -26,18 +30,23 @@ instance Population BDPopulation where
   removedPeople _ = Nothing
   isInfected (BDPopulation (People people)) = not $ V.null people
 
-birthDeathRates :: Rate -> Rate -> BDRates
-birthDeathRates = BDRates -- birthRate deathRate
+-- | Return a BD-process parameters object
+birthDeathRates :: Rate -- ^ birth rate
+                -> Rate -- ^ death rate
+                -> Maybe BDRates
+birthDeathRates birthRate deathRate
+  | birthRate >= 0 && deathRate >= 0 = Just $ BDRates birthRate deathRate
+  | otherwise = Nothing
 
 -- | Configuration of a birth-death simulation.
-birthDeathConfig :: Time         -- ^ Duration of the simulation
+configuration :: Time         -- ^ Duration of the simulation
                  -> (Rate, Rate) -- ^ Birth and Death rates
-                 -> SimulationConfiguration BDRates BDPopulation
-birthDeathConfig maxTime (birthRate, deathRate) =
-  let bdRates = birthDeathRates birthRate deathRate
-      (seedPerson, newId) = newPerson initialIdentifier
+                 -> Maybe (SimulationConfiguration BDRates BDPopulation)
+configuration maxTime (birthRate, deathRate) =
+  let (seedPerson, newId) = newPerson initialIdentifier
       bdPop = BDPopulation (People $ V.singleton seedPerson)
-   in SimulationConfiguration bdRates bdPop newId maxTime
+   in do maybeBDRates <- birthDeathRates birthRate deathRate
+         if maxTime > 0 then Just (SimulationConfiguration maybeBDRates bdPop newId maxTime) else Nothing
 
 randomBirthDeathEvent ::
      BDRates
@@ -63,19 +72,19 @@ randomBirthDeathEvent (BDRates br dr) currTime (BDPopulation (People currPeople)
                event = RemovalEvent newTime selectedPerson
             in (newTime, event, BDPopulation (People unselectedPeople), currId)
 
-birthDeathEvents ::
+allEvents ::
      BDRates
   -> Time
   -> (Time, [Event], BDPopulation, Identifier)
   -> GenIO
   -> IO (Time, [Event], BDPopulation, Identifier)
-birthDeathEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
+allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
   if isInfected currPop
     then do
       (newTime, event, newPop, newId) <-
         randomBirthDeathEvent rates currTime currPop currId gen
       if newTime < maxTime
-        then birthDeathEvents
+        then allEvents
                rates
                maxTime
                (newTime, event : currEvents, newPop, newId)
@@ -83,10 +92,3 @@ birthDeathEvents rates maxTime currState@(currTime, currEvents, currPop, currId)
         else return currState
     else return currState
 
-birthDeathSimulation :: SimulationConfiguration BDRates BDPopulation
-                     -> IO [Event]
-birthDeathSimulation SimulationConfiguration {..} = do
-  gen <- System.Random.MWC.create :: IO GenIO
-  (_, events, _, _) <-
-    birthDeathEvents rates timeLimit (0, [], population, newIdentifier) gen
-  return $ sort events

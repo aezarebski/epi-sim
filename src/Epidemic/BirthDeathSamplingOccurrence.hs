@@ -1,11 +1,12 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Epidemic.BirthDeathSamplingOccurrence
-  ( birthDeathSamplingOccurrenceSimulation
-  , birthDeathSamplingOccurrenceConfig
-  , birthDeathSamplingOccurrenceObservedEvents
+  ( configuration
+  , allEvents
+  , observedEvents
   ) where
 
+import Data.Maybe (fromJust)
 import qualified Data.Vector as V
 import System.Random.MWC
 import System.Random.MWC.Distributions (categorical, exponential)
@@ -17,10 +18,12 @@ data BDSORates =
   BDSORates Rate Rate Rate Rate
 
 instance ModelParameters BDSORates where
-  rNaught (BDSORates birthRate deathRate samplingRate occurrenceRate) =
-    birthRate / (deathRate + samplingRate + occurrenceRate)
-  eventRate (BDSORates birthRate deathRate samplingRate occurrenceRate) =
-    birthRate + deathRate + samplingRate + occurrenceRate
+  rNaught (BDSORates birthRate deathRate samplingRate occurrenceRate) _ =
+    Just $ birthRate / (deathRate + samplingRate + occurrenceRate)
+  eventRate (BDSORates birthRate deathRate samplingRate occurrenceRate) _ =
+    Just $ birthRate + deathRate + samplingRate + occurrenceRate
+  birthProb (BDSORates birthRate deathRate samplingRate occurrenceRate) _ =
+    Just $ birthRate / (birthRate + deathRate + samplingRate + occurrenceRate)
 
 newtype BDSOPopulation =
   BDSOPopulation People
@@ -36,10 +39,10 @@ birthDeathSamplingOccurrenceRates :: Rate -> Rate -> Rate -> Rate -> BDSORates
 birthDeathSamplingOccurrenceRates = BDSORates -- birthRate deathRate samplingRate occurrenceRate
 
 -- | Configuration of a birth-death-sampling-occurrence simulation
-birthDeathSamplingOccurrenceConfig :: Time                  -- ^ Duration of the simulation
-                                   -> (Rate,Rate,Rate,Rate) -- ^ Birth, Death, Sampling and Occurrence rates
-                                   -> SimulationConfiguration BDSORates BDSOPopulation
-birthDeathSamplingOccurrenceConfig maxTime (birthRate, deathRate, samplingRate, occurrenceRate) =
+configuration :: Time                  -- ^ Duration of the simulation
+              -> (Rate,Rate,Rate,Rate) -- ^ Birth, Death, Sampling and Occurrence rates
+              -> SimulationConfiguration BDSORates BDSOPopulation
+configuration maxTime (birthRate, deathRate, samplingRate, occurrenceRate) =
   let bdsoRates =
         birthDeathSamplingOccurrenceRates
           birthRate
@@ -57,9 +60,9 @@ randomBirthDeathSamplingOccurrenceEvent ::
   -> Identifier
   -> GenIO
   -> IO (Time, Event, BDSOPopulation, Identifier)
-randomBirthDeathSamplingOccurrenceEvent rates@(BDSORates br dr sr or) currTime (BDSOPopulation (People currPeople)) currId gen =
-  let netEventRate = eventRate rates
-      eventWeights = V.fromList [br,dr,sr,or]
+randomBirthDeathSamplingOccurrenceEvent rates@(BDSORates br dr sr ocr) currTime (BDSOPopulation (People currPeople)) currId gen =
+  let netEventRate = fromJust $ eventRate rates currTime
+      eventWeights = V.fromList [br,dr,sr,ocr]
    in
     do delay <- exponential (fromIntegral (V.length currPeople) * netEventRate) gen
        eventIx <- categorical eventWeights gen
@@ -83,19 +86,19 @@ randomBirthDeathSamplingOccurrenceEvent rates@(BDSORates br dr sr or) currTime (
               in (newTime, event, BDSOPopulation (People unselectedPeople), currId)
          _ -> error "no birth-death-sampling-occurrence event selected."
 
-birthDeathSamplingOccurrenceEvents ::
+allEvents ::
      BDSORates
   -> Time
   -> (Time, [Event], BDSOPopulation, Identifier)
   -> GenIO
   -> IO (Time, [Event], BDSOPopulation, Identifier)
-birthDeathSamplingOccurrenceEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
+allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
   if isInfected currPop
     then do
       (newTime, event, newPop, newId) <-
         randomBirthDeathSamplingOccurrenceEvent rates currTime currPop currId gen
       if newTime < maxTime
-        then birthDeathSamplingOccurrenceEvents
+        then allEvents
                rates
                maxTime
                (newTime, event : currEvents, newPop, newId)
@@ -103,21 +106,13 @@ birthDeathSamplingOccurrenceEvents rates maxTime currState@(currTime, currEvents
         else return currState
     else return currState
 
--- | Run a simulation described by a configuration object.
-birthDeathSamplingOccurrenceSimulation :: SimulationConfiguration BDSORates BDSOPopulation
-                                       -> IO [Event]
-birthDeathSamplingOccurrenceSimulation SimulationConfiguration {..} = do
-  gen <- System.Random.MWC.create :: IO GenIO
-  (_, events, _, _) <-
-    birthDeathSamplingOccurrenceEvents rates timeLimit (0, [], population, newIdentifier) gen
-  return $ sort events
 
 -- | Just the observable events from a list of all the events in a simulation.
-birthDeathSamplingOccurrenceObservedEvents :: [Event] -- ^ All of the simulation events
-                                           -> [Event]
-birthDeathSamplingOccurrenceObservedEvents events =
-  sort $ occurrenceEvents ++ sampleTreeEvents'
+observedEvents :: [Event] -- ^ All of the simulation events
+               -> [Event]
+observedEvents events =
+  sort $ occurrenceEvents ++ sampleTreeEvents''
   where
     occurrenceEvents = filter isOccurrence events
-    sampleTreeEvents' =
+    sampleTreeEvents'' =
       sampleTreeEvents . sampleTree $ transmissionTree events (Person 1)

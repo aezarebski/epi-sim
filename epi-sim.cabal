@@ -4,10 +4,10 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 7b162cabcbb18a8de95b9d02a64fd112d60f4eacce01160813cbe2c92cbb8977
+-- hash: b6b77631b1dab186c65fe0939f43dbd44a5aa61f3eddca6213fe2e47e626176d
 
 name:           epi-sim
-version:        0.1.7.2
+version:        0.1.8.0
 synopsis:       A tool for simulating epidemics.
 description:    Please see the README on GitHub at <https://bitbucket.org/azarebski/epi-sim/src/master/README.md>
 homepage:       https://github.com/azarebski/epi-sim#readme
@@ -35,6 +35,7 @@ library
       Epidemic.BirthDeathSampling
       Epidemic.BirthDeathSamplingCatastropheOccurrence
       Epidemic.BirthDeathSamplingOccurrence
+      Epidemic.InhomogeneousBD
       Epidemic.Utility
   other-modules:
       Paths_epi_sim
@@ -46,6 +47,8 @@ library
     , cassava
     , hspec
     , mwc-random
+    , primitive
+    , statistics
     , trifecta
     , vector
   default-language: Haskell2010
@@ -64,6 +67,8 @@ executable epi-sim-exe
     , epi-sim
     , hspec
     , mwc-random
+    , primitive
+    , statistics
     , trifecta
     , vector
   default-language: Haskell2010
@@ -83,6 +88,8 @@ test-suite epi-sim-test
     , epi-sim
     , hspec
     , mwc-random
+    , primitive
+    , statistics
     , trifecta
     , vector
   default-language: Haskell2010

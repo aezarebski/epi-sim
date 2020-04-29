@@ -3,6 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Epidemic.Utility where
 
+import Control.Monad (liftM)
 import qualified Data.List as List
 import qualified Data.Maybe as Maybe
 import qualified Data.ByteString as B
@@ -180,9 +181,10 @@ finalSize = foldl (\x y -> x + eventPopDelta y) 1
 
 
 -- | Construct a timed list if possible.
-asTimed :: [(Time,a)] -- ^ list of ascending times and values
+asTimed :: Num a
+        => [(Time,a)] -- ^ list of ascending times and values
         -> Maybe (Timed a)
-asTimed tas = if isAscending $ map fst tas then Just tas else Nothing
+asTimed tas = if isAscending $ map fst tas then Just (tas ++ [(1e100,-1)]) else Nothing
 
 -- | Predicate to check if a list of orderable objects is in ascending order.
 isAscending :: Ord a => [a] -> Bool
@@ -229,4 +231,25 @@ inhomExponential :: PrimMonad m
                  => Timed Double      -- ^ Step function
                  -> Gen (PrimState m) -- ^ Generator.
                  -> m Double
-inhomExponential stepFunc gen = return (1)
+inhomExponential stepFunc gen = do
+  maybeVariate <- randInhomExp 0 stepFunc gen
+  if Maybe.isJust maybeVariate
+    then return $ Maybe.fromJust maybeVariate
+    else inhomExponential stepFunc gen
+
+-- | Generate exponentially distributed random variates with inhomogeneous rate.
+randInhomExp :: PrimMonad m
+             => Double            -- ^ Timer
+             -> Timed Double      -- ^ Step function
+             -> Gen (PrimState m) -- ^ Generator.
+             -> m (Maybe Double)
+randInhomExp crrT stepFunc gen =
+  let crrR = diracDeltaValue stepFunc crrT
+      nxtT = nextTime stepFunc crrT
+   in if (Maybe.isJust crrR && Maybe.isJust nxtT)
+        then do
+          crrD <- exponential (Maybe.fromJust crrR) gen
+          if crrT + crrD < (Maybe.fromJust nxtT)
+            then return $ Just (crrD + crrT)
+            else (randInhomExp (Maybe.fromJust nxtT) stepFunc gen)
+        else return Nothing

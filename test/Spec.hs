@@ -230,7 +230,6 @@ helperFuncTests = do
              (0 == (fromJust $ nextTime demoTimed (-1))) `shouldBe` True
              (1 == (fromJust $ nextTime demoTimed (0))) `shouldBe` True
              (1 == (fromJust $ nextTime demoTimed (0.5))) `shouldBe` True
-             (isJust $ nextTime demoTimed (2.5)) `shouldBe` False
 
 
 readwriteTests =
@@ -263,7 +262,7 @@ inhomExpTests =
       sF1 = fromJust $ asTimed [(0, rate1)]
       mean1 = 1 / rate1
       var1 = 1 / (rate1 ** 2.0)
-      sF2 = fromJust $ asTimed [(0, 1e-6),(1,rate1)]
+      sF2 = fromJust $ asTimed [(0, 1e-10),(1, rate1)]
       mean2 = 1 / rate1 + 1
       var2 = var1
       genAction = MWC.createSystemRandom
@@ -274,17 +273,18 @@ inhomExpTests =
              (u1 > 0) `shouldBe` True
              x1 <- inhomExponential sF1 gen
              (x1 > 0) `shouldBe` True
+             (x1 < 100) `shouldBe` True
              True `shouldBe` True
          it "check the mean and variance look sensible" $
            do gen <- genAction
-              x <- V.replicateM 1000 (inhomExponential sF1 gen)
-              withinNPercent 2 (mean x) mean1 `shouldBe` True
-              withinNPercent 2 (variance x) var1 `shouldBe` True
+              x <- V.replicateM 20000 (inhomExponential sF1 gen)
+              withinNPercent 5 (mean x) mean1 `shouldBe` True
+              withinNPercent 5 (variance x) var1 `shouldBe` True
          it "check the mean and variance look sensible with delay" $
            do gen <- genAction
-              x <- V.replicateM 1000 (inhomExponential sF2 gen)
-              withinNPercent 2 (mean x) mean2 `shouldBe` True
-              withinNPercent 2 (variance x) var2 `shouldBe` True
+              x <- V.replicateM 20000 (inhomExponential sF2 gen)
+              withinNPercent 5 (mean x) mean2 `shouldBe` True
+              withinNPercent 5 (variance x) var2 `shouldBe` True
 
 
 

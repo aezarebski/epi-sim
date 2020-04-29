@@ -226,7 +226,7 @@ nextTime ((t, _):txs) q =
 
 -- | Generate exponentially distributed random variates with inhomogeneous rate.
 inhomExponential :: PrimMonad m
-                 => [(Double,Double)] -- ^ Step function
+                 => Timed Double      -- ^ Step function
                  -> Gen (PrimState m) -- ^ Generator.
                  -> m Double
-inhomExponential stepFunc gen = undefined
+inhomExponential stepFunc gen = return (1)

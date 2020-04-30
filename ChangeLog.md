@@ -1,5 +1,12 @@
 # Changelog for epi-sim
 
+## 0.1.8.1
+
+- Implement an example of the inhomogeneous birth-death process and include it
+  in the `README`.
+- Fix broken example using the BDSCOD model and organise examples in `examples/`
+  rather than just the single one in `app/`.
+
 ## 0.1.8.0
 
 - Define an inhomogeneous birth-death process in `InhomogeneousBD`.

@@ -244,7 +244,7 @@ randInhomExp :: PrimMonad m
              -> Gen (PrimState m) -- ^ Generator.
              -> m (Maybe Double)
 randInhomExp crrT stepFunc gen =
-  let crrR = diracDeltaValue stepFunc crrT
+  let crrR = cadlagValue stepFunc crrT
       nxtT = nextTime stepFunc crrT
    in if (Maybe.isJust crrR && Maybe.isJust nxtT)
         then do

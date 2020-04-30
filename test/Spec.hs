@@ -232,9 +232,9 @@ helperFuncTests = do
              (1 == (fromJust $ nextTime demoTimed (0.5))) `shouldBe` True
     it "shifted times work" $
       let sf = fromJust $ asTimed [(-1.0,2.0),(1,3.0)]
-          val1 = diracDeltaValue sf 0
-          val2 = diracDeltaValue sf (-2.0)
-          val3 = diracDeltaValue sf 1.5
+          val1 = cadlagValue sf 0
+          val2 = cadlagValue sf (-2.0)
+          val3 = cadlagValue sf 1.5
        in do
         isJust val1 `shouldBe` True
         val1 == Just 2.0 `shouldBe` True

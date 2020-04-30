@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: b6b77631b1dab186c65fe0939f43dbd44a5aa61f3eddca6213fe2e47e626176d
+-- hash: aea3d280afc3adf2e8dd4e15cd04182ace812eb8f505d2572a40cb3abd37090a
 
 name:           epi-sim
 version:        0.1.8.0
@@ -53,12 +53,12 @@ library
     , vector
   default-language: Haskell2010
 
-executable epi-sim-exe
+executable bdscod-example
   main-is: Main.hs
   other-modules:
       Paths_epi_sim
   hs-source-dirs:
-      app
+      examples/bdscod
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5

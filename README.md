@@ -55,3 +55,15 @@ $ Rscript vis/birth-death-lines.R demo-output-all-events.csv demo-output-full-si
 This should produce something like the following figure
 
 ![](.out/demo-output-full-sim.png)
+
+### Inhomogeneous Birth-Death
+
+```
+$ stack build
+$ stack exec -- ibd-example
+$ Rscript vis/full-ltt.R demo-output-all-events.csv demo-output-full-sim.png
+```
+
+This should produce something like the following figure
+
+![](.out/demo-inhomogeneous-birth-death.png)

@@ -12,11 +12,10 @@ import qualified Epidemic.Utility as EpiUtil
 main :: IO ()
 main =
   let simDur = 7.0
-      numBreaks = 10
-      simTimes = [simDur * (i / numBreaks) | i <- [0..(numBreaks-1)]]
-      simBRs = [1 + cos (pi * i / numBreaks) | i <- [0..(numBreaks-1)]]
+      simTimes = [0, simDur / 2]
+      simDR = 1.0
+      simBRs = [3.0, simDR - 0.5]
       simBRTs = zip simTimes simBRs
-      simDR = 0.4
       simConfig = fromJust $ InhomBD.configuration simDur (simBRTs, simDR)
    in do events <- EpiUtil.simulation simConfig InhomBD.allEvents
          L.writeFile "demo-output-all-events.csv" (encode events)

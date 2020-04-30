@@ -39,9 +39,9 @@ instance Population BDSCODPopulation where
   isInfected (BDSCODPopulation (People people)) = not $ V.null people
 
 -- | Configuration of a birth-death-sampling-occurrence simulation
-configuration :: Time                                       -- ^ Duration of the simulation
-            -> (Rate,Rate,Rate,[(Time,Probability)],Rate,[(Time,Probability)]) -- ^ Birth, Death, Sampling, Catastrophe probability and Occurrence rates
-            -> SimulationConfiguration BDSCODParameters BDSCODPopulation
+configuration :: Time                                                            -- ^ Duration of the simulation
+              -> (Rate,Rate,Rate,[(Time,Probability)],Rate,[(Time,Probability)]) -- ^ Birth, Death, Sampling, Catastrophe probability and Occurrence rates
+              -> SimulationConfiguration BDSCODParameters BDSCODPopulation
 configuration maxTime (birthRate, deathRate, samplingRate, catastropheSpec, occurrenceRate, disasterSpec) =
   let bdscodParams =
         BDSCODParameters

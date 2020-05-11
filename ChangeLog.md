@@ -1,5 +1,12 @@
 # Changelog for epi-sim
 
+## 0.1.8.2
+
+- Include an additional parameter in the `simulation` and
+  `simulationWithSystemRandom` to determine whether the simulation should be
+  conditioned on having at least two sampled leaves in the reconstructed tree.
+  It does this by repeatedly simulating until such a tree is acheved.
+
 ## 0.1.8.1
 
 - Implement an example of the inhomogeneous birth-death process and include it

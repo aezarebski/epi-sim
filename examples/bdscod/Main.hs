@@ -14,7 +14,7 @@ main =
         BDSCOD.configuration
           4.1
           (2.5, 0.2, 0.15, [(3, 0.5), (4, 0.5)], 0.2, [(3.5, 0.5)])
-   in do events <- EpiUtil.simulationWithSystemRandom simConfig BDSCOD.allEvents
+   in do events <- EpiUtil.simulationWithSystemRandom False simConfig BDSCOD.allEvents
          L.writeFile "demo-output-all-events.csv" (encode events)
          L.writeFile "demo-output-observed-events.csv" . encode $
            BDSCOD.observedEvents events

@@ -17,6 +17,6 @@ main =
       simBRs = [3.0, simDR - 0.5]
       simBRTs = zip simTimes simBRs
       simConfig = fromJust $ InhomBD.configuration simDur (simBRTs, simDR)
-   in do events <- EpiUtil.simulation simConfig InhomBD.allEvents
+   in do events <- EpiUtil.simulation False simConfig InhomBD.allEvents
          L.writeFile "demo-output-all-events.csv" (encode events)
          return ()

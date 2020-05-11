@@ -159,7 +159,7 @@ eventHandlingTests = do
         True
     it "Catastrophes can be simulated" $ do
       demoSim <-
-        simulation
+        simulation False
           (BDSCO.configuration 4 (1.3, 0.1, 0.1, [(3, 0.5)], 0.2))
           BDSCO.allEvents
       length demoSim > 1 `shouldBe` True
@@ -169,7 +169,7 @@ eventHandlingTests = do
         True
     it "Disasters can be simulated" $ do
       demoSim <-
-        simulation
+        simulation False
           (BDSCOD.configuration 4 (1.3, 0.1, 0.1, [(3, 0.5)], 0.2, [(3.5, 0.5)]))
           BDSCOD.allEvents
       length demoSim > 1 `shouldBe` True
@@ -186,7 +186,7 @@ birthDeathTests = do
       let mean xs = fromIntegral (sum xs) / (fromIntegral $ length xs)
           meanFinalSize = exp ((2.1 - 0.2) * 1.5)
           randomBDEvents =
-            simulationWithSystemRandom
+            simulationWithSystemRandom False
               (fromJust $ BD.configuration 1.5 (2.1, 0.2))
               BD.allEvents
           numRepeats = 3000
@@ -299,6 +299,27 @@ inhomExpTests =
               withinNPercent 5 (variance x) var2 `shouldBe` True
 
 
+illFormedTreeTest =
+  describe "Prevent the simulator returning a broken tree" $
+  let simDuration = 0.2
+      simLambda = 3.2
+      simMu = 0.3
+      simPsi = 0.3
+      simRho = 0.15
+      simRhoTime = 2.6
+      simOmega = 0.3
+      simNu = 0.15
+      simNuTime = 3.0
+      simParams = (simLambda, simMu, simPsi, [(simRhoTime,simRho)], simOmega, [(simNuTime,simNu)])
+      simConfig = BDSCOD.configuration simDuration simParams
+    in it "stress testing the observed events function" $
+       do
+         null (BDSCOD.observedEvents []) `shouldBe` True
+         simEvents <- simulation True simConfig BDSCOD.allEvents
+         any isSampling simEvents `shouldBe` True
+         (length (BDSCOD.observedEvents simEvents) > 1) `shouldBe` True
+
+
 
 main :: IO ()
 main =
@@ -308,3 +329,4 @@ main =
     helperFuncTests
     readwriteTests
     inhomExpTests
+    illFormedTreeTest

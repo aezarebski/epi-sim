@@ -150,6 +150,7 @@ allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
 -- | Just the observable events from a list of all the events in a simulation.
 observedEvents :: [Event] -- ^ All of the simulation events
                -> [Event]
+observedEvents [] = []
 observedEvents events = sort $ occurrenceEvents ++ disasterEvents ++ sampleTreeEvents''
   where
     occurrenceEvents = filter isOccurrence events

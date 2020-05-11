@@ -333,13 +333,14 @@ illFormedTreeTest =
          null (BDSCOD.observedEvents []) `shouldBe` True
          simEvents <- simulation simConfig BDSCOD.allEvents
          any isSampling simEvents `shouldBe` True
+         (length (BDSCOD.observedEvents simEvents) > 1) `shouldBe` True
 
 main :: IO ()
 main =
   hspec $ do
-    eventHandlingTests
-    birthDeathTests
-    helperFuncTests
-    readwriteTests
-    inhomExpTests
+    -- eventHandlingTests
+    -- birthDeathTests
+    -- helperFuncTests
+    -- readwriteTests
+    -- inhomExpTests
     illFormedTreeTest

@@ -298,7 +298,41 @@ inhomExpTests =
               withinNPercent 5 (mean x) mean2 `shouldBe` True
               withinNPercent 5 (variance x) var2 `shouldBe` True
 
+-- randomObs :: IO [Event]
+-- randomObs =
+--   let simDuration = 0.1
+--       simLambda = 3.2
+--       simMu = 0.3
+--       simPsi = 0.3
+--       simRho = 0.15
+--       simRhoTime = 2.6
+--       simOmega = 0.3
+--       simNu = 0.15
+--       simNuTime = 3.0
+--       simParams = (simLambda, simMu, simPsi, [(simRhoTime,simRho)], simOmega, [(simNuTime,simNu)])
+--       simConfig = BDSCOD.configuration simDuration simParams
+--    in do simEvents <- simulation simConfig BDSCOD.allEvents
+--          print simEvents
+--          return (BDSCOD.observedEvents simEvents)
 
+illFormedTreeTest =
+  describe "Prevent the simulator returning a broken tree" $
+  let simDuration = 1.0
+      simLambda = 3.2
+      simMu = 0.3
+      simPsi = 0.3
+      simRho = 0.15
+      simRhoTime = 2.6
+      simOmega = 0.3
+      simNu = 0.15
+      simNuTime = 3.0
+      simParams = (simLambda, simMu, simPsi, [(simRhoTime,simRho)], simOmega, [(simNuTime,simNu)])
+      simConfig = BDSCOD.configuration simDuration simParams
+    in it "stress testing the observed events function" $
+       do
+         null (BDSCOD.observedEvents []) `shouldBe` True
+         simEvents <- simulation simConfig BDSCOD.allEvents
+         any isSampling simEvents `shouldBe` True
 
 main :: IO ()
 main =
@@ -308,3 +342,4 @@ main =
     helperFuncTests
     readwriteTests
     inhomExpTests
+    illFormedTreeTest

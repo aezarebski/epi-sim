@@ -13,15 +13,6 @@ library(dplyr)
 library(purrr)
 
 
-
-plotting_df <- function(all_events_df) {
-
-removal_events <- all_events_df %>% filter(type != "infection") %>% select(primary, time, type) %>% transpose
-insertion_events <- all_events_df %>% filter(type == "infection") %>% select(secondary, time) %>% transpose
-
-identities <- insertion_events %>% map(~ `$`(.x, "secondary")) %>% unlist
-identities <- c(1, identities)
-
 event_about <- function(event, person_type, id) {
     id_string <- if (person_type == "primary") event$primary else as.character(event$secondary)
     ids <- strsplit(id_string, ":") %>% map(as.integer) %>% unlist
@@ -31,6 +22,7 @@ event_about <- function(event, person_type, id) {
 was_removed <- function(removals, id) {
     some(removals, ~ event_about(.x, "primary", id))
 }
+
 
 insertion_time <- function(insertions, id) {
     if (id > 1) {
@@ -49,14 +41,24 @@ removal_time_and_type <- function(removals, id) {
     }
 }
 
+plotting_df <- function(all_events_df) {
+
+removal_events <- all_events_df %>% filter(type != "infection") %>% select(primary, time, type) %>% transpose
+insertion_events <- all_events_df %>% filter(type == "infection") %>% select(secondary, time) %>% transpose
+
+identities <- insertion_events %>% map(~ `$`(.x, "secondary")) %>% unlist
+identities <- c(1, identities)
+
+
 bd_line <- function(insertions, removals, id) {
     i_time <- insertion_time(insertions, id)
     r_time_and_type <- removal_time_and_type(removals, id)
     list(id = id, birth_time = i_time, death_time = r_time_and_type$time, type = r_time_and_type$type)
 }
 
-    plot_df <- map(identities, ~ bd_line(insertion_events, removal_events, .x)) %>% bind_rows
-    return(plot_df)
+    future::plan(future::multiprocess)
+    plot_dfs <- furrr::future_map(identities, ~ bd_line(insertion_events, removal_events, .x))
+    return(bind_rows(plot_dfs))
 }
 
 

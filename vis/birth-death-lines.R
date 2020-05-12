@@ -22,7 +22,9 @@ library(purrr)
 #'
 event_about <- function(event, person_type, id) {
     if (person_type == "primary") {
+        id_string <- event$primary
         ids <- event$primary %>%
+            as.character %>%
             strsplit(":") %>%
             map(as.integer) %>%
             unlist()
@@ -33,10 +35,7 @@ event_about <- function(event, person_type, id) {
             ids <- c()
         } else {
             ids <- id_string %>%
-                as.character %>%
-                strsplit(":") %>%
-                map(as.integer) %>%
-                unlist()
+                as.character
         }
     } else {
         stop("Error because event_about did not recognise person_type: ",

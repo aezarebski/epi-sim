@@ -1,5 +1,14 @@
 # Changelog for epi-sim
 
+## 0.1.8.3
+
+- Improve error handling in `birth-death-lines.R`.
+- Refactor some of the plotting code in `birth-death-lines.R` to make it easier
+  to maintain.
+- Use the `future` and `furrr` packages in R to generate the visualisation of a
+  simulation in parallel since the serial version is frustratingly slow. Both
+  packages are on CRAN so it does not seem unreasonable.
+
 ## 0.1.8.2
 
 - Include an additional parameter in the `simulation` and

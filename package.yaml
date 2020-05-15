@@ -1,5 +1,5 @@
 name:                epi-sim
-version:             0.1.8.3
+version:             0.1.8.4
 github:              "azarebski/epi-sim"
 license:             BSD3
 author:              "Alexander Zarebski"
@@ -9,9 +9,9 @@ copyright:           "2020 Alexander Zarebski"
 extra-source-files:
 - README.md
 - ChangeLog.md
-- vis/*.json
+- vis/*
 
-synopsis:            A tool for simulating epidemics.
+synopsis:            A tool for simulating epidemics as birth-death processes.
 
 description:         Please see the README on GitHub at <https://bitbucket.org/azarebski/epi-sim/src/master/README.md>
 
@@ -42,6 +42,15 @@ executables:
   ibd-example:
     main:                Main.hs
     source-dirs:         examples/inhomogeneous-birth-death
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - epi-sim
+  ibds-example:
+    main:                Main.hs
+    source-dirs:         examples/inhomogeneous-birth-death-sampling
     ghc-options:
     - -threaded
     - -rtsopts

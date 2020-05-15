@@ -25,7 +25,9 @@ Rscript vis/birth-death-lines.R demo-output-all-events.csv demo-output-full-sim.
 2. Birth-Death-Sampling (see `Epidemic.BirthDeathSampling`)
 3. Birth-Death-Sampling-Occurrence (see `Epidemic.BirthDeathSamplingOccurrence`)
 4. Birth-Death-Sampling-Catastrophe-Occurrence (see `Epidemic.BirthDeathSamplingCatastropheOccurrence`)
-4. Birth-Death-Sampling-Catastrophe-Occurrence-Disaster (see `Epidemic.BDSCOD`)
+5. Birth-Death-Sampling-Catastrophe-Occurrence-Disaster (see `Epidemic.BDSCOD`)
+6. Inhomogeneous Birth-Death (see `Epidemic.InhomogeneousBD`)
+7. Inhomogeneous Birth-Death-Sampling (see `Epidemic.InhomogeneousBDS`)
 
 ## Output
 
@@ -67,3 +69,32 @@ $ Rscript vis/full-ltt.R demo-output-all-events.csv demo-output-full-sim.png
 This should produce something like the following figure
 
 ![](.out/demo-inhomogeneous-birth-death.png)
+
+### Inhomogeneous Birth-Death-Sampling
+
+```
+$ stack build
+$ stack exec -- ibds-example
+$ Rscript vis/birth-death-lines.R demo-output-all-events.csv inhom-bds-sim.png
+```
+
+![](.out/inhom-bds-sim.png)
+
+The `main` function for this simulation is shown below, it is nearly identical
+to the one in the example for the inhomogeneous birth-death simulation. Note
+that here we have only considered a varying birth rate.
+
+```{haskell}
+main :: IO ()
+main =
+  let simDur = 7.0
+      simTimes = [0, simDur / 2]
+      simSR = 1.0
+      simDR = 1.0
+      simBRs = [4.0, (simDR + simSR) - 0.5]
+      simBRTs = zip simTimes simBRs
+      simConfig = fromJust $ InhomBDS.configuration simDur (simBRTs, simDR, simSR)
+   in do events <- EpiUtil.simulation False simConfig InhomBDS.allEvents
+         L.writeFile "demo-output-all-events.csv" (encode events)
+         return ()
+```

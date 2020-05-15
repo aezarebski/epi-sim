@@ -1,5 +1,10 @@
 # Changelog for epi-sim
 
+## 0.1.8.4
+
+- Implement a birth-death-sampling model with time-dependent birth rates and
+  include an example of what this returns in the README.
+
 ## 0.1.8.3
 
 - Improve error handling in `birth-death-lines.R`.

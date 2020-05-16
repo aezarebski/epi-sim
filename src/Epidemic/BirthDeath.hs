@@ -5,6 +5,7 @@ module Epidemic.BirthDeath
   , allEvents
   ) where
 
+import Epidemic.Types
 import qualified Data.Vector as V
 import System.Random.MWC
 import System.Random.MWC.Distributions (bernoulli, exponential)

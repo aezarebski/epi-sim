@@ -6,6 +6,7 @@ module Epidemic.BDSCOD
   , observedEvents
   ) where
 
+import Epidemic.Types
 import Data.Maybe (fromJust)
 import qualified Data.Vector as V
 import qualified Data.Vector.Generic as G

@@ -6,6 +6,7 @@ module Epidemic.BirthDeathSamplingOccurrence
   , observedEvents
   ) where
 
+import Epidemic.Types
 import Data.Maybe (fromJust)
 import qualified Data.Vector as V
 import System.Random.MWC

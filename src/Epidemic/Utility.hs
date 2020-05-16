@@ -3,6 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Epidemic.Utility where
 
+import Epidemic.Types
 import Control.Monad (liftM)
 import qualified Data.List as List
 import qualified Data.Maybe as Maybe

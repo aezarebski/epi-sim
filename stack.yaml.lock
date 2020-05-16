@@ -3,7 +3,21 @@
 # For more information, please see the documentation at:
 #   https://docs.haskellstack.org/en/stable/lock_files
 
-packages: []
+packages:
+- completed:
+    cabal-file:
+      size: 701
+      sha256: 3c5af1794abce3eb67a030fb047a6d3ab8e03af7d827c31ad8664cdef2d5b62d
+    name: epi-types
+    version: 0.1.0.0
+    git: https://github.com/aezarebski/epi-types.git
+    pantry-tree:
+      size: 366
+      sha256: 543db67bdc215ba05a7cb7831f898576bdf23cc545b3c15002aba872e4f057ee
+    commit: d560b6475ec1a6b8ba70025b833502ba172a1b3d
+  original:
+    git: https://github.com/aezarebski/epi-types.git
+    commit: d560b6475ec1a6b8ba70025b833502ba172a1b3d
 snapshots:
 - completed:
     size: 488576

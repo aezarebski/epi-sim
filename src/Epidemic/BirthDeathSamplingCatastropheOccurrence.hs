@@ -6,6 +6,7 @@ module Epidemic.BirthDeathSamplingCatastropheOccurrence
   , observedEvents
   ) where
 
+import Epidemic.Types
 import Data.Maybe (fromJust)
 import Data.List (minimumBy)
 import qualified Data.Vector as V

@@ -2,6 +2,7 @@
 
 ## 0.1.8.5
 
+- Start using cabal directly without hpack.
 - Move time dependent parameters into a `epi-sim` package so they are easier to
   share, and import them here.
 

@@ -16,10 +16,6 @@ import GHC.Generics (Generic)
 
 type Identifier = Integer
 
-type Rate = Double
-
-type Probability = Double
-
 newtype Person =
   Person Identifier
   deriving (Show, Generic, Eq)

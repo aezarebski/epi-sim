@@ -10,17 +10,11 @@ import qualified Data.ByteString as B
 import Data.ByteString.Internal (c2w)
 import Data.Csv
 import Data.List (nub)
+import Epidemic.Types
 import GHC.Generics (Generic)
 
-type Time = Double
 
 type Identifier = Integer
-
-type Rate = Double
-
-type Timed a = [(Time, a)]
-
-type Probability = Double
 
 newtype Person =
   Person Identifier

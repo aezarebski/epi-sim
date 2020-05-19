@@ -6,6 +6,7 @@ module Epidemic.InhomogeneousBDS
   , inhomBDSRates
   ) where
 
+import Epidemic.Types
 import Control.Monad (liftM)
 import Data.Maybe (fromJust)
 import qualified Data.Vector as V

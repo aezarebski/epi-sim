@@ -7,6 +7,7 @@ import Data.Csv
 import Data.Maybe (fromJust, isJust)
 import qualified Data.Vector as V
 import Epidemic
+import Epidemic.Types
 import qualified Epidemic.BDSCOD as BDSCOD
 import qualified Epidemic.BirthDeath as BD
 import qualified Epidemic.BirthDeathSamplingCatastropheOccurrence as BDSCO

@@ -10,9 +10,8 @@ import Epidemic
 import qualified Epidemic.BDSCOD as BDSCOD
 import qualified Epidemic.BirthDeath as BD
 import qualified Epidemic.BirthDeathSamplingCatastropheOccurrence as BDSCO
-import qualified Epidemic.BirthDeathSamplingCatastropheOccurrence as BDSCO
 import qualified Epidemic.BirthDeathSamplingOccurrence as BDSO
-import qualified Epidemic.BirthDeathSamplingOccurrence as BDSO
+import qualified Epidemic.InhomogeneousBDS as InhomBDS
 import Epidemic.Utility
 import Statistics.Sample
 import qualified System.Random.MWC as MWC
@@ -241,6 +240,10 @@ helperFuncTests = do
         (not $ isJust val2) `shouldBe` True
         isJust val3 `shouldBe` True
         val3 == Just 3.0 `shouldBe` True
+    it "the asTimed function returns nothing as expected" $ do
+      (isJust $ asTimed [(0.0,-1)]) `shouldBe` True
+      (isJust $ asTimed [(0.0,1),(1.0,-1)]) `shouldBe` True
+      (isJust $ InhomBDS.inhomBDSRates [(0.0,1),(1.0,-1)] 0.5 0.5) `shouldBe` False
 
 
 

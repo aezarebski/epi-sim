@@ -3,6 +3,7 @@
 module Epidemic.InhomogeneousBDS
   ( configuration
   , allEvents
+  , inhomBDSRates
   ) where
 
 import Control.Monad (liftM)
@@ -37,16 +38,22 @@ instance Population InhomBDSPop where
   isInfected (InhomBDSPop people) = not $ nullPeople people
 
 -- | Return a BDS-process parameters object
+--
+-- Note that this requires that the rates are all positive, if they are not it
+-- will return @Nothing@.
 inhomBDSRates :: [(Time, Rate)] -- ^ birth rate
               -> Rate           -- ^ death rate
               -> Rate           -- ^ sample rate
               -> Maybe InhomBDSRates
 inhomBDSRates tBrPairs deathRate sampleRate
   | all (\x -> 0 < snd x) tBrPairs && deathRate >= 0 && sampleRate >= 0 =
-    liftM (\tbr -> InhomBDSRates tbr deathRate sampleRate) $ asTimed tBrPairs
+    (\tbr -> InhomBDSRates tbr deathRate sampleRate) <$> asTimed tBrPairs
   | otherwise = Nothing
 
 -- | Configuration of a inhomogeneous birth-death-sampling simulation.
+--
+-- Note that this requires that the timed rates are all positive, if they are
+-- not it will return @Nothing@ which can lead to cryptic bugs.
 configuration :: Time                        -- ^ Duration of the simulation
               -> ([(Time,Rate)], Rate, Rate) -- ^ Birth, Death and Sampling rates
               -> Maybe (SimulationConfiguration InhomBDSRates InhomBDSPop)

@@ -2,6 +2,8 @@
 
 ## 0.1.8.4
 
+- Improve documentation of construction of `inhomBDSRates` and include a test to
+  check this conforms to expectations.
 - Implement a birth-death-sampling model with time-dependent birth rates and
   include an example of what this returns in the README.
 

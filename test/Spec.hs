@@ -324,6 +324,19 @@ illFormedTreeTest =
          (length (BDSCOD.observedEvents simEvents) > 1) `shouldBe` True
 
 
+inhomogeneousBDSTest =
+  describe "InhomogeneousBDS module tests" $ do
+    it "Check the observedEvents filters out removals" $
+      let demoAllEvents = [InfectionEvent 0.1 p1 p2
+                          ,SamplingEvent 0.2 p1
+                          ,RemovalEvent 0.3 p3
+                          ,SamplingEvent 0.4 p2]
+          demoObsEvents = [InfectionEvent 0.1 p1 p2
+                          ,SamplingEvent 0.2 p1
+                          ,SamplingEvent 0.4 p2]
+          compObsEvents = InhomBDS.observedEvents demoAllEvents
+       in do
+        (compObsEvents == demoObsEvents) `shouldBe` True
 
 main :: IO ()
 main =
@@ -334,3 +347,4 @@ main =
     readwriteTests
     inhomExpTests
     illFormedTreeTest
+    inhomogeneousBDSTest

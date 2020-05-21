@@ -1,5 +1,11 @@
 # Changelog for epi-sim
 
+## 0.1.8.6
+
+- Use `-j2` to slightly improve compilation time.
+- Include a `observedEvents` function which was missing from the
+  `InhomogeneousBDS` module.
+
 ## 0.1.8.5
 
 - Start using cabal directly without hpack.

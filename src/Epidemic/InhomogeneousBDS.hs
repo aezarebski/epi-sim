@@ -3,6 +3,7 @@
 module Epidemic.InhomogeneousBDS
   ( configuration
   , allEvents
+  , observedEvents
   , inhomBDSRates
   ) where
 
@@ -121,3 +122,12 @@ allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
         else return currState
     else return currState
 
+
+-- | Just the observable events from a list of all the events in a simulation.
+observedEvents :: [Event] -- ^ All of the simulation events
+               -> [Event]
+observedEvents [] = []
+observedEvents events = sort $ sampleTreeEvents''
+  where
+    sampleTreeEvents'' =
+      sampleTreeEvents . sampleTree $ transmissionTree events (Person 1)

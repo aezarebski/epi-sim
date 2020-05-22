@@ -65,9 +65,9 @@ randomEvent ::
   -> Identifier   -- ^ current identifier
   -> GenIO        -- ^ PRNG
   -> IO (Time, Event, InhomBDPop, Identifier)
-randomEvent inhomRates@(InhomBDRates brts dr) currTime (InhomBDPop (people@(People peopleVec))) currId gen =
+randomEvent inhomRates@(InhomBDRates brts@(Timed brts') dr) currTime (InhomBDPop (people@(People peopleVec))) currId gen =
   let popSize = fromIntegral $ numPeople people :: Double
-      stepTimes = map fst brts
+      stepTimes = map fst brts'
       stepFunction = fromJust $ asTimed [(t-currTime,popSize * fromJust (eventRate inhomRates t)) | t <- stepTimes]
    in do delay <- inhomExponential stepFunction gen
          isBirth <- bernoulli (fromJust (birthProb inhomRates (currTime + delay))) gen

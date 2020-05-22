@@ -4,6 +4,7 @@ module Main where
 
 import qualified Data.ByteString.Lazy as L
 import Data.Csv
+import Data.Maybe (fromJust, isJust)
 import Epidemic ()
 import qualified Epidemic.BDSCOD as BDSCOD
 import qualified Epidemic.Utility as EpiUtil
@@ -14,8 +15,11 @@ main =
         BDSCOD.configuration
           4.1
           (2.5, 0.2, 0.15, [(3, 0.5), (4, 0.5)], 0.2, [(3.5, 0.5)])
-   in do events <- EpiUtil.simulationWithSystemRandom False simConfig BDSCOD.allEvents
-         L.writeFile "demo-output-all-events.csv" (encode events)
-         L.writeFile "demo-output-observed-events.csv" . encode $
-           BDSCOD.observedEvents events
-         return ()
+   in if isJust simConfig
+         then do events <- EpiUtil.simulationWithSystemRandom False (fromJust simConfig) BDSCOD.allEvents
+                 L.writeFile "demo-output-all-events.csv" (encode events)
+                 L.writeFile "demo-output-observed-events.csv" . encode $
+                   BDSCOD.observedEvents events
+                 return ()
+         else do putStrLn "Broken simulation configuration!!!"
+                 return ()

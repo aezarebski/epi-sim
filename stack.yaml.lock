@@ -5,19 +5,16 @@
 
 packages:
 - completed:
-    cabal-file:
-      size: 954
-      sha256: c2dad4165149eda6339e03c607b73b61f84d49a88988d1ced3d641150f11151c
     name: epi-types
-    version: 0.1.0.0
+    version: 0.1.1.0
     git: https://github.com/aezarebski/epi-types.git
     pantry-tree:
-      size: 472
-      sha256: bfa413166b139aef9c91cb9fdd2f159c861280763775b48817966bbbf604e5eb
-    commit: 40f619a172ff70134bf97e4dbd975c77c6c7a3ce
+      size: 524
+      sha256: 7f0bc8b86a5b1ce65b5eadbd7a4b5e441b84aacdcf8209284c2e21d7abb85990
+    commit: 7c1beb9871b9b7e40878b7a9586d2bbd15964118
   original:
     git: https://github.com/aezarebski/epi-types.git
-    commit: 40f619a172ff70134bf97e4dbd975c77c6c7a3ce
+    commit: 7c1beb9871b9b7e40878b7a9586d2bbd15964118
 snapshots:
 - completed:
     size: 488576

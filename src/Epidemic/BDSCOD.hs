@@ -19,7 +19,7 @@ import Epidemic.Utility
 
 data BDSCODParameters
   -- | birth rate, death rate, sampling rate, catastrophe specification, occurrence rate and disaster specification
-  = BDSCODParameters Rate Rate Rate [(Time,Probability)] Rate [(Time,Probability)]
+  = BDSCODParameters Rate Rate Rate (Timed Probability) Rate (Timed Probability)
 
 instance ModelParameters BDSCODParameters where
   rNaught (BDSCODParameters birthRate deathRate samplingRate _ occurrenceRate _) _ =
@@ -42,19 +42,21 @@ instance Population BDSCODPopulation where
 -- | Configuration of a birth-death-sampling-occurrence simulation
 configuration :: Time                                                            -- ^ Duration of the simulation
               -> (Rate,Rate,Rate,[(Time,Probability)],Rate,[(Time,Probability)]) -- ^ Birth, Death, Sampling, Catastrophe probability and Occurrence rates
-              -> SimulationConfiguration BDSCODParameters BDSCODPopulation
+              -> Maybe (SimulationConfiguration BDSCODParameters BDSCODPopulation)
 configuration maxTime (birthRate, deathRate, samplingRate, catastropheSpec, occurrenceRate, disasterSpec) =
-  let bdscodParams =
-        BDSCODParameters
-          birthRate
-          deathRate
-          samplingRate
-          catastropheSpec
-          occurrenceRate
-          disasterSpec
-      (seedPerson, newId) = newPerson initialIdentifier
-      bdscodPop = BDSCODPopulation (People $ V.singleton seedPerson)
-   in SimulationConfiguration bdscodParams bdscodPop newId maxTime
+  do catastropheSpec' <- asTimed catastropheSpec
+     disasterSpec' <- asTimed disasterSpec
+     let bdscodParams =
+           BDSCODParameters
+           birthRate
+           deathRate
+           samplingRate
+           catastropheSpec'
+           occurrenceRate
+           disasterSpec'
+         (seedPerson, newId) = newPerson initialIdentifier
+         bdscodPop = BDSCODPopulation (People $ V.singleton seedPerson)
+       in return $ SimulationConfiguration bdscodParams bdscodPop newId maxTime
 
 -- | Return a random event from the BDSCOD-process given the current state of the process.
 randomEvent :: BDSCODParameters  -- ^ Parameters of the process
@@ -68,7 +70,7 @@ randomEvent params@(BDSCODParameters br dr sr catastInfo occr disastInfo) currTi
       eventWeights = V.fromList [br, dr, sr, occr]
    in do delay <- exponential (fromIntegral (V.length currPeople) * netEventRate) gen
          nextTime <- pure $ currTime + delay
-         if noScheduledEvent currTime nextTime (catastInfo ++ disastInfo)
+         if noScheduledEvent currTime nextTime (joinTimed catastInfo disastInfo)
            then do eventIx <- categorical eventWeights gen
                    (selectedPerson, unselectedPeople) <- randomPerson currPeople gen
                    return $ case eventIx of

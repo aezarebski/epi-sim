@@ -118,27 +118,19 @@ eventPopDelta e = case e of
 firstScheduled :: Time               -- ^ The given time
                -> Timed Probability  -- ^ The information about all scheduled events
                -> Maybe (Time,Probability)
-firstScheduled _ [] = Nothing
-firstScheduled currTime (sched@(schedTime, _):scheduledEvents)
-  | schedTime == currTime = Just sched
-  | schedTime < currTime = firstScheduled currTime scheduledEvents
-  | schedTime > currTime =
-    let maybeFirstSched = firstScheduled currTime scheduledEvents
-     in case maybeFirstSched of
-          Nothing -> Just sched
-          (Just (schedTime', _)) ->
-            if schedTime < schedTime'
-              then Just sched
-              else maybeFirstSched
+firstScheduled time timedProb = do
+  time' <- nextTime timedProb time
+  prob' <- diracDeltaValue timedProb time'
+  return (time',prob')
 
 -- | Predicate for whether there is a scheduled event during an interval.
 noScheduledEvent :: Time                 -- ^ Start time for interval
                  -> Time                 -- ^ End time for interval
                  -> Timed Probability    -- ^ Information about all scheduled events
                  -> Bool
-noScheduledEvent _ _ [] = True
-noScheduledEvent a b ((shedTime, _):scheduledEvents) =
-  not (a < shedTime && shedTime <= b) && noScheduledEvent a b scheduledEvents
+noScheduledEvent _ _ (Timed []) = True
+noScheduledEvent a b (Timed ((shedTime, _):scheduledEvents)) =
+  not (a < shedTime && shedTime <= b) && noScheduledEvent a b (Timed scheduledEvents)
 
 instance Ord Event where
   e1 <= e2 = eventTime e1 <= eventTime e2

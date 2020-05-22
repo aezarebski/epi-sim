@@ -7,7 +7,7 @@ cabal-version: 1.12
 -- hash: ab62fd00199fbb78f0c8bf1211bd94c918cd79fd75f56c15d3442a539974296d
 
 name:           epi-sim
-version:        0.1.8.7
+version:        0.1.8.8
 synopsis:       A tool for simulating epidemics as birth-death processes.
 description:    Please see the README on GitHub at <https://bitbucket.org/azarebski/epi-sim/src/master/README.md>
 homepage:       https://github.com/azarebski/epi-sim#readme

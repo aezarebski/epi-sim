@@ -1,5 +1,10 @@
 # Changelog for epi-sim
 
+## 0.1.8.8
+
+- Upgrade to `epi-types-0.1.1.1` and remove `joinTimed` since it is no longer
+  needed.
+
 ## 0.1.8.7
 
 - Upgrade to `epi-types-0.1.1.0` and start using the `Timed *` class.

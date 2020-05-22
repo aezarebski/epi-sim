@@ -70,7 +70,7 @@ randomEvent params@(BDSCODParameters br dr sr catastInfo occr disastInfo) currTi
       eventWeights = V.fromList [br, dr, sr, occr]
    in do delay <- exponential (fromIntegral (V.length currPeople) * netEventRate) gen
          nextTime <- pure $ currTime + delay
-         if noScheduledEvent currTime nextTime (joinTimed catastInfo disastInfo)
+         if noScheduledEvent currTime nextTime (catastInfo <> disastInfo)
            then do eventIx <- categorical eventWeights gen
                    (selectedPerson, unselectedPeople) <- randomPerson currPeople gen
                    return $ case eventIx of

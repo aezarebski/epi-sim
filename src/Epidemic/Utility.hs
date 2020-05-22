@@ -235,3 +235,7 @@ randInhomExp crrT stepFunc gen =
             then return $ Just (crrD + crrT)
             else (randInhomExp (Maybe.fromJust nxtT) stepFunc gen)
         else return Nothing
+
+-- TODO This function should really be moved into @epi-types@!!!
+joinTimed :: Timed a -> Timed a -> Timed a
+joinTimed (Timed t1) (Timed t2) = Timed $ List.sortOn fst (t1 ++ t2)

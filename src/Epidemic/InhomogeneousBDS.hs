@@ -76,9 +76,9 @@ randomEvent ::
   -> Identifier    -- ^ current identifier
   -> GenIO         -- ^ PRNG
   -> IO (Time, Event, InhomBDSPop, Identifier)
-randomEvent inhomRates@(InhomBDSRates brts dr sr) currTime (InhomBDSPop (people@(People peopleVec))) currId gen =
+randomEvent inhomRates@(InhomBDSRates brts@(Timed brts') dr sr) currTime (InhomBDSPop (people@(People peopleVec))) currId gen =
   let popSize = fromIntegral $ numPeople people :: Double
-      stepTimes = map fst brts
+      stepTimes = map fst brts'
       stepFunction = fromJust $ asTimed [(t-currTime,popSize * fromJust (eventRate inhomRates t)) | t <- stepTimes]
       eventWeights t = V.fromList [fromJust (cadlagValue brts t), dr, sr]
    in do delay <- inhomExponential stepFunction gen

@@ -1,5 +1,9 @@
 # Changelog for epi-sim
 
+## 0.1.8.7
+
+- Upgrade to `epi-types-0.1.1.0` and start using the `Timed *` class.
+
 ## 0.1.8.6
 
 - Use `-j2` to slightly improve compilation time.

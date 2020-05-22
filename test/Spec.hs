@@ -141,26 +141,26 @@ eventHandlingTests = do
         True
   describe "Catastrophe definitions" $ do
     it "Check we can find a catastrophe" $ do
-      (noScheduledEvent 0 1 []) `shouldBe` True
-      (noScheduledEvent 0 1 [(2, 0.5)]) `shouldBe` True
-      (noScheduledEvent 0 1 [(0.5, 0.5)]) `shouldBe` False
-      (noScheduledEvent 0 1 [(2, 0.6), (0.5, 0.5)]) `shouldBe` False
+      (noScheduledEvent 0 1 (Timed [])) `shouldBe` True
+      (noScheduledEvent 0 1 (Timed [(2, 0.5)])) `shouldBe` True
+      (noScheduledEvent 0 1 (Timed [(0.5, 0.5)])) `shouldBe` False
+      (noScheduledEvent 0 1 (Timed [(2, 0.6), (0.5, 0.5)])) `shouldBe` False
     it "Check we can find a particular catastrophe" $ do
-      (firstScheduled 1 []) `shouldBe` Nothing
-      (firstScheduled 1 [(2, 0.5)]) `shouldBe` Just (2, 0.5)
-      (firstScheduled 1 [(0.5, 0.5)]) `shouldBe` Nothing
-      (firstScheduled 1 [(2, 0.6), (0.5, 0.5)]) `shouldBe` Just (2, 0.6)
-      (firstScheduled 1 [(2, 0.6), (0.5, 0.5), (1.5, 0.4)]) `shouldBe`
+      (firstScheduled 1 (Timed [])) `shouldBe` Nothing
+      (firstScheduled 1 (Timed [(2, 0.5)])) `shouldBe` Just (2, 0.5)
+      (firstScheduled 1 (Timed [(0.5, 0.5)])) `shouldBe` Nothing
+      (firstScheduled 1 (Timed [(2, 0.6), (0.5, 0.5)])) `shouldBe` Just (2, 0.6)
+      (firstScheduled 1 (Timed [(2, 0.6), (0.5, 0.5), (1.5, 0.4)])) `shouldBe`
         Just (1.5, 0.4)
     it "Works on a very specific case it seems to not like" $ do
-      (noScheduledEvent 2.28 (2.28 + 0.42) [(2.3, 0.9)]) `shouldBe` False
+      (noScheduledEvent 2.28 (2.28 + 0.42) (Timed [(2.3, 0.9)])) `shouldBe` False
     it "Catastrophes are handled correctly" $ do
       (demoSampleEvents03 == BDSCO.observedEvents demoFullEvents03) `shouldBe`
         True
     it "Catastrophes can be simulated" $ do
       demoSim <-
         simulation False
-          (BDSCO.configuration 4 (1.3, 0.1, 0.1, [(3, 0.5)], 0.2))
+          (fromJust (BDSCO.configuration 4 (1.3, 0.1, 0.1, ([(3, 0.5)]), 0.2)))
           BDSCO.allEvents
       length demoSim > 1 `shouldBe` True
   describe "Disaster definitions" $ do
@@ -170,7 +170,7 @@ eventHandlingTests = do
     it "Disasters can be simulated" $ do
       demoSim <-
         simulation False
-          (BDSCOD.configuration 4 (1.3, 0.1, 0.1, [(3, 0.5)], 0.2, [(3.5, 0.5)]))
+          (fromJust (BDSCOD.configuration 4 (1.3, 0.1, 0.1, [(3, 0.5)], 0.2, [(3.5, 0.5)])))
           BDSCOD.allEvents
       length demoSim > 1 `shouldBe` True
 
@@ -230,6 +230,11 @@ helperFuncTests = do
              (0 == (fromJust $ nextTime demoTimed (-1))) `shouldBe` True
              (1 == (fromJust $ nextTime demoTimed (0))) `shouldBe` True
              (1 == (fromJust $ nextTime demoTimed (0.5))) `shouldBe` True
+           it "the nextTime function handles the last time correctly" $ do
+             isJust (nextTime demoTimed 1.9) `shouldBe` True
+             isJust (nextTime demoTimed 2.0) `shouldBe` True
+             isJust (nextTime demoTimed 2.1) `shouldBe` True
+             isJust (nextTime demoTimed 10.0) `shouldBe` True
     it "shifted times work" $
       let sf = fromJust $ asTimed [(-1.0,2.0),(1,3.0)]
           val1 = cadlagValue sf 0
@@ -319,7 +324,7 @@ illFormedTreeTest =
     in it "stress testing the observed events function" $
        do
          null (BDSCOD.observedEvents []) `shouldBe` True
-         simEvents <- simulation True simConfig BDSCOD.allEvents
+         simEvents <- simulation True (fromJust simConfig) BDSCOD.allEvents
          any isSampling simEvents `shouldBe` True
          (length (BDSCOD.observedEvents simEvents) > 1) `shouldBe` True
 
@@ -341,10 +346,10 @@ inhomogeneousBDSTest =
 main :: IO ()
 main =
   hspec $ do
-    eventHandlingTests
-    birthDeathTests
+    -- eventHandlingTests
+    -- birthDeathTests
     helperFuncTests
-    readwriteTests
-    inhomExpTests
-    illFormedTreeTest
-    inhomogeneousBDSTest
+    -- readwriteTests
+    -- inhomExpTests
+    -- illFormedTreeTest
+    -- inhomogeneousBDSTest

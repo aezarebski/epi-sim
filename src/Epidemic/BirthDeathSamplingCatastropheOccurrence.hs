@@ -20,7 +20,7 @@ import Epidemic.Utility
 
 data BDSCOParameters
   -- | birth rate, death rate, sampling rate, catastrophe probability and occurrence rate.
-  = BDSCOParameters Rate Rate Rate [(Time,Probability)] Rate
+  = BDSCOParameters Rate Rate Rate (Timed Probability) Rate
 
 instance ModelParameters BDSCOParameters where
   rNaught (BDSCOParameters birthRate deathRate samplingRate _ occurrenceRate) _ =
@@ -42,19 +42,20 @@ instance Population BDSCOPopulation where
 
 -- | Configuration of a birth-death-sampling-occurrence simulation
 configuration :: Time                                       -- ^ Duration of the simulation
-            -> (Rate,Rate,Rate,[(Time,Probability)],Rate) -- ^ Birth, Death, Sampling, Catastrophe probability and Occurrence rates
-            -> SimulationConfiguration BDSCOParameters BDSCOPopulation
-configuration maxTime (birthRate, deathRate, samplingRate, catastropheProb, occurrenceRate) =
+              -> (Rate,Rate,Rate,[(Time,Probability)],Rate) -- ^ Birth, Death, Sampling, Catastrophe probability and Occurrence rates
+              -> Maybe (SimulationConfiguration BDSCOParameters BDSCOPopulation)
+configuration maxTime (birthRate, deathRate, samplingRate, catastropheProb, occurrenceRate) = do
+  catastropheTimedProb <- asTimed catastropheProb
   let bdscoParams =
         BDSCOParameters
           birthRate
           deathRate
           samplingRate
-          catastropheProb
+          catastropheTimedProb
           occurrenceRate
       (seedPerson, newId) = newPerson initialIdentifier
       bdscoPop = BDSCOPopulation (People $ V.singleton seedPerson)
-   in SimulationConfiguration bdscoParams bdscoPop newId maxTime
+   in Just $ SimulationConfiguration bdscoParams bdscoPop newId maxTime
 
 -- | Return a random event from the BDSCO-process given the current state of the process.
 randomBdscoEvent ::

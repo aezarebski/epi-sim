@@ -73,6 +73,7 @@ executable bdscod-example
     , bytestring
     , cassava
     , epi-sim
+    , epi-types >= 0.2.0.0
     , hspec
     , mwc-random
     , primitive

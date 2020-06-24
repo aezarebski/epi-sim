@@ -4,7 +4,7 @@ import Control.Exception (evaluate)
 import Control.Monad
 import qualified Data.ByteString as B
 import Data.Csv
-import Data.Maybe (fromJust, isJust)
+import Data.Maybe (fromJust, isJust, isNothing)
 import qualified Data.Vector as V
 import Epidemic
 import Epidemic.Types.Population
@@ -152,8 +152,9 @@ eventHandlingTests = do
       (firstScheduled 1 (Timed [(2, 0.5)])) `shouldBe` Just (2, 0.5)
       (firstScheduled 1 (Timed [(0.5, 0.5)])) `shouldBe` Nothing
       (firstScheduled 1 (Timed [(2, 0.6), (0.5, 0.5)])) `shouldBe` Just (2, 0.6)
+      isNothing (asTimed [(2, 0.6 :: Rate), (0.5, 0.5), (1.5, 0.4)]) `shouldBe` True
       (firstScheduled 1 (Timed [(2, 0.6), (0.5, 0.5), (1.5, 0.4)])) `shouldBe`
-        Just (1.5, 0.4)
+        Just (2, 0.6)
     it "Works on a very specific case it seems to not like" $ do
       (noScheduledEvent 2.28 (2.28 + 0.42) (Timed [(2.3, 0.9)])) `shouldBe` False
     it "Catastrophes are handled correctly" $ do
@@ -311,7 +312,7 @@ inhomExpTests =
 
 
 illFormedTreeTest =
-  describe "Prevent the simulator returning a broken tree" $
+  describe "Prevent the simulator returning a broken tree" $ do
   let simDuration = 0.2
       simLambda = 3.2
       simMu = 0.3
@@ -329,6 +330,18 @@ illFormedTreeTest =
          simEvents <- simulation True (fromJust simConfig) BDSCOD.allEvents
          any isSampling simEvents `shouldBe` True
          (length (BDSCOD.observedEvents simEvents) > 1) `shouldBe` True
+  it "test edge case of missing infections from observed events" $ do
+    True `shouldBe` True
+    let simConfig = BDSCOD.configuration 1.0 (2.5, 0.2, 0.15, [(3, 0.5), (4, 0.5)], 0.2, [(3.5, 0.5)])
+    events <- simulation True (fromJust simConfig) BDSCOD.allEvents
+    let obsEs = BDSCOD.observedEvents events
+    let infectedPeople = Person 1:[person | (Infection _ _ person) <- obsEs]
+    let sampledPeople = [person | (Sampling _ person) <- obsEs]
+    all (`elem` infectedPeople) sampledPeople `shouldBe` True -- all of the sampled people should have been infected
+    True `shouldBe` True
+
+
+
 
 
 inhomogeneousBDSTest =
@@ -345,13 +358,15 @@ inhomogeneousBDSTest =
        in do
         (compObsEvents == demoObsEvents) `shouldBe` True
 
+
+
 main :: IO ()
 main =
   hspec $ do
     -- eventHandlingTests
     -- birthDeathTests
-    helperFuncTests
+    -- helperFuncTests
     -- readwriteTests
     -- inhomExpTests
-    -- illFormedTreeTest
+    illFormedTreeTest
     -- inhomogeneousBDSTest

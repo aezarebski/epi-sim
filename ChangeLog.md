@@ -1,5 +1,10 @@
 # Changelog for epi-sim
 
+## 0.1.9.0
+
+- Upgrade to `epi-types-0.2.0.0` which makes a lot of functions redundant so
+  they have been removed.
+
 ## 0.1.8.8
 
 - Upgrade to `epi-types-0.1.1.1` and remove `joinTimed` since it is no longer

@@ -7,7 +7,9 @@ module Epidemic.InhomogeneousBDS
   , inhomBDSRates
   ) where
 
-import Epidemic.Types
+import Epidemic.Types.Population
+import Epidemic.Types.Events
+import Epidemic.Types.Parameter
 import Control.Monad (liftM)
 import Data.Maybe (fromJust)
 import qualified Data.Vector as V
@@ -73,9 +75,9 @@ randomEvent ::
      InhomBDSRates -- ^ model parameters
   -> Time          -- ^ the current time
   -> InhomBDSPop   -- ^ the population
-  -> Identifier    -- ^ current identifier
+  -> Integer    -- ^ current identifier
   -> GenIO         -- ^ PRNG
-  -> IO (Time, Event, InhomBDSPop, Identifier)
+  -> IO (Time, EpidemicEvent, InhomBDSPop, Integer)
 randomEvent inhomRates@(InhomBDSRates brts@(Timed brts') dr sr) currTime (InhomBDSPop (people@(People peopleVec))) currId gen =
   let popSize = fromIntegral $ numPeople people :: Double
       stepTimes = map fst brts'
@@ -87,16 +89,16 @@ randomEvent inhomRates@(InhomBDSRates brts@(Timed brts') dr sr) currTime (InhomB
          return $ case eventIx of
            0 -> let newTime = currTime + delay
                     (birthedPerson, newId) = newPerson currId
-                    event = InfectionEvent newTime selectedPerson birthedPerson
+                    event = Infection newTime selectedPerson birthedPerson
                 in ( newTime
                    , event
                    , InhomBDSPop (addPerson birthedPerson people)
                    , newId)
            1 -> let newTime = currTime + delay
-                    event = RemovalEvent newTime selectedPerson
+                    event = Removal newTime selectedPerson
                 in (newTime, event, InhomBDSPop (People unselectedPeople), currId)
            2 -> let newTime = currTime + delay
-                    event = SamplingEvent newTime selectedPerson
+                    event = Sampling newTime selectedPerson
                 in (newTime, event, InhomBDSPop (People unselectedPeople), currId)
            _ -> error "no birth-death-sampling event selected."
 
@@ -105,9 +107,9 @@ randomEvent inhomRates@(InhomBDSRates brts@(Timed brts') dr sr) currTime (InhomB
 allEvents ::
      InhomBDSRates                            -- ^ model parameters
   -> Time                                     -- ^ stopping time
-  -> (Time, [Event], InhomBDSPop, Identifier) -- ^ simulation state
+  -> (Time, [EpidemicEvent], InhomBDSPop, Integer) -- ^ simulation state
   -> GenIO                                    -- ^ PRNG
-  -> IO (Time, [Event], InhomBDSPop, Identifier)
+  -> IO (Time, [EpidemicEvent], InhomBDSPop, Integer)
 allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
   if isInfected currPop
     then do
@@ -124,8 +126,8 @@ allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
 
 
 -- | Just the observable events from a list of all the events in a simulation.
-observedEvents :: [Event] -- ^ All of the simulation events
-               -> [Event]
+observedEvents :: [EpidemicEvent] -- ^ All of the simulation events
+               -> [EpidemicEvent]
 observedEvents [] = []
 observedEvents events = sort $ sampleTreeEvents''
   where

@@ -5,7 +5,9 @@ module Epidemic.InhomogeneousBD
   , allEvents
   ) where
 
-import Epidemic.Types
+import Epidemic.Types.Population
+import Epidemic.Types.Parameter
+import Epidemic.Types.Events
 import Control.Monad (liftM)
 import Data.Maybe (fromJust)
 import qualified Data.Vector as V
@@ -62,9 +64,9 @@ randomEvent ::
      InhomBDRates -- ^ model parameters
   -> Time         -- ^ the current time
   -> InhomBDPop   -- ^ the population
-  -> Identifier   -- ^ current identifier
+  -> Integer   -- ^ current identifier
   -> GenIO        -- ^ PRNG
-  -> IO (Time, Event, InhomBDPop, Identifier)
+  -> IO (Time, EpidemicEvent, InhomBDPop, Integer)
 randomEvent inhomRates@(InhomBDRates brts@(Timed brts') dr) currTime (InhomBDPop (people@(People peopleVec))) currId gen =
   let popSize = fromIntegral $ numPeople people :: Double
       stepTimes = map fst brts'
@@ -77,13 +79,13 @@ randomEvent inhomRates@(InhomBDRates brts@(Timed brts') dr) currTime (InhomBDPop
              then let newTime = currTime + delay
                       (birthedPerson, newId) = newPerson currId
                       event =
-                        InfectionEvent newTime selectedPerson birthedPerson
+                        Infection newTime selectedPerson birthedPerson
                    in ( newTime
                       , event
                       , InhomBDPop (addPerson birthedPerson people)
                       , newId)
              else let newTime = currTime + delay
-                      event = RemovalEvent newTime selectedPerson
+                      event = Removal newTime selectedPerson
                    in ( newTime
                       , event
                       , InhomBDPop (People unselectedPeople)
@@ -94,9 +96,9 @@ randomEvent inhomRates@(InhomBDRates brts@(Timed brts') dr) currTime (InhomBDPop
 allEvents ::
      InhomBDRates                            -- ^ model parameters
   -> Time                                    -- ^ stopping time
-  -> (Time, [Event], InhomBDPop, Identifier) -- ^ simulation state
+  -> (Time, [EpidemicEvent], InhomBDPop, Integer) -- ^ simulation state
   -> GenIO                                   -- ^ PRNG
-  -> IO (Time, [Event], InhomBDPop, Identifier)
+  -> IO (Time, [EpidemicEvent], InhomBDPop, Integer)
 allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
   if isInfected currPop
     then do

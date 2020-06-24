@@ -1,12 +1,12 @@
-{-# LANGUAGE RecordWildCards #-}
-
 module Epidemic.BirthDeathSamplingOccurrence
   ( configuration
   , allEvents
   , observedEvents
   ) where
 
-import Epidemic.Types
+import Epidemic.Types.Population
+import Epidemic.Types.Events
+import Epidemic.Types.Parameter
 import Data.Maybe (fromJust)
 import qualified Data.Vector as V
 import System.Random.MWC
@@ -58,9 +58,9 @@ randomBirthDeathSamplingOccurrenceEvent ::
      BDSORates
   -> Time
   -> BDSOPopulation
-  -> Identifier
+  -> Integer
   -> GenIO
-  -> IO (Time, Event, BDSOPopulation, Identifier)
+  -> IO (Time, EpidemicEvent, BDSOPopulation, Integer)
 randomBirthDeathSamplingOccurrenceEvent rates@(BDSORates br dr sr ocr) currTime (BDSOPopulation (People currPeople)) currId gen =
   let netEventRate = fromJust $ eventRate rates currTime
       eventWeights = V.fromList [br,dr,sr,ocr]
@@ -71,28 +71,28 @@ randomBirthDeathSamplingOccurrenceEvent rates@(BDSORates br dr sr ocr) currTime 
        return $ case eventIx of
          0 -> let newTime = currTime + delay
                   (birthedPerson, newId) = newPerson currId
-                  event = InfectionEvent newTime selectedPerson birthedPerson
+                  event = Infection newTime selectedPerson birthedPerson
               in ( newTime
                  , event
                  , BDSOPopulation (People $ V.cons birthedPerson currPeople)
                  , newId)
          1 -> let newTime = currTime + delay
-                  event = RemovalEvent newTime selectedPerson
+                  event = Removal newTime selectedPerson
               in (newTime, event, BDSOPopulation (People unselectedPeople), currId)
          2 -> let newTime = currTime + delay
-                  event = SamplingEvent newTime selectedPerson
+                  event = Sampling newTime selectedPerson
               in (newTime, event, BDSOPopulation (People unselectedPeople), currId)
          3 -> let newTime = currTime + delay
-                  event = OccurrenceEvent newTime selectedPerson
+                  event = Occurrence newTime selectedPerson
               in (newTime, event, BDSOPopulation (People unselectedPeople), currId)
          _ -> error "no birth-death-sampling-occurrence event selected."
 
 allEvents ::
      BDSORates
   -> Time
-  -> (Time, [Event], BDSOPopulation, Identifier)
+  -> (Time, [EpidemicEvent], BDSOPopulation, Integer)
   -> GenIO
-  -> IO (Time, [Event], BDSOPopulation, Identifier)
+  -> IO (Time, [EpidemicEvent], BDSOPopulation, Integer)
 allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
   if isInfected currPop
     then do
@@ -109,8 +109,8 @@ allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
 
 
 -- | Just the observable events from a list of all the events in a simulation.
-observedEvents :: [Event] -- ^ All of the simulation events
-               -> [Event]
+observedEvents :: [EpidemicEvent] -- ^ All of the simulation events
+               -> [EpidemicEvent]
 observedEvents events =
   sort $ occurrenceEvents ++ sampleTreeEvents''
   where

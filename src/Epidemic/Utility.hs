@@ -50,28 +50,6 @@ randomPerson persons gen = do
     numPersons = fromIntegral $ V.length persons :: Double
 
 
-
-eventAsTreeObject :: EpidemicEvent -> Char8.ByteString
-eventAsTreeObject e =
-  case e of
-    (Removal _ _) -> B.empty
-    (Infection t (Person infectorId) (Person infecteeId)) ->
-      B.concat
-        ["{", infecteeByteString, infectorByteString, timeByteString, "}"]
-      where infecteeByteString =
-              Char8.pack ("\"id\":" ++ (Prelude.show infecteeId))
-            infectorByteString =
-              Char8.pack (",\"parent\":" ++ (Prelude.show infectorId))
-            timeByteString = Char8.pack (",\"time\":" ++ (Prelude.show t))
-
-eventsAsJsonTree :: [EpidemicEvent] -> Char8.ByteString
-eventsAsJsonTree es =
-  let objects =
-        B.intercalate "," $ [eventAsTreeObject e | e <- es, isInfection e]
-   in B.concat ["[", objects, ",{\"id\":1,\"time\":0}", "]"]
-
-
-
 type NName = Maybe String
 
 type NLength = Maybe Double

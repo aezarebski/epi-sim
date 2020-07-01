@@ -6,15 +6,17 @@ module Epidemic.BDSCOD
   , observedEvents
   ) where
 
-import Epidemic.Types
 import Data.Maybe (fromJust)
+import Data.List (nub)
 import qualified Data.Vector as V
 import qualified Data.Vector.Generic as G
+import Epidemic
+import Epidemic.Types.Events
+import Epidemic.Types.Parameter
+import Epidemic.Types.Population
+import Epidemic.Utility
 import System.Random.MWC
 import System.Random.MWC.Distributions (bernoulli, categorical, exponential)
-
-import Epidemic
-import Epidemic.Utility
 
 
 data BDSCODParameters
@@ -62,9 +64,9 @@ configuration maxTime (birthRate, deathRate, samplingRate, catastropheSpec, occu
 randomEvent :: BDSCODParameters  -- ^ Parameters of the process
             -> Time              -- ^ The current time within the process
             -> BDSCODPopulation  -- ^ The current state of the populaion
-            -> Identifier        -- ^ The current state of the identifier generator
+            -> Integer        -- ^ The current state of the identifier generator
             -> GenIO             -- ^ The current state of the PRNG
-            -> IO (Time, Event, BDSCODPopulation, Identifier)
+            -> IO (Time, EpidemicEvent, BDSCODPopulation, Integer)
 randomEvent params@(BDSCODParameters br dr sr catastInfo occr disastInfo) currTime currPop@(BDSCODPopulation (People currPeople)) currId gen =
   let netEventRate = fromJust $ eventRate params currTime
       eventWeights = V.fromList [br, dr, sr, occr]
@@ -75,14 +77,14 @@ randomEvent params@(BDSCODParameters br dr sr catastInfo occr disastInfo) currTi
                    (selectedPerson, unselectedPeople) <- randomPerson currPeople gen
                    return $ case eventIx of
                      0 -> let (birthedPerson, newId) = newPerson currId
-                              event = InfectionEvent nextTime selectedPerson birthedPerson
+                              event = Infection nextTime selectedPerson birthedPerson
                        in ( nextTime
                           , event
                           , BDSCODPopulation (People $ V.cons birthedPerson currPeople)
                           , newId)
-                     1 -> (nextTime, RemovalEvent nextTime selectedPerson, BDSCODPopulation (People unselectedPeople), currId)
-                     2 -> (nextTime, SamplingEvent nextTime selectedPerson, BDSCODPopulation (People unselectedPeople), currId)
-                     3 -> (nextTime, OccurrenceEvent nextTime selectedPerson, BDSCODPopulation (People unselectedPeople), currId)
+                     1 -> (nextTime, Removal nextTime selectedPerson, BDSCODPopulation (People unselectedPeople), currId)
+                     2 -> (nextTime, Sampling nextTime selectedPerson, BDSCODPopulation (People unselectedPeople), currId)
+                     3 -> (nextTime, Occurrence nextTime selectedPerson, BDSCODPopulation (People unselectedPeople), currId)
                      _ -> error "no birth, death, sampling, occurrence event selected."
 
            else if noScheduledEvent currTime nextTime catastInfo
@@ -105,36 +107,36 @@ randomEvent params@(BDSCODParameters br dr sr catastInfo occr disastInfo) currTi
 randomCatastropheEvent :: (Time,Probability) -- ^ Time and probability of sampling in the catastrophe
                        -> BDSCODPopulation    -- ^ The state of the population prior to the catastrophe
                        -> GenIO
-                       -> IO (Event,BDSCODPopulation)
+                       -> IO (EpidemicEvent,BDSCODPopulation)
 randomCatastropheEvent (catastTime, rhoProb) (BDSCODPopulation (People currPeople)) gen = do
   rhoBernoullis <- G.replicateM (V.length currPeople) (bernoulli rhoProb gen)
   let filterZip predicate a b = fst . V.unzip . V.filter predicate $ V.zip a b
       sampledPeople = filterZip snd currPeople rhoBernoullis
       unsampledPeople = filterZip (not . snd) currPeople rhoBernoullis
    in return
-        ( CatastropheEvent catastTime (People sampledPeople)
+        ( Catastrophe catastTime (People sampledPeople)
         , BDSCODPopulation (People unsampledPeople))
 
 -- | Return a randomly sampled Disaster event
 randomDisasterEvent :: (Time,Probability) -- ^ Time and probability of sampling in the disaster
                     -> BDSCODPopulation    -- ^ The state of the population prior to the disaster
                     -> GenIO
-                    -> IO (Event,BDSCODPopulation)
+                    -> IO (EpidemicEvent,BDSCODPopulation)
 randomDisasterEvent (disastTime, nuProb) (BDSCODPopulation (People currPeople)) gen = do
   nuBernoullis <- G.replicateM (V.length currPeople) (bernoulli nuProb gen)
   let filterZip predicate a b = fst . V.unzip . V.filter predicate $ V.zip a b
       sampledPeople = filterZip snd currPeople nuBernoullis
       unsampledPeople = filterZip (not . snd) currPeople nuBernoullis
    in return
-        ( DisasterEvent disastTime (People sampledPeople)
+        ( Disaster disastTime (People sampledPeople)
         , BDSCODPopulation (People unsampledPeople))
 
 allEvents ::
      BDSCODParameters
   -> Time
-  -> (Time, [Event], BDSCODPopulation, Identifier)
+  -> (Time, [EpidemicEvent], BDSCODPopulation, Integer)
   -> GenIO
-  -> IO (Time, [Event], BDSCODPopulation, Identifier)
+  -> IO (Time, [EpidemicEvent], BDSCODPopulation, Integer)
 allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
   if isInfected currPop
     then do
@@ -149,14 +151,21 @@ allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
         else return currState
     else return currState
 
+-- | The events from the nodes of a reconstructed tree __not__ in time sorted
+-- order.
+reconstructedTreeEvents :: ReconstructedTree -> [EpidemicEvent]
+reconstructedTreeEvents node = case node of
+  (RBranch e lt rt) -> e:(reconstructedTreeEvents lt ++ reconstructedTreeEvents rt)
+  (RLeaf e) -> [e]
 
 -- | Just the observable events from a list of all the events in a simulation.
-observedEvents :: [Event] -- ^ All of the simulation events
-               -> [Event]
-observedEvents [] = []
-observedEvents events = sort $ occurrenceEvents ++ disasterEvents ++ sampleTreeEvents''
-  where
-    occurrenceEvents = filter isOccurrence events
-    disasterEvents = filter isDisaster events
-    sampleTreeEvents'' =
-      sampleTreeEvents . sampleTree $ transmissionTree events (Person 1)
+-- Obtained by extracting the events from the reconstructed tree and filtering
+-- out the non-reconstructed tree observations.
+observedEvents :: [EpidemicEvent] -- ^ All of the simulation events
+               -> Maybe [EpidemicEvent]
+observedEvents eEvents = do
+  epiTree <- maybeEpidemicTree eEvents
+  reconTree <- maybeReconstructedTree epiTree
+  let (PointProcessEvents nonReconTreeEvents) = pointProcessEvents epiTree
+  let reconTreeEvents = reconstructedTreeEvents reconTree
+  return . sort . nub $ nonReconTreeEvents ++ reconTreeEvents

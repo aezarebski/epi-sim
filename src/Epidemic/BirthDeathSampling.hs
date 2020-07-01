@@ -1,12 +1,12 @@
-{-# LANGUAGE RecordWildCards #-}
-
 module Epidemic.BirthDeathSampling
   ( configuration
   , allEvents
   ) where
 
 
-import Epidemic.Types
+import Epidemic.Types.Parameter
+import Epidemic.Types.Population
+import Epidemic.Types.Events
 import Data.Maybe (fromJust)
 import qualified Data.Vector as V
 import System.Random.MWC
@@ -53,11 +53,11 @@ randomBirthDeathSamplingEvent ::
      BDSRates
   -> Time
   -> BDSPopulation
-  -> Identifier
+  -> Integer
   -> GenIO
-  -> IO (Time, Event, BDSPopulation, Identifier)
-randomBirthDeathSamplingEvent rates@(BDSRates br dr sr) currTime (BDSPopulation (People currPeople)) currId gen =
-  let netEventRate = fromJust $ eventRate rates currTime 
+  -> IO (Time, EpidemicEvent, BDSPopulation, Integer)
+randomBirthDeathSamplingEvent bdsRates@(BDSRates br dr sr) currTime (BDSPopulation (People currPeople)) currId gen =
+  let netEventRate = fromJust $ eventRate bdsRates currTime 
       eventWeights = V.fromList [br,dr,sr]
    in
     do delay <- exponential (fromIntegral (V.length currPeople) * netEventRate) gen
@@ -66,33 +66,33 @@ randomBirthDeathSamplingEvent rates@(BDSRates br dr sr) currTime (BDSPopulation 
        return $ case eventIx of
          0 -> let newTime = currTime + delay
                   (birthedPerson, newId) = newPerson currId
-                  event = InfectionEvent newTime selectedPerson birthedPerson
+                  event = Infection newTime selectedPerson birthedPerson
               in ( newTime
                  , event
                  , BDSPopulation (People $ V.cons birthedPerson currPeople)
                  , newId)
          1 -> let newTime = currTime + delay
-                  event = RemovalEvent newTime selectedPerson
+                  event = Removal newTime selectedPerson
               in (newTime, event, BDSPopulation (People unselectedPeople), currId)
          2 -> let newTime = currTime + delay
-                  event = SamplingEvent newTime selectedPerson
+                  event = Sampling newTime selectedPerson
               in (newTime, event, BDSPopulation (People unselectedPeople), currId)
          _ -> error "no birth-death-sampling event selected."
 
 allEvents ::
      BDSRates
   -> Time
-  -> (Time, [Event], BDSPopulation, Identifier)
+  -> (Time, [EpidemicEvent], BDSPopulation, Integer)
   -> GenIO
-  -> IO (Time, [Event], BDSPopulation, Identifier)
-allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
+  -> IO (Time, [EpidemicEvent], BDSPopulation, Integer)
+allEvents bdsRates maxTime currState@(currTime, currEvents, currPop, currId) gen =
   if isInfected currPop
     then do
       (newTime, event, newPop, newId) <-
-        randomBirthDeathSamplingEvent rates currTime currPop currId gen
+        randomBirthDeathSamplingEvent bdsRates currTime currPop currId gen
       if newTime < maxTime
         then allEvents
-               rates
+               bdsRates
                maxTime
                (newTime, event : currEvents, newPop, newId)
                gen

@@ -3,7 +3,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Epidemic.Utility where
 
-import Epidemic.Types
+import Epidemic.Types.Events
+import Epidemic.Types.Parameter
+import Epidemic.Types.Population
 import Control.Monad (liftM)
 import qualified Data.List as List
 import qualified Data.Maybe as Maybe
@@ -23,14 +25,14 @@ data SimulationConfiguration r p =
   SimulationConfiguration
     { rates :: r
     , population :: p
-    , newIdentifier :: Identifier
+    , newIdentifier :: Integer
     , timeLimit :: Time
     }
 
-initialIdentifier :: Identifier
+initialIdentifier :: Integer
 initialIdentifier = 1
 
-newPerson :: Identifier -> (Person, Identifier)
+newPerson :: Integer -> (Person, Integer)
 newPerson identifier = (Person identifier, identifier + 1)
 
 selectElem :: V.Vector a -> Int -> (a, V.Vector a)
@@ -46,28 +48,6 @@ randomPerson persons gen = do
   return $ selectElem persons (floor (u * numPersons))
   where
     numPersons = fromIntegral $ V.length persons :: Double
-
-
-
-eventAsTreeObject :: Event -> Char8.ByteString
-eventAsTreeObject e =
-  case e of
-    (RemovalEvent _ _) -> B.empty
-    (InfectionEvent t (Person infectorId) (Person infecteeId)) ->
-      B.concat
-        ["{", infecteeByteString, infectorByteString, timeByteString, "}"]
-      where infecteeByteString =
-              Char8.pack ("\"id\":" ++ (Prelude.show infecteeId))
-            infectorByteString =
-              Char8.pack (",\"parent\":" ++ (Prelude.show infectorId))
-            timeByteString = Char8.pack (",\"time\":" ++ (Prelude.show t))
-
-eventsAsJsonTree :: [Event] -> Char8.ByteString
-eventsAsJsonTree es =
-  let objects =
-        B.intercalate "," $ [eventAsTreeObject e | e <- es, isInfection e]
-   in B.concat ["[", objects, ",{\"id\":1,\"time\":0}", "]"]
-
 
 
 type NName = Maybe String
@@ -162,8 +142,8 @@ count' p = go 0
 simulation :: (ModelParameters a)
            => Bool  -- ^ Condition upon at least two leaves in the reconstructed tree
            -> SimulationConfiguration a b
-           -> (a -> Time -> (Time, [Event], b, Identifier) -> GenIO -> IO (Time, [Event], b, Identifier))
-           -> IO [Event]
+           -> (a -> Time -> (Time, [EpidemicEvent], b, Integer) -> GenIO -> IO (Time, [EpidemicEvent], b, Integer))
+           -> IO [EpidemicEvent]
 simulation True config allEvents = do
   gen <- System.Random.MWC.create :: IO GenIO
   simulation' config allEvents gen
@@ -173,14 +153,31 @@ simulation False SimulationConfiguration {..} allEvents = do
     allEvents rates timeLimit (0, [], population, newIdentifier) gen
   return $ sort events
 
+-- | Predicate for whether an epidemic event is either an occurrence or a
+-- disaaster.
+isNonReconTreeObservation :: EpidemicEvent -> Bool
+isNonReconTreeObservation e = case e of
+  Occurrence {} -> True
+  Disaster {} -> True
+  _ -> False
+
+-- | Predicate for whether an epidemic event will appear as a leaf in the
+-- reconstructed tree.
+isReconTreeLeaf :: EpidemicEvent -> Bool
+isReconTreeLeaf e = case e of
+  Sampling {} -> True
+  Catastrophe {} -> True
+  _ -> False
+
+
 simulation' :: (ModelParameters a) => SimulationConfiguration a b
-           -> (a -> Time -> (Time, [Event], b, Identifier) -> GenIO -> IO (Time, [Event], b, Identifier))
+           -> (a -> Time -> (Time, [EpidemicEvent], b, Integer) -> GenIO -> IO (Time, [EpidemicEvent], b, Integer))
            -> GenIO
-           -> IO [Event]
+           -> IO [EpidemicEvent]
 simulation' config@SimulationConfiguration {..} allEvents gen = do
   (_, events, _, _) <-
     allEvents rates timeLimit (0, [], population, newIdentifier) gen
-  if count' isSampling events >= 2
+  if count' isReconTreeLeaf events >= 2
     then return $ sort events
     else simulation' config allEvents gen
 
@@ -190,21 +187,21 @@ simulation' config@SimulationConfiguration {..} allEvents gen = do
 simulationWithSystemRandom :: (ModelParameters a)
                            => Bool  -- ^ Condition upon at least two leaves in the reconstructed tree
                            -> SimulationConfiguration a b
-                           -> (a -> Time -> (Time, [Event], b, Identifier) -> GenIO -> IO (Time, [Event], b, Identifier))
-                           -> IO [Event]
+                           -> (a -> Time -> (Time, [EpidemicEvent], b, Integer) -> GenIO -> IO (Time, [EpidemicEvent], b, Integer))
+                           -> IO [EpidemicEvent]
 simulationWithSystemRandom atLeastCherry config@SimulationConfiguration {..} allEvents = do
   (_, events, _, _) <-
     withSystemRandom $ \g ->
       allEvents rates timeLimit (0, [], population, newIdentifier) g
   if atLeastCherry
-    then (if count' isSampling events >= 2
+    then (if count' isReconTreeLeaf events >= 2
            then return $ sort events
            else simulationWithSystemRandom True config allEvents)
     else return $ sort events
 
 
 -- | The number of lineages at the end of a simulation.
-finalSize :: [Event] -- ^ The events from the simulation
+finalSize :: [EpidemicEvent] -- ^ The events from the simulation
           -> Integer
 finalSize = foldl (\x y -> x + eventPopDelta y) 1
 

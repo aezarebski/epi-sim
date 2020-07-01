@@ -4,10 +4,12 @@ import Control.Exception (evaluate)
 import Control.Monad
 import qualified Data.ByteString as B
 import Data.Csv
-import Data.Maybe (fromJust, isJust)
+import Data.Maybe (fromJust, isJust, isNothing)
 import qualified Data.Vector as V
 import Epidemic
-import Epidemic.Types
+import Epidemic.Types.Population
+import Epidemic.Types.Events
+import Epidemic.Types.Parameter
 import qualified Epidemic.BDSCOD as BDSCOD
 import qualified Epidemic.BirthDeath as BD
 import qualified Epidemic.BirthDeathSamplingCatastropheOccurrence as BDSCO
@@ -39,97 +41,97 @@ p7 = Person 7
 
 -- | The first set of test data does not have any catastrophe events.
 demoFullEvents01 =
-  [ InfectionEvent 1 p1 p2
-  , InfectionEvent 2 p1 p3
-  , SamplingEvent 3 p1
-  , InfectionEvent 4 p2 p4
-  , InfectionEvent 5 p2 p5
-  , SamplingEvent 6 p4
-  , InfectionEvent 7 p3 p6
-  , OccurrenceEvent 8 p2
-  , RemovalEvent 9 p3
-  , InfectionEvent 10 p5 p7
-  , OccurrenceEvent 11 p6
-  , SamplingEvent 12 p5
-  , RemovalEvent 13 p7
+  [ Infection 1 p1 p2
+  , Infection 2 p1 p3
+  , Sampling 3 p1
+  , Infection 4 p2 p4
+  , Infection 5 p2 p5
+  , Sampling 6 p4
+  , Infection 7 p3 p6
+  , Occurrence 8 p2
+  , Removal 9 p3
+  , Infection 10 p5 p7
+  , Occurrence 11 p6
+  , Sampling 12 p5
+  , Removal 13 p7
   ]
 
 demoSampleEvents01 =
-  [ InfectionEvent 1 p1 p2
-  , SamplingEvent 3 p1
-  , InfectionEvent 4 p2 p4
-  , SamplingEvent 6 p4
-  , OccurrenceEvent 8 p2
-  , OccurrenceEvent 11 p6
-  , SamplingEvent 12 p5
+  [ Infection 1 p1 p2
+  , Sampling 3 p1
+  , Infection 4 p2 p4
+  , Sampling 6 p4
+  , Occurrence 8 p2
+  , Occurrence 11 p6
+  , Sampling 12 p5
   ]
 
 -- | The second set of test data is the same as the first but includes a
 -- catastrophe event.
 demoFullEvents02 =
-  [ InfectionEvent 1 p1 p2
-  , InfectionEvent 2 p1 p3
-  , SamplingEvent 3 p1
-  , InfectionEvent 4 p2 p4
-  , InfectionEvent 5 p2 p5
-  , SamplingEvent 6 p4
-  , InfectionEvent 7 p3 p6
-  , OccurrenceEvent 8 p2
-  , RemovalEvent 9 p3
-  , InfectionEvent 10 p5 p7
-  , CatastropheEvent 11 (People $ V.singleton p5)
-  , OccurrenceEvent 12 p6
-  , RemovalEvent 13 p7
+  [ Infection 1 p1 p2
+  , Infection 2 p1 p3
+  , Sampling 3 p1
+  , Infection 4 p2 p4
+  , Infection 5 p2 p5
+  , Sampling 6 p4
+  , Infection 7 p3 p6
+  , Occurrence 8 p2
+  , Removal 9 p3
+  , Infection 10 p5 p7
+  , Catastrophe 11 (People $ V.singleton p5)
+  , Occurrence 12 p6
+  , Removal 13 p7
   ]
 
 demoSampleEvents02 =
-  [ InfectionEvent 1 p1 p2
-  , SamplingEvent 3 p1
-  , InfectionEvent 4 p2 p4
-  , SamplingEvent 6 p4
-  , OccurrenceEvent 8 p2
-  , CatastropheEvent 11 (People $ V.singleton p5)
-  , OccurrenceEvent 12 p6
+  [ Infection 1 p1 p2
+  , Sampling 3 p1
+  , Infection 4 p2 p4
+  , Sampling 6 p4
+  , Occurrence 8 p2
+  , Catastrophe 11 (People $ V.singleton p5)
+  , Occurrence 12 p6
   ]
 
 -- | Another test set to test that catastrophes are handled correctly.
 demoFullEvents03 =
-  [ InfectionEvent 1 p1 p4
-  , InfectionEvent 2 p1 p2
-  , SamplingEvent 3 p1
-  , InfectionEvent 4 p2 p3
-  , InfectionEvent 5 p4 p5
-  , CatastropheEvent 6 (People $ V.fromList [p2, p3, p4])
+  [ Infection 1 p1 p4
+  , Infection 2 p1 p2
+  , Sampling 3 p1
+  , Infection 4 p2 p3
+  , Infection 5 p4 p5
+  , Catastrophe 6 (People $ V.fromList [p2, p3, p4])
   ]
 
 demoSampleEvents03 =
-  [ InfectionEvent 1 p1 p4
-  , InfectionEvent 2 p1 p2
-  , SamplingEvent 3 p1
-  , InfectionEvent 4 p2 p3
-  , CatastropheEvent 6 (People $ V.fromList [p2, p3, p4])
+  [ Infection 1 p1 p4
+  , Infection 2 p1 p2
+  , Sampling 3 p1
+  , Infection 4 p2 p3
+  , Catastrophe 6 (People $ V.fromList [p2, p3, p4])
   ]
 
 -- | Another test to make sure that disasters are handled.
 demoFullEvents04 =
-  [ InfectionEvent 1 p1 p4
-  , InfectionEvent 2 p1 p2
-  , SamplingEvent 3 p1
-  , InfectionEvent 4 p2 p3
-  , InfectionEvent 5 p4 p5
-  , CatastropheEvent 6 (People $ V.fromList [p2, p3, p4])
-  , InfectionEvent 7 p5 p6
-  , InfectionEvent 8 p5 p7
-  , DisasterEvent 9 (People $ V.fromList [p5, p6])
+  [ Infection 1 p1 p4
+  , Infection 2 p1 p2
+  , Sampling 3 p1
+  , Infection 4 p2 p3
+  , Infection 5 p4 p5
+  , Catastrophe 6 (People $ V.fromList [p2, p3, p4])
+  , Infection 7 p5 p6
+  , Infection 8 p5 p7
+  , Disaster 9 (People $ V.fromList [p5, p6])
   ]
 
 demoSampleEvents04 =
-  [ InfectionEvent 1 p1 p4
-  , InfectionEvent 2 p1 p2
-  , SamplingEvent 3 p1
-  , InfectionEvent 4 p2 p3
-  , CatastropheEvent 6 (People $ V.fromList [p2, p3, p4])
-  , DisasterEvent 9 (People $ V.fromList [p5, p6])
+  [ Infection 1 p1 p4
+  , Infection 2 p1 p2
+  , Sampling 3 p1
+  , Infection 4 p2 p3
+  , Catastrophe 6 (People $ V.fromList [p2, p3, p4])
+  , Disaster 9 (People $ V.fromList [p5, p6])
   ]
 
 eventHandlingTests = do
@@ -150,8 +152,9 @@ eventHandlingTests = do
       (firstScheduled 1 (Timed [(2, 0.5)])) `shouldBe` Just (2, 0.5)
       (firstScheduled 1 (Timed [(0.5, 0.5)])) `shouldBe` Nothing
       (firstScheduled 1 (Timed [(2, 0.6), (0.5, 0.5)])) `shouldBe` Just (2, 0.6)
+      isNothing (asTimed [(2, 0.6 :: Rate), (0.5, 0.5), (1.5, 0.4)]) `shouldBe` True
       (firstScheduled 1 (Timed [(2, 0.6), (0.5, 0.5), (1.5, 0.4)])) `shouldBe`
-        Just (1.5, 0.4)
+        Just (2, 0.6)
     it "Works on a very specific case it seems to not like" $ do
       (noScheduledEvent 2.28 (2.28 + 0.42) (Timed [(2.3, 0.9)])) `shouldBe` False
     it "Catastrophes are handled correctly" $ do
@@ -165,7 +168,7 @@ eventHandlingTests = do
       length demoSim > 1 `shouldBe` True
   describe "Disaster definitions" $ do
     it "Disasters are handled correctly" $ do
-      (demoSampleEvents04 == BDSCOD.observedEvents demoFullEvents04) `shouldBe`
+      (demoSampleEvents04 == fromJust (BDSCOD.observedEvents demoFullEvents04)) `shouldBe`
         True
     it "Disasters can be simulated" $ do
       demoSim <-
@@ -260,15 +263,15 @@ readwriteTests =
         let demoPerson = Person 3
             demoPersonField = toField demoPerson
             demoPersonField' = "3"
-            demoEvent = RemovalEvent 1.0 demoPerson
+            demoEvent = Removal 1.0 demoPerson
             demoRecord = toRecord demoEvent
             demoRecord' = V.fromList ["removal", "1.0", "3", "NA"] :: Record
             (Right demoEvent') =
-              runParser (parseRecord demoRecord) :: Either String Event
+              runParser (parseRecord demoRecord) :: Either String EpidemicEvent
             demoRecord2 =
-              toRecord (CatastropheEvent 1.0 (People (V.fromList [p2, p3])))
-            (Right demoEvent2@(CatastropheEvent _ people2)) =
-              runParser (parseRecord demoRecord2) :: Either String Event
+              toRecord (Catastrophe 1.0 (People (V.fromList [p2, p3])))
+            (Right demoEvent2@(Catastrophe _ people2)) =
+              runParser (parseRecord demoRecord2) :: Either String EpidemicEvent
             demoRecord2' = toRecord demoEvent2
          in do (demoPersonField' == demoPersonField) `shouldBe` True
                (demoRecord' == demoRecord) `shouldBe` True
@@ -309,7 +312,7 @@ inhomExpTests =
 
 
 illFormedTreeTest =
-  describe "Prevent the simulator returning a broken tree" $
+  describe "Prevent the simulator returning a broken tree" $ do
   let simDuration = 0.2
       simLambda = 3.2
       simMu = 0.3
@@ -325,31 +328,36 @@ illFormedTreeTest =
        do
          null (BDSCOD.observedEvents []) `shouldBe` True
          simEvents <- simulation True (fromJust simConfig) BDSCOD.allEvents
-         any isSampling simEvents `shouldBe` True
-         (length (BDSCOD.observedEvents simEvents) > 1) `shouldBe` True
+         any isReconTreeLeaf simEvents `shouldBe` True
+         (length (fromJust $ BDSCOD.observedEvents simEvents) > 1) `shouldBe` True
+
+
+
 
 
 inhomogeneousBDSTest =
   describe "InhomogeneousBDS module tests" $ do
     it "Check the observedEvents filters out removals" $
-      let demoAllEvents = [InfectionEvent 0.1 p1 p2
-                          ,SamplingEvent 0.2 p1
-                          ,RemovalEvent 0.3 p3
-                          ,SamplingEvent 0.4 p2]
-          demoObsEvents = [InfectionEvent 0.1 p1 p2
-                          ,SamplingEvent 0.2 p1
-                          ,SamplingEvent 0.4 p2]
+      let demoAllEvents = [Infection 0.1 p1 p2
+                          ,Sampling 0.2 p1
+                          ,Removal 0.3 p3
+                          ,Sampling 0.4 p2]
+          demoObsEvents = [Infection 0.1 p1 p2
+                          ,Sampling 0.2 p1
+                          ,Sampling 0.4 p2]
           compObsEvents = InhomBDS.observedEvents demoAllEvents
        in do
         (compObsEvents == demoObsEvents) `shouldBe` True
 
+
+
 main :: IO ()
 main =
   hspec $ do
-    -- eventHandlingTests
-    -- birthDeathTests
+    eventHandlingTests
+    birthDeathTests
     helperFuncTests
-    -- readwriteTests
-    -- inhomExpTests
-    -- illFormedTreeTest
-    -- inhomogeneousBDSTest
+    readwriteTests
+    inhomExpTests
+    illFormedTreeTest
+    inhomogeneousBDSTest

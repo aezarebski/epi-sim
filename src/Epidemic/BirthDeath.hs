@@ -5,7 +5,9 @@ module Epidemic.BirthDeath
   , allEvents
   ) where
 
-import Epidemic.Types
+import Epidemic.Types.Parameter
+import Epidemic.Types.Population
+import Epidemic.Types.Events
 import qualified Data.Vector as V
 import System.Random.MWC
 import System.Random.MWC.Distributions (bernoulli, exponential)
@@ -53,9 +55,9 @@ randomBirthDeathEvent ::
      BDRates
   -> Time
   -> BDPopulation
-  -> Identifier
+  -> Integer
   -> GenIO
-  -> IO (Time, Event, BDPopulation, Identifier)
+  -> IO (Time, EpidemicEvent, BDPopulation, Integer)
 randomBirthDeathEvent (BDRates br dr) currTime (BDPopulation (People currPeople)) currId gen = do
   delay <- exponential (fromIntegral (V.length currPeople) * (br + dr)) gen
   isBirth <- bernoulli (br / (br + dr)) gen
@@ -64,21 +66,21 @@ randomBirthDeathEvent (BDRates br dr) currTime (BDPopulation (People currPeople)
     if isBirth
       then let newTime = currTime + delay
                (birthedPerson, newId) = newPerson currId
-               event = InfectionEvent newTime selectedPerson birthedPerson
+               event = Infection newTime selectedPerson birthedPerson
             in ( newTime
                , event
                , BDPopulation (People $ V.cons birthedPerson currPeople)
                , newId)
       else let newTime = currTime + delay
-               event = RemovalEvent newTime selectedPerson
+               event = Removal newTime selectedPerson
             in (newTime, event, BDPopulation (People unselectedPeople), currId)
 
 allEvents ::
      BDRates
   -> Time
-  -> (Time, [Event], BDPopulation, Identifier)
+  -> (Time, [EpidemicEvent], BDPopulation, Integer)
   -> GenIO
-  -> IO (Time, [Event], BDPopulation, Identifier)
+  -> IO (Time, [EpidemicEvent], BDPopulation, Integer)
 allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
   if isInfected currPop
     then do

@@ -3,116 +3,29 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Epidemic where
 
-import Data.Word
 import Control.Monad
-import qualified Data.Vector as V
 import qualified Data.ByteString as B
 import Data.ByteString.Internal (c2w)
 import Data.Csv
 import Data.List (nub)
-import Epidemic.Types
+import qualified Data.Vector as V
+import Data.Word
+import Epidemic.Types.Events
+import Epidemic.Types.Parameter
+import Epidemic.Types.Population
 import GHC.Generics (Generic)
 
 
-type Identifier = Integer
-
-newtype Person =
-  Person Identifier
-  deriving (Show, Generic, Eq)
-
-instance ToField Person where
-  toField (Person n) = toField n
-
-instance FromField Person where
-  parseField f = Person <$> (parseField f :: Parser Identifier)
-
-newtype People =
-  People (V.Vector Person)
-  deriving (Show, Eq)
-
-instance ToField People where
-  toField (People persons) =
-    B.intercalate ":" $ V.toList $ V.map toField persons
-
-instance FromField People where
-  parseField f =
-    (People . V.fromList) <$> (mapM parseField $ B.split (c2w ':') f)
-
--- | Predicate for wther there are any people
-nullPeople :: People -> Bool
-nullPeople (People persons) = V.null persons
-
--- | The number of people
-numPeople :: People -> Int
-numPeople (People persons) = V.length persons
-
--- | Add a person to a group of people
-addPerson :: Person -> People -> People
-addPerson person (People persons) = People $ V.cons person persons
-
--- | Remove a person from a group of people
-removePerson :: Person -> People -> People
-removePerson person (People persons) = People $ V.filter (/= person) persons
-
-data Event
-  = InfectionEvent Time Person Person -- infection time, infector, infectee
-  | RemovalEvent Time Person
-  | SamplingEvent Time Person
-  | CatastropheEvent Time People
-  | OccurrenceEvent Time Person
-  | DisasterEvent Time People
-  deriving (Show, Generic, Eq)
-
-instance ToRecord Event where
-  toRecord e =
-    case e of
-      (InfectionEvent time person1 person2) ->
-        record ["infection", toField time, toField person1, toField person2]
-      (RemovalEvent time person) ->
-        record ["removal", toField time, toField person, "NA"]
-      (SamplingEvent time person) ->
-        record ["sampling", toField time, toField person, "NA"]
-      (CatastropheEvent time people) ->
-        record ["catastrophe", toField time, toField people, "NA"]
-      (OccurrenceEvent time person) ->
-        record ["occurrence", toField time, toField person, "NA"]
-      (DisasterEvent time people) ->
-        record ["disaster", toField time, toField people, "NA"]
-
-et :: B.ByteString -> Record -> Bool
-et bs r = (==bs) . head $ V.toList r
-
-instance FromRecord Event where
-  parseRecord r
-    | et "infection" r =
-      InfectionEvent <$> (r .! 1) <*> (Person <$> (r .! 2)) <*>
-      (Person <$> (r .! 3))
-    | et "removal" r = RemovalEvent <$> (r .! 1) <*> (Person <$> (r .! 2))
-    | et "sampling" r = SamplingEvent <$> (r .! 1) <*> (Person <$> (r .! 2))
-    | et "catastrophe" r = CatastropheEvent <$> (r .! 1) <*> (r .! 2)
-    | et "occurrence" r = OccurrenceEvent <$> (r .! 1) <*> (Person <$> (r .! 2))
-    | et "disaster" r = DisasterEvent <$> (r .! 1) <*> (r .! 2)
-    | otherwise = undefined
-
--- | The absolute time an event occurred.
-eventTime :: Event -> Time
-eventTime e = case e of
-  InfectionEvent time _ _ -> time
-  RemovalEvent time _ -> time
-  SamplingEvent time _ -> time
-  CatastropheEvent time _ -> time
-  OccurrenceEvent time _ -> time
-  DisasterEvent time _ -> time
 
 -- | The number of people added or removed in an event.
-eventPopDelta :: Event -> Integer
+eventPopDelta :: EpidemicEvent -> Integer
 eventPopDelta e = case e of
-  InfectionEvent{} -> 1
-  RemovalEvent _ _ -> -1
-  SamplingEvent _ _ -> -1
-  CatastropheEvent _ people -> fromIntegral $ numPeople people
-  OccurrenceEvent _ _ -> -1
-  DisasterEvent _ people -> fromIntegral $ numPeople people
+  Infection{} -> 1
+  Removal _ _ -> -1
+  Sampling _ _ -> -1
+  Catastrophe _ people -> fromIntegral $ numPeople people
+  Occurrence _ _ -> -1
+  Disaster _ people -> fromIntegral $ numPeople people
 
 -- | The first scheduled event after a given time.
 firstScheduled :: Time               -- ^ The given time
@@ -132,19 +45,16 @@ noScheduledEvent _ _ (Timed []) = True
 noScheduledEvent a b (Timed ((shedTime, _):scheduledEvents)) =
   not (a < shedTime && shedTime <= b) && noScheduledEvent a b (Timed scheduledEvents)
 
-instance Ord Event where
-  e1 <= e2 = eventTime e1 <= eventTime e2
-
-personsInEvent :: Event -> [Person]
+personsInEvent :: EpidemicEvent -> [Person]
 personsInEvent e = case e of
-  (InfectionEvent _ p1 p2) -> [p1,p2]
-  (RemovalEvent _ p) -> [p]
-  (SamplingEvent _ p) -> [p]
-  (CatastropheEvent _ (People persons)) -> V.toList persons
-  (OccurrenceEvent _ p) -> [p]
-  (DisasterEvent _ (People persons)) -> V.toList persons
+  (Infection _ p1 p2) -> [p1,p2]
+  (Removal _ p) -> [p]
+  (Sampling _ p) -> [p]
+  (Catastrophe _ (People persons)) -> V.toList persons
+  (Occurrence _ p) -> [p]
+  (Disaster _ (People persons)) -> V.toList persons
 
-peopleInEvents :: [Event] -> People
+peopleInEvents :: [EpidemicEvent] -> People
 peopleInEvents events =
   People . V.fromList . nub . concat $ map personsInEvent events
 
@@ -152,22 +62,22 @@ peopleInEvents events =
 -- | Predicate for whether the first person infected the second in the given event
 infected :: Person -- ^ Potential infector
          -> Person -- ^ Potential infectee
-         -> Event  -- ^ Given event
+         -> EpidemicEvent  -- ^ Given event
          -> Bool
 infected p1 p2 e =
   case e of
-    (InfectionEvent _ infector infectee) -> infector == p1 && infectee == p2
+    (Infection _ infector infectee) -> infector == p1 && infectee == p2
     _ -> False
 
 
 -- | The people infected by a particular person in a list of events.
 infectedBy :: Person  -- ^ Potential infector
-           -> [Event] -- ^ Events
+           -> [EpidemicEvent] -- ^ Events
            -> People
 infectedBy person events =
   case events of
     [] -> People V.empty
-    (InfectionEvent _ infector infectee :es) ->
+    (Infection _ infector infectee :es) ->
       if infector == person
         then addPerson infectee $ infectedBy person es
         else infectedBy person es
@@ -176,7 +86,7 @@ infectedBy person events =
 
 -- | Predicate for whether a person or one of their descendents satisfies a
 -- predicate
-hasDescendentWhich :: [Event]
+hasDescendentWhich :: [EpidemicEvent]
                    -> (Person -> Bool)
                    -> Person
                    -> Bool
@@ -186,59 +96,37 @@ hasDescendentWhich events predicate person =
   where
     (People descendents) = infectedBy person events
 
-hasSampledDescendent :: [Event] -> Person -> Bool
+hasSampledDescendent :: [EpidemicEvent] -> Person -> Bool
 hasSampledDescendent events = hasDescendentWhich events (wasSampled events)
 
-isInfection :: Event -> Bool
-isInfection e =
-  case e of
-    InfectionEvent {} -> True
-    _ -> False
-
-isSampling :: Event -> Bool
-isSampling e = case e of
-  SamplingEvent {} -> True
-  CatastropheEvent {} -> True
-  _ -> False
-
 -- | Predicate for whether a person was sampled in the given events
-wasSampled :: [Event] -- ^ The given events
+wasSampled :: [EpidemicEvent] -- ^ The given events
            -> Person  -- ^ The person of interest
            -> Bool
 wasSampled events person =
   case events of
-    (SamplingEvent _ sampledPerson:es) ->
+    (Sampling _ sampledPerson:es) ->
       sampledPerson == person || wasSampled es person
-    (CatastropheEvent _ (People sampledPeople):es) ->
+    (Catastrophe _ (People sampledPeople):es) ->
       person `V.elem` sampledPeople || wasSampled es person
     (_:es) -> wasSampled es person
     [] -> False
 
 -- | Return the sampling event of a person who was sampled.
-samplingEvent :: [Event] -> Person -> Event
+samplingEvent :: [EpidemicEvent] -> Person -> EpidemicEvent
 samplingEvent events person =
   case events of
-    (se@(SamplingEvent _ sampledPerson):remainingEvents) ->
+    (se@(Sampling _ sampledPerson):remainingEvents) ->
       if sampledPerson == person
         then se
         else samplingEvent remainingEvents person
-    (se@(CatastropheEvent _ (People sampledPeople)):remainingEvents) ->
+    (se@(Catastrophe _ (People sampledPeople)):remainingEvents) ->
       if person `V.elem` sampledPeople
         then se
         else samplingEvent remainingEvents person
     _:remainingEvents -> samplingEvent remainingEvents person
     _ -> error "person does not appear to have been sampled."
 
-
-isOccurrence :: Event -> Bool
-isOccurrence e = case e of
-  OccurrenceEvent {} -> True
-  _ -> False
-
-isDisaster :: Event -> Bool
-isDisaster e = case e of
-  DisasterEvent {} -> True
-  _ -> False
 
 class ModelParameters a where
   rNaught :: a -> Time -> Maybe Double
@@ -254,29 +142,29 @@ class Population a where
 
 data TransmissionTree
   = TTUnresolved Person
-  | TTDeath People Event
-  | TTBirth Person Event (TransmissionTree, TransmissionTree)
+  | TTDeath People EpidemicEvent
+  | TTBirth Person EpidemicEvent (TransmissionTree, TransmissionTree)
   deriving (Show)
 
 -- | A transmission tree of all the events starting from a given person
-transmissionTree :: [Event] -> Person -> TransmissionTree
-transmissionTree (e@(InfectionEvent _ p1 p2):es) person
+transmissionTree :: [EpidemicEvent] -> Person -> TransmissionTree
+transmissionTree (e@(Infection _ p1 p2):es) person
   | p1 == person = TTBirth person e (transmissionTree es p1,transmissionTree es p2)
   | null es = TTUnresolved person
   | otherwise = transmissionTree es person
-transmissionTree (e@(RemovalEvent _ p1):es) person
+transmissionTree (e@(Removal _ p1):es) person
   | p1 == person = TTDeath (peopleInEvents [e]) e
   | otherwise = transmissionTree es person
-transmissionTree (e@(SamplingEvent _ p1):es) person
+transmissionTree (e@(Sampling _ p1):es) person
   | p1 == person = TTDeath (peopleInEvents [e]) e
   | otherwise = transmissionTree es person
-transmissionTree (e@(CatastropheEvent _ (People people)):es) person
+transmissionTree (e@(Catastrophe _ (People people)):es) person
   | person `V.elem` people = TTDeath (People people) e
   | otherwise = transmissionTree es person
-transmissionTree (e@(OccurrenceEvent _ p1):es) person
+transmissionTree (e@(Occurrence _ p1):es) person
   | p1 == person = TTDeath (peopleInEvents [e]) e
   | otherwise = transmissionTree es person
-transmissionTree (e@(DisasterEvent _ (People people)):es) person
+transmissionTree (e@(Disaster _ (People people)):es) person
   | person `V.elem` people = TTDeath (People people) e
   | otherwise = transmissionTree es person
 transmissionTree [] person = TTUnresolved person
@@ -285,34 +173,34 @@ transmissionTree [] person = TTUnresolved person
 hasSampledLeaf :: TransmissionTree -> Bool
 hasSampledLeaf t = case t of
   (TTUnresolved _) -> False
-  (TTDeath _ (SamplingEvent _ _)) -> True
-  (TTDeath _ (CatastropheEvent _ _)) -> True
+  (TTDeath _ (Sampling _ _)) -> True
+  (TTDeath _ (Catastrophe _ _)) -> True
   (TTDeath _ _) -> False
   (TTBirth _ _ (t1,t2)) -> hasSampledLeaf t1 || hasSampledLeaf t2
 
 data SampleTree
-  = STBirth Event (SampleTree,SampleTree)
-  | STDeath Event
+  = STBirth EpidemicEvent (SampleTree,SampleTree)
+  | STDeath EpidemicEvent
   deriving (Show)
 
 -- | A transmission tree with all non-sampling leaves removed
 sampleTree :: TransmissionTree -> SampleTree
 sampleTree transTree = case transTree of
-  (TTBirth _ e@InfectionEvent {} (t1,t2))
+  (TTBirth _ e@Infection {} (t1,t2))
     | hasSampledLeaf t1 && hasSampledLeaf t2 -> STBirth e (sampleTree t1,sampleTree t2)
     | hasSampledLeaf t1 -> sampleTree t1
     | hasSampledLeaf t2 -> sampleTree t2
-  (TTDeath _ e@(SamplingEvent _ _)) -> STDeath e
-  (TTDeath _ e@(CatastropheEvent _ _)) -> STDeath e
+  (TTDeath _ e@(Sampling _ _)) -> STDeath e
+  (TTDeath _ e@(Catastrophe _ _)) -> STDeath e
   _ -> error "ill-formed transmission tree"
 
 -- | Recurse through the tree and extract all birth and death events.
-sampleTreeEvents' :: SampleTree -> [Event]
+sampleTreeEvents' :: SampleTree -> [EpidemicEvent]
 sampleTreeEvents' sTree =
   case sTree of
     (STDeath e) -> [e]
     (STBirth e (s1, s2)) -> e : sampleTreeEvents s1 ++ sampleTreeEvents s2
 
 -- | The unique events in a sample tree.
-sampleTreeEvents :: SampleTree -> [Event]
+sampleTreeEvents :: SampleTree -> [EpidemicEvent]
 sampleTreeEvents = nub . sampleTreeEvents'

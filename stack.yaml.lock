@@ -6,15 +6,15 @@
 packages:
 - completed:
     name: epi-types
-    version: 0.2.1.0
+    version: 0.2.1.1
     git: https://github.com/aezarebski/epi-types.git
     pantry-tree:
       size: 812
-      sha256: 4fb5785d6aba1d19c8b8d0f4cc4456c34b7d0698dc255c8e86088ca17185725a
-    commit: 25977e471dd27d2013547676f4e86b3e9cedd940
+      sha256: 619147c34afdb0bdb6da6af16da87327dae6cde6ea566f65473f04e479075ad0
+    commit: c9be2e6869a418cdde9fa1ba68d8ccc988740d69
   original:
     git: https://github.com/aezarebski/epi-types.git
-    commit: 25977e471dd27d2013547676f4e86b3e9cedd940
+    commit: c9be2e6869a418cdde9fa1ba68d8ccc988740d69
 snapshots:
 - completed:
     size: 488576

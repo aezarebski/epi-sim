@@ -15,15 +15,18 @@ main :: IO ()
 main =
   let simConfig =
         BDSCOD.configuration
-          1.0
+          3.6
           (2.5, 0.2, 0.15, [(3, 0.5), (4, 0.5)], 0.2, [(3.5, 0.5)])
    in if isJust simConfig
          then do events <- EpiUtil.simulation True (fromJust simConfig) BDSCOD.allEvents
                  let Just (newickBuilder,newickMetaData) = asNewickString (0, Person 1) =<< maybeEpidemicTree events
-                 L.writeFile "demo-newick-string.txt" $ BBuilder.toLazyByteString newickBuilder
-                 L.writeFile "demo-newick-metadata.csv" $ encode newickMetaData
-                 -- L.writeFile "demo-output-observed-events.csv" . encode $
-                   -- BDSCOD.observedEvents events
+                 L.writeFile "demo-newick-string-epitree.txt" $ BBuilder.toLazyByteString newickBuilder
+                 L.writeFile "demo-newick-metadata-epitree.csv" $ encode newickMetaData
+                 let Just (newickBuilder',newickMetaData') = asNewickString (0, Person 1) =<< maybeReconstructedTree =<< maybeEpidemicTree events
+                 L.writeFile "demo-newick-string-recontree.txt" $ BBuilder.toLazyByteString newickBuilder'
+                 L.writeFile "demo-newick-metadata-recontree.csv" $ encode newickMetaData'
+                 L.writeFile "demo-output-all-events.csv" . encode $ events
+                 fromJust $ L.writeFile "demo-output-observed-events.csv" . encode <$> BDSCOD.observedEvents events
                  return ()
          else do putStrLn "Broken simulation configuration!!!"
                  return ()

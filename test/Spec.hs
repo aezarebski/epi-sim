@@ -168,7 +168,7 @@ eventHandlingTests = do
       length demoSim > 1 `shouldBe` True
   describe "Disaster definitions" $ do
     it "Disasters are handled correctly" $ do
-      (demoSampleEvents04 == BDSCOD.observedEvents demoFullEvents04) `shouldBe`
+      (demoSampleEvents04 == fromJust (BDSCOD.observedEvents demoFullEvents04)) `shouldBe`
         True
     it "Disasters can be simulated" $ do
       demoSim <-

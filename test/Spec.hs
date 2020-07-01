@@ -328,17 +328,8 @@ illFormedTreeTest =
        do
          null (BDSCOD.observedEvents []) `shouldBe` True
          simEvents <- simulation True (fromJust simConfig) BDSCOD.allEvents
-         any isSampling simEvents `shouldBe` True
-         (length (BDSCOD.observedEvents simEvents) > 1) `shouldBe` True
-  it "test edge case of missing infections from observed events" $ do
-    True `shouldBe` True
-    let simConfig = BDSCOD.configuration 1.0 (2.5, 0.2, 0.15, [(3, 0.5), (4, 0.5)], 0.2, [(3.5, 0.5)])
-    events <- simulation True (fromJust simConfig) BDSCOD.allEvents
-    let obsEs = BDSCOD.observedEvents events
-    let infectedPeople = Person 1:[person | (Infection _ _ person) <- obsEs]
-    let sampledPeople = [person | (Sampling _ person) <- obsEs]
-    all (`elem` infectedPeople) sampledPeople `shouldBe` True -- all of the sampled people should have been infected
-    True `shouldBe` True
+         any isReconTreeLeaf simEvents `shouldBe` True
+         (length (fromJust $ BDSCOD.observedEvents simEvents) > 1) `shouldBe` True
 
 
 

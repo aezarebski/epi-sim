@@ -7,6 +7,7 @@ module Epidemic.BDSCOD
   ) where
 
 import Data.Maybe (fromJust)
+import Data.List (nub)
 import qualified Data.Vector as V
 import qualified Data.Vector.Generic as G
 import Epidemic
@@ -150,14 +151,21 @@ allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
         else return currState
     else return currState
 
+-- | The events from the nodes of a reconstructed tree __not__ in time sorted
+-- order.
+reconstructedTreeEvents :: ReconstructedTree -> [EpidemicEvent]
+reconstructedTreeEvents node = case node of
+  (RBranch e lt rt) -> e:(reconstructedTreeEvents lt ++ reconstructedTreeEvents rt)
+  (RLeaf e) -> [e]
 
 -- | Just the observable events from a list of all the events in a simulation.
+-- Obtained by extracting the events from the reconstructed tree and filtering
+-- out the non-reconstructed tree observations.
 observedEvents :: [EpidemicEvent] -- ^ All of the simulation events
-               -> [EpidemicEvent]
-observedEvents [] = []
-observedEvents events = sort $ occurrenceEvents ++ disasterEvents ++ sampleTreeEvents''
-  where
-    occurrenceEvents = filter isOccurrence events
-    disasterEvents = filter isDisaster events
-    sampleTreeEvents'' =
-      sampleTreeEvents . sampleTree $ transmissionTree events (Person 1)
+               -> Maybe [EpidemicEvent]
+observedEvents eEvents = do
+  epiTree <- maybeEpidemicTree eEvents
+  reconTree <- maybeReconstructedTree epiTree
+  let (PointProcessEvents nonReconTreeEvents) = pointProcessEvents epiTree
+  let reconTreeEvents = reconstructedTreeEvents reconTree
+  return . sort . nub $ nonReconTreeEvents ++ reconTreeEvents

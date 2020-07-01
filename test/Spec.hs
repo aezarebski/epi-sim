@@ -354,10 +354,10 @@ inhomogeneousBDSTest =
 main :: IO ()
 main =
   hspec $ do
-    -- eventHandlingTests
-    -- birthDeathTests
-    -- helperFuncTests
-    -- readwriteTests
-    -- inhomExpTests
+    eventHandlingTests
+    birthDeathTests
+    helperFuncTests
+    readwriteTests
+    inhomExpTests
     illFormedTreeTest
-    -- inhomogeneousBDSTest
+    inhomogeneousBDSTest

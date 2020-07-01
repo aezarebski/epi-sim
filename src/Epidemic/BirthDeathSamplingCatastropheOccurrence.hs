@@ -131,6 +131,6 @@ observedEvents :: [EpidemicEvent] -- ^ All of the simulation events
                     -> [EpidemicEvent]
 observedEvents events = sort $ occurrenceEvents ++ sampleTreeEvents''
   where
-    occurrenceEvents = filter isOccurrence events
+    occurrenceEvents = filter isNonReconTreeObservation events
     sampleTreeEvents'' =
       sampleTreeEvents . sampleTree $ transmissionTree events (Person 1)

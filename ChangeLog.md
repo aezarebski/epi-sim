@@ -1,5 +1,13 @@
 # Changelog for epi-sim
 
+## 0.2.0.0
+
+- Predicates such as `isSampling` and `isOccurrence` have been replaced with
+  clearer named alternatives: `isNonReconTreeObservation` and `isReconTreeLeaf`
+  to avoid uncertainty about whether scheduled events are included.
+- Upgrade to `epi-types-0.2.1.0` which adds substantial amounts of Newick
+  functionality meaning this can be removed.
+
 ## 0.1.9.0
 
 - Upgrade to `epi-types-0.2.0.0` which makes a lot of functions redundant so

@@ -175,6 +175,23 @@ simulation False SimulationConfiguration {..} allEvents = do
     allEvents rates timeLimit (0, [], population, newIdentifier) gen
   return $ sort events
 
+-- | Predicate for whether an epidemic event is either an occurrence or a
+-- disaaster.
+isNonReconTreeObservation :: EpidemicEvent -> Bool
+isNonReconTreeObservation e = case e of
+  Occurrence {} -> True
+  Disaster {} -> True
+  _ -> False
+
+-- | Predicate for whether an epidemic event will appear as a leaf in the
+-- reconstructed tree.
+isReconTreeLeaf :: EpidemicEvent -> Bool
+isReconTreeLeaf e = case e of
+  Sampling {} -> True
+  Catastrophe {} -> True
+  _ -> False
+
+
 simulation' :: (ModelParameters a) => SimulationConfiguration a b
            -> (a -> Time -> (Time, [EpidemicEvent], b, Integer) -> GenIO -> IO (Time, [EpidemicEvent], b, Integer))
            -> GenIO
@@ -182,7 +199,7 @@ simulation' :: (ModelParameters a) => SimulationConfiguration a b
 simulation' config@SimulationConfiguration {..} allEvents gen = do
   (_, events, _, _) <-
     allEvents rates timeLimit (0, [], population, newIdentifier) gen
-  if count' isSampling events >= 2
+  if count' isReconTreeLeaf events >= 2
     then return $ sort events
     else simulation' config allEvents gen
 
@@ -199,7 +216,7 @@ simulationWithSystemRandom atLeastCherry config@SimulationConfiguration {..} all
     withSystemRandom $ \g ->
       allEvents rates timeLimit (0, [], population, newIdentifier) g
   if atLeastCherry
-    then (if count' isSampling events >= 2
+    then (if count' isReconTreeLeaf events >= 2
            then return $ sort events
            else simulationWithSystemRandom True config allEvents)
     else return $ sort events

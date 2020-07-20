@@ -141,6 +141,14 @@ eventHandlingTests = do
         True
       (demoSampleEvents02 == BDSO.observedEvents demoFullEvents02) `shouldBe`
         True
+      let demoEvents = [Catastrophe 0.5 (People (V.fromList []))
+                       ,Infection 1.0 p1 p2
+                       ,Catastrophe 1.5 (People (V.fromList []))
+                       ,Catastrophe 2.0 (People (V.fromList [p1,p2]))]
+      (length demoEvents == 4) `shouldBe` True
+      ((length <$> BDSCOD.observedEvents (tail demoEvents)) == (Just 2)) `shouldBe` True
+      ((length <$> BDSCOD.observedEvents (demoEvents)) == (Just 2)) `shouldBe` True
+      (BDSCOD.observedEvents (demoEvents) == BDSCOD.observedEvents (tail demoEvents)) `shouldBe` True
   describe "Catastrophe definitions" $ do
     it "Check we can find a catastrophe" $ do
       (noScheduledEvent 0 1 (Timed [])) `shouldBe` True

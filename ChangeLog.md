@@ -1,5 +1,9 @@
 # Changelog for epi-sim
 
+## 0.2.0.1
+
+- Upgrade to `epi-types-0.2.1.2` for the bug fix.
+
 ## 0.2.0.0
 
 - Predicates such as `isSampling` and `isOccurrence` have been replaced with

@@ -79,7 +79,7 @@ demoFullEvents02 =
   , Occurrence 8 p2
   , Removal 9 p3
   , Infection 10 p5 p7
-  , Catastrophe 11 (People $ V.singleton p5)
+  , Catastrophe 11 (asPeople [p5])
   , Occurrence 12 p6
   , Removal 13 p7
   ]
@@ -90,7 +90,7 @@ demoSampleEvents02 =
   , Infection 4 p2 p4
   , Sampling 6 p4
   , Occurrence 8 p2
-  , Catastrophe 11 (People $ V.singleton p5)
+  , Catastrophe 11 (asPeople [p5])
   , Occurrence 12 p6
   ]
 
@@ -101,7 +101,7 @@ demoFullEvents03 =
   , Sampling 3 p1
   , Infection 4 p2 p3
   , Infection 5 p4 p5
-  , Catastrophe 6 (People $ V.fromList [p2, p3, p4])
+  , Catastrophe 6 (asPeople [p2, p3, p4])
   ]
 
 demoSampleEvents03 =
@@ -109,7 +109,7 @@ demoSampleEvents03 =
   , Infection 2 p1 p2
   , Sampling 3 p1
   , Infection 4 p2 p3
-  , Catastrophe 6 (People $ V.fromList [p2, p3, p4])
+  , Catastrophe 6 (asPeople [p2, p3, p4])
   ]
 
 -- | Another test to make sure that disasters are handled.
@@ -119,10 +119,10 @@ demoFullEvents04 =
   , Sampling 3 p1
   , Infection 4 p2 p3
   , Infection 5 p4 p5
-  , Catastrophe 6 (People $ V.fromList [p2, p3, p4])
+  , Catastrophe 6 (asPeople [p2, p3, p4])
   , Infection 7 p5 p6
   , Infection 8 p5 p7
-  , Disaster 9 (People $ V.fromList [p5, p6])
+  , Disaster 9 (asPeople [p5, p6])
   ]
 
 demoSampleEvents04 =
@@ -130,8 +130,8 @@ demoSampleEvents04 =
   , Infection 2 p1 p2
   , Sampling 3 p1
   , Infection 4 p2 p3
-  , Catastrophe 6 (People $ V.fromList [p2, p3, p4])
-  , Disaster 9 (People $ V.fromList [p5, p6])
+  , Catastrophe 6 (asPeople [p2, p3, p4])
+  , Disaster 9 (asPeople [p5, p6])
   ]
 
 eventHandlingTests = do
@@ -141,14 +141,15 @@ eventHandlingTests = do
         True
       (demoSampleEvents02 == BDSO.observedEvents demoFullEvents02) `shouldBe`
         True
-      let demoEvents = [Catastrophe 0.5 (People (V.fromList [])) -- Because the first event is a null event it can be ignored!
+      let demoEvents = [Catastrophe 0.5  (asPeople []) -- Because the first event is a null event it can be ignored!
                        ,Infection 1.0 p1 p2
-                       ,Catastrophe 1.5 (People (V.fromList []))
-                       ,Catastrophe 2.0 (People (V.fromList [p1,p2]))]
+                       ,Catastrophe 1.5 (asPeople [])
+                       ,Catastrophe 2.0 (asPeople [p1,p2])]
       (length demoEvents == 4) `shouldBe` True
       ((length <$> BDSCOD.observedEvents (tail demoEvents)) == (Just 2)) `shouldBe` True
       ((length <$> BDSCOD.observedEvents (demoEvents)) == (Just 2)) `shouldBe` True
       (BDSCOD.observedEvents (demoEvents) == BDSCOD.observedEvents (tail demoEvents)) `shouldBe` True
+      (maybeEpidemicTree (demoEvents) == maybeEpidemicTree (tail demoEvents)) `shouldBe` True
   describe "Catastrophe definitions" $ do
     it "Check we can find a catastrophe" $ do
       (noScheduledEvent 0 1 (Timed [])) `shouldBe` True
@@ -277,7 +278,7 @@ readwriteTests =
             (Right demoEvent') =
               runParser (parseRecord demoRecord) :: Either String EpidemicEvent
             demoRecord2 =
-              toRecord (Catastrophe 1.0 (People (V.fromList [p2, p3])))
+              toRecord (Catastrophe 1.0 (asPeople [p2, p3]))
             (Right demoEvent2@(Catastrophe _ people2)) =
               runParser (parseRecord demoRecord2) :: Either String EpidemicEvent
             demoRecord2' = toRecord demoEvent2

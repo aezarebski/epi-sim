@@ -141,7 +141,7 @@ eventHandlingTests = do
         True
       (demoSampleEvents02 == BDSO.observedEvents demoFullEvents02) `shouldBe`
         True
-      let demoEvents = [Catastrophe 0.5 (People (V.fromList []))
+      let demoEvents = [Catastrophe 0.5 (People (V.fromList [])) -- Because the first event is a null event it can be ignored!
                        ,Infection 1.0 p1 p2
                        ,Catastrophe 1.5 (People (V.fromList []))
                        ,Catastrophe 2.0 (People (V.fromList [p1,p2]))]

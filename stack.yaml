@@ -41,7 +41,7 @@ packages:
 #
 extra-deps:
   - git: https://github.com/aezarebski/epi-types.git
-    commit: c9be2e6869a418cdde9fa1ba68d8ccc988740d69
+    commit: b6ec66404b857f7eeddb33c9a0d229d6a401efd8
 
 # Override default flag values for local packages and extra-deps
 # flags: {}

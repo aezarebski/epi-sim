@@ -7,7 +7,7 @@ cabal-version: 1.12
 -- hash: ab62fd00199fbb78f0c8bf1211bd94c918cd79fd75f56c15d3442a539974296d
 
 name:           epi-sim
-version:        0.2.0.0
+version:        0.2.0.1
 synopsis:       A tool for simulating epidemics as birth-death processes.
 description:    Please see the README on GitHub at <https://bitbucket.org/azarebski/epi-sim/src/master/README.md>
 homepage:       https://github.com/azarebski/epi-sim#readme
@@ -57,7 +57,7 @@ library
     , statistics
     , trifecta
     , vector
-    , epi-types >= 0.2.1.1
+    , epi-types >= 0.2.1.2
   default-language: Haskell2010
   ghc-options: -j2 -Wincomplete-patterns -Werror
 
@@ -73,7 +73,7 @@ executable bdscod-example
     , bytestring
     , cassava
     , epi-sim
-    , epi-types >= 0.2.1.1
+    , epi-types >= 0.2.1.2
     , hspec
     , mwc-random
     , primitive
@@ -141,5 +141,5 @@ test-suite epi-sim-test
     , statistics
     , trifecta
     , vector
-    , epi-types >= 0.2.1.1
+    , epi-types >= 0.2.1.2
   default-language: Haskell2010

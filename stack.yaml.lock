@@ -10,11 +10,11 @@ packages:
     git: https://github.com/aezarebski/epi-types.git
     pantry-tree:
       size: 812
-      sha256: 4e2e81fbe7372e2876f7b043dd556d08c105e418c54991bdacc270984997e7da
-    commit: b6ec66404b857f7eeddb33c9a0d229d6a401efd8
+      sha256: 9b475bf2e17c17d5923e9ba0a1e549f69571c1955a926cc57cf6bccb33075bae
+    commit: 8f7658f6f42b1d1e5c486d9ae70850cb4d75844b
   original:
     git: https://github.com/aezarebski/epi-types.git
-    commit: b6ec66404b857f7eeddb33c9a0d229d6a401efd8
+    commit: 8f7658f6f42b1d1e5c486d9ae70850cb4d75844b
 snapshots:
 - completed:
     size: 488576

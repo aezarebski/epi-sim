@@ -6,12 +6,19 @@ module Epidemic.BDSCOD
   , observedEvents
   ) where
 
-import Data.Maybe (fromJust)
 import Data.List (nub)
+import Data.Maybe (fromJust)
 import qualified Data.Vector as V
 import qualified Data.Vector.Generic as G
 import Epidemic
 import Epidemic.Types.Events
+  ( EpidemicEvent(..)
+  , PointProcessEvents(..)
+  , ReconstructedTree(..)
+  , maybeEpidemicTree
+  , maybeReconstructedTree
+  , pointProcessEvents
+  )
 import Epidemic.Types.Parameter
 import Epidemic.Types.Population
 import Epidemic.Utility
@@ -158,9 +165,11 @@ reconstructedTreeEvents node = case node of
   (RBranch e lt rt) -> e:(reconstructedTreeEvents lt ++ reconstructedTreeEvents rt)
   (RLeaf e) -> [e]
 
--- | Just the observable events from a list of all the events in a simulation.
--- Obtained by extracting the events from the reconstructed tree and filtering
--- out the non-reconstructed tree observations.
+-- | Just the observable events from a list of all the events that occurred in a
+-- simulation of the BDSCOD-process. These events are the result of extracting
+-- the events from the reconstructed tree and getting the point process events
+-- that make up the unsequenced samples (see `pointProcessEvents` for details on
+-- this latter data.)
 observedEvents :: [EpidemicEvent] -- ^ All of the simulation events
                -> Maybe [EpidemicEvent]
 observedEvents eEvents = do

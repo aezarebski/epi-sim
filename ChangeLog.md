@@ -2,6 +2,7 @@
 
 ## 0.2.0.1
 
+- Improve documentation in `Epidemic.BDSCOD`.
 - Upgrade to `epi-types-0.2.1.2` for the bug fix.
 
 ## 0.2.0.0

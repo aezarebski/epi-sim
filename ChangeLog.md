@@ -2,7 +2,8 @@
 
 ## 0.2.1.0
 
-- Remove dependency upon `epi-types` by moving its modules into this package.
+- Remove dependency upon `epi-types` by moving its modules into this package and
+  include the tests from that package.
 - Remove unsed `Setup.hs` file.
 
 ## 0.2.0.1

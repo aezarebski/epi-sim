@@ -1,5 +1,10 @@
 # Changelog for epi-sim
 
+## 0.2.1.0
+
+- Remove dependency upon `epi-types` by moving its modules into this package.
+- Remove unsed `Setup.hs` file.
+
 ## 0.2.0.1
 
 - Improve documentation in `Epidemic.BDSCOD`.

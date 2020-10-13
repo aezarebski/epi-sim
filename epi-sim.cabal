@@ -1,6 +1,6 @@
 cabal-version:  3.0
 name:           epi-sim
-version:        0.2.1.0
+version:        0.2.2.0
 synopsis:       A tool for simulating epidemics as birth-death processes.
 description:    Please see the README on GitHub at <https://bitbucket.org/azarebski/epi-sim/src/master/README.md>
 homepage:       https://github.com/azarebski/epi-sim#readme
@@ -14,12 +14,6 @@ build-type:     Simple
 extra-source-files:
     README.md
     ChangeLog.md
-    vis/birth-death-lines.R
-    vis/birthDeathSamplingVisualisation.R
-    vis/full-ltt.R
-    vis/infection-tree.vg.json
-    vis/ltt.R
-    vis/ott.R
 
 source-repository head
   type: git
@@ -57,66 +51,6 @@ library
                 trifecta                    >= 2.1 && < 2.2,
   default-language: Haskell2010
   ghc-options: -j2 -Wincomplete-patterns -Werror
-
-executable bdscod-example
-  main-is: Main.hs
-  other-modules:
-      Paths_epi_sim
-  hs-source-dirs:
-      examples/bdscod
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
-  build-depends:
-      base >=4.7 && <5
-    , bytestring
-    , cassava
-    , epi-sim
-    , hspec
-    , mwc-random
-    , primitive
-    , statistics
-    , trifecta
-    , vector
-  default-language: Haskell2010
-
-executable ibd-example
-  main-is: Main.hs
-  other-modules:
-      Paths_epi_sim
-  hs-source-dirs:
-      examples/inhomogeneous-birth-death
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
-  build-depends:
-      base >=4.7 && <5
-    , bytestring
-    , cassava
-    , epi-sim
-    , hspec
-    , mwc-random
-    , primitive
-    , statistics
-    , trifecta
-    , vector
-  default-language: Haskell2010
-
-executable ibds-example
-  main-is: Main.hs
-  other-modules:
-      Paths_epi_sim
-  hs-source-dirs:
-      examples/inhomogeneous-birth-death-sampling
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
-  build-depends:
-      base >=4.7 && <5
-    , bytestring
-    , cassava
-    , epi-sim
-    , hspec
-    , mwc-random
-    , primitive
-    , statistics
-    , trifecta
-    , vector
-  default-language: Haskell2010
 
 test-suite epi-sim-test
   type: exitcode-stdio-1.0

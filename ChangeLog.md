@@ -1,5 +1,9 @@
 # Changelog for epi-sim
 
+## 0.2.2.0
+
+- Clean up for a release candidate.
+
 ## 0.2.1.0
 
 - Update the stack resolver to `lts-16.17` and add bounds on the package

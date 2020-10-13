@@ -98,3 +98,9 @@ main =
          L.writeFile "demo-output-all-events.csv" (encode events)
          return ()
 ```
+
+## Development
+
+The desired workflow is to keep a `dev` branch for development with `master`
+reserved for code that could be used by others. At the time of writing this is
+not the case but will hopefully be so soon.

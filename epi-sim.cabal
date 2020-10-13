@@ -14,12 +14,6 @@ build-type:     Simple
 extra-source-files:
     README.md
     ChangeLog.md
-    vis/birth-death-lines.R
-    vis/birthDeathSamplingVisualisation.R
-    vis/full-ltt.R
-    vis/infection-tree.vg.json
-    vis/ltt.R
-    vis/ott.R
 
 source-repository head
   type: git

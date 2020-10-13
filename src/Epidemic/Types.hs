@@ -1,0 +1,2 @@
+
+module Epidemic.Types where

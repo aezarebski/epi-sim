@@ -3,21 +3,10 @@
 # For more information, please see the documentation at:
 #   https://docs.haskellstack.org/en/stable/lock_files
 
-packages:
-- completed:
-    name: epi-types
-    version: 0.2.1.2
-    git: https://github.com/aezarebski/epi-types.git
-    pantry-tree:
-      size: 812
-      sha256: 9b475bf2e17c17d5923e9ba0a1e549f69571c1955a926cc57cf6bccb33075bae
-    commit: 8f7658f6f42b1d1e5c486d9ae70850cb4d75844b
-  original:
-    git: https://github.com/aezarebski/epi-types.git
-    commit: 8f7658f6f42b1d1e5c486d9ae70850cb4d75844b
+packages: []
 snapshots:
 - completed:
-    size: 488576
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/15/0.yaml
-    sha256: e4b6a87b47ec1cf63a7f1a0884a3b276fce2b0d174a10e8753c4f618e7983568
-  original: lts-15.0
+    size: 532386
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/16/17.yaml
+    sha256: d3ee1ae797cf63189c95cf27f00700304946c5cb3c1e6a82001cd6584a221e1b
+  original: lts-16.17

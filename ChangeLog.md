@@ -1,5 +1,13 @@
 # Changelog for epi-sim
 
+## 0.2.1.0
+
+- Update the stack resolver to `lts-16.17` and add bounds on the package
+  versions to use.
+- Remove dependency upon `epi-types` by moving its modules into this package and
+  include the tests from that package.
+- Remove unsed `Setup.hs` file.
+
 ## 0.2.0.1
 
 - Improve documentation in `Epidemic.BDSCOD`.

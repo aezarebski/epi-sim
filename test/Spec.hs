@@ -2,19 +2,21 @@
 
 import Control.Exception (evaluate)
 import Control.Monad
+import qualified Data.Aeson as Json
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Builder as BBuilder
 import Data.Csv
 import Data.Maybe (fromJust, isJust, isNothing)
 import qualified Data.Vector as V
 import Epidemic
-import Epidemic.Types.Population
-import Epidemic.Types.Events
-import Epidemic.Types.Parameter
 import qualified Epidemic.BDSCOD as BDSCOD
 import qualified Epidemic.BirthDeath as BD
 import qualified Epidemic.BirthDeathSamplingCatastropheOccurrence as BDSCO
 import qualified Epidemic.BirthDeathSamplingOccurrence as BDSO
 import qualified Epidemic.InhomogeneousBDS as InhomBDS
+import Epidemic.Types.Events
+import Epidemic.Types.Parameter
+import Epidemic.Types.Population
 import Epidemic.Utility
 import Statistics.Sample
 import qualified System.Random.MWC as MWC
@@ -359,6 +361,137 @@ inhomogeneousBDSTest =
         (compObsEvents == demoObsEvents) `shouldBe` True
 
 
+helperTypeTests = do
+  describe "Helpers for working with the types" $ do
+    it "the isAscending function works" $ do
+      (isAscending ([] :: [Time])) `shouldBe` True
+      (isAscending [-1.0]) `shouldBe` True
+      (isAscending [1.0]) `shouldBe` True
+      (isAscending [1.0, 2.0]) `shouldBe` True
+      (isAscending [1.0, 2.0, 3.0]) `shouldBe` True
+      (isAscending [1.0, -2.0]) `shouldBe` False
+      (isAscending [1.0, -2.0, 3.0]) `shouldBe` False
+      (isAscending [1.0, 2.0, -3.0]) `shouldBe` False
+    it "the asTimed function works" $ do
+      (isJust $ asTimed []) `shouldBe` True
+      (isJust $ asTimed [(0, 1)]) `shouldBe` True
+      (isJust $ asTimed [(0, 1), (1, 3)]) `shouldBe` True
+      (isJust $ asTimed [(0, 3), (1, 1)]) `shouldBe` True
+      (isJust $ asTimed [(1, 3), (0, 1)]) `shouldBe` False
+    let demoTimed = fromJust $ asTimed [(0, 1.2), (1, 3.1), (2, 2.7)]
+     in do it "the cadlagValue function works" $ do
+             (isJust $ cadlagValue demoTimed (-1.0)) `shouldBe` False
+             ((== 1.2) . fromJust $ cadlagValue demoTimed 0.0) `shouldBe` True
+             ((== 1.2) . fromJust $ cadlagValue demoTimed 0.5) `shouldBe` True
+             ((== 3.1) . fromJust $ cadlagValue demoTimed 1.5) `shouldBe` True
+           it "the diracDeltaValue function works" $ do
+             ((== 1.2) . fromJust $ diracDeltaValue demoTimed 0) `shouldBe` True
+             (isJust $ diracDeltaValue demoTimed 1) `shouldBe` True
+             (isJust $ diracDeltaValue demoTimed 0.9) `shouldBe` False
+             (isJust $ diracDeltaValue demoTimed 1.1) `shouldBe` False
+           it "the hasTime function works" $ do
+             (hasTime demoTimed 0) `shouldBe` True
+             (hasTime demoTimed 0.5) `shouldBe` False
+             (hasTime demoTimed 1) `shouldBe` True
+             (hasTime demoTimed 1.5) `shouldBe` False
+           it "the nextTime function works" $ do
+             (0 == (fromJust $ nextTime demoTimed (-1))) `shouldBe` True
+             (1 == (fromJust $ nextTime demoTimed (0))) `shouldBe` True
+             (1 == (fromJust $ nextTime demoTimed (0.5))) `shouldBe` True
+    it "shifted times work" $
+      let sf = fromJust $ asTimed [(-1.0, 2.0), (1, 3.0)]
+          val1 = cadlagValue sf 0
+          val2 = cadlagValue sf (-2.0)
+          val3 = cadlagValue sf 1.5
+       in do isJust val1 `shouldBe` True
+             val1 == Just 2.0 `shouldBe` True
+             (not $ isJust val2) `shouldBe` True
+             isJust val3 `shouldBe` True
+             val3 == Just 3.0 `shouldBe` True
+
+jsonTests = do
+  describe "Converting to and from JSON" $ do
+    it "Conversion of Timed Rate" $ do
+      let demoObj = Timed [(0.0, 1.0), (1.0, 1.0)] :: Timed Rate
+          (Timed demoVals) = demoObj
+          demoJson = "[[0,1],[1,1]]"
+          encodedObj = Json.encode demoObj
+          decodedJson = Json.decode demoJson :: Maybe (Timed Rate)
+       in do True `shouldBe` True
+             let (Timed foo) = demoObj in demoVals == foo `shouldBe` True
+             encodedObj == demoJson `shouldBe` True
+             isJust decodedJson `shouldBe` True
+             let (Timed bar) = fromJust decodedJson in demoVals == bar `shouldBe` True
+
+equalBuilders :: BBuilder.Builder -> BBuilder.Builder -> Bool
+equalBuilders a b = BBuilder.toLazyByteString a == BBuilder.toLazyByteString b
+
+
+newickTests =
+  let p1 = Person 1
+      p2 = Person 2
+      p3 = Person 3
+      ps = asPeople [p1,p2]
+      maybeEpiTree = maybeEpidemicTree [Infection 1 p1 p2,Infection 2 p2 p3,Catastrophe 3 (asPeople [p1,p3]),Removal 4 p2]
+      maybeEpiTree' = maybeEpidemicTree [Infection 1 p1 p2,Infection 2 p2 p3,Catastrophe 3 (asPeople [p1,p3]),Sampling 4 p2]
+      maybeEpiTree'' = maybeEpidemicTree [Infection 1 p1 p2,Infection 2 p2 p3,Disaster 3 (asPeople [p1,p3]),Sampling 4 p2]
+    in
+    describe "Writing to Newick" $ do
+    it "equalBuilders works as expected" $ do
+      equalBuilders (BBuilder.charUtf8 ':') (BBuilder.charUtf8 ':') `shouldBe` True
+      equalBuilders (BBuilder.charUtf8 'a') (BBuilder.charUtf8 ':') `shouldBe` False
+    it "derivedFrom works as expected" $ do
+      let p1 = Person 1
+      let p2 = Person 2
+      let p3 = Person 3
+      let e = [Infection 0.3 p1 p2]
+      derivedFrom p1 e == derivedFrom p2 e `shouldBe` True
+      derivedFrom p1 e /= derivedFrom p3 e `shouldBe` True
+      derivedFrom p1 e /= [] `shouldBe` True
+      null (derivedFrom p3 e) `shouldBe` True
+      derivedFrom p1 e == e `shouldBe` True
+      let foo = derivedFrom (Person 1) [Infection 0.3 (Person 1) (Person 2),Sampling 0.7 (Person 1)]
+      let bar = derivedFrom (Person 2) [Infection 0.3 (Person 1) (Person 2),Sampling 0.7 (Person 1)]
+      foo == bar `shouldBe` True
+    it "maybeEpidemicTree works as expected: 1" $ do
+      let e1 = Removal 1 (Person 1)
+      maybeEpidemicTree [e1] == Just (Leaf e1) `shouldBe` True
+      let t1 = maybeEpidemicTree [Infection 0.3 (Person 1) (Person 2),Sampling 0.6 (Person 2),Sampling 0.7 (Person 1)]
+      let t2 = Just (Branch (Infection 0.3 (Person 1) (Person 2)) (Leaf (Sampling 0.7 (Person 1))) (Leaf (Sampling 0.6 (Person 2))))
+      t1 == t2 `shouldBe` True
+      maybeEpidemicTree [Infection 0.3 (Person 1) (Person 2)] == Just (Branch (Infection 0.3 (Person 1) (Person 2)) (Shoot (Person 1)) (Shoot (Person 2))) `shouldBe` True
+      maybeEpidemicTree [Infection 0.3 (Person 1) (Person 2),Sampling 0.7 (Person 1)] == Just (Branch (Infection 0.3 (Person 1) (Person 2)) (Leaf (Sampling 0.7 (Person 1))) (Shoot (Person 2))) `shouldBe` True
+      let trickyEvents = [Infection 0.3 (Person 1) (Person 2),Infection 0.4 (Person 2) (Person 3),Sampling 0.6 (Person 3),Sampling 0.7 (Person 1)]
+      isJust (maybeEpidemicTree trickyEvents) `shouldBe` True
+    it "maybeEpidemicTree works as expected: 2" $ do
+      let p1 = Person 1
+          p2 = Person 2
+          demoEvents = [Catastrophe 0.5 (asPeople []) -- Because the first event is a null event it can be ignored!
+                       ,Infection 1.0 p1 p2
+                       ,Catastrophe 1.5 (asPeople [])
+                       ,Catastrophe 2.0 (asPeople [p1,p2])]
+      (length demoEvents == 4) `shouldBe` True
+      (maybeEpidemicTree demoEvents == maybeEpidemicTree (tail demoEvents)) `shouldBe` True
+    it "asNewickString works for EpidemicTree" $ do
+      let trickyEvents = [Infection 0.3 (Person 1) (Person 2),Infection 0.4 (Person 2) (Person 3),Sampling 0.6 (Person 3),Sampling 0.7 (Person 1)]
+      let maybeNewickPair = asNewickString (0, Person 1) =<< maybeEpidemicTree trickyEvents
+      let newickTarget = BBuilder.stringUtf8 "(1:0.39999999999999997,(2:Infinity,3:0.19999999999999996):0.10000000000000003):0.3"
+      let maybeReconTree = maybeReconstructedTree =<< maybeEpidemicTree trickyEvents
+      isJust maybeNewickPair `shouldBe` True
+      [Sampling 0.6 (Person 3),Sampling 0.7 (Person 1)] == snd (fromJust maybeNewickPair) `shouldBe` True
+      equalBuilders newickTarget (fst $ fromJust maybeNewickPair) `shouldBe` True
+      isJust maybeReconTree `shouldBe` True
+    it "asNewickString works for ReconstructedTree" $ do
+      isJust (asNewickString (0,Person 1) (RLeaf (Sampling 1 (Person 1)))) `shouldBe` True
+      let trickyEvents = [Infection 0.3 (Person 1) (Person 2),Infection 0.4 (Person 2) (Person 3),Sampling 0.6 (Person 3),Sampling 0.7 (Person 1)]
+      let maybeNewickPair = asNewickString (0, Person 1) =<< maybeReconstructedTree =<< maybeEpidemicTree trickyEvents
+      let newickTarget = BBuilder.stringUtf8 "(1:0.39999999999999997,3:0.3):0.3"
+      isJust maybeNewickPair `shouldBe` True
+      [Sampling 0.6 (Person 3),Sampling 0.7 (Person 1)] == snd (fromJust maybeNewickPair) `shouldBe` True
+      equalBuilders newickTarget (fst $ fromJust maybeNewickPair) `shouldBe` True
+      let catasNewick = (asNewickString (0,Person 1) (RLeaf (Catastrophe 1 (asPeople [Person 1,Person 2]))))
+      let catasTarget =  BBuilder.stringUtf8 "1&2:1.0"
+      equalBuilders catasTarget (fst $ fromJust catasNewick) `shouldBe` True
 
 main :: IO ()
 main =
@@ -370,3 +503,6 @@ main =
     inhomExpTests
     illFormedTreeTest
     inhomogeneousBDSTest
+    helperTypeTests
+    jsonTests
+    newickTests

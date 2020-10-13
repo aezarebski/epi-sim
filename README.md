@@ -103,4 +103,5 @@ main =
 
 The desired workflow is to keep a `dev` branch for development with `master`
 reserved for code that could be used by others. At the time of writing this is
-not the case but will hopefully be so soon.
+not the case but will hopefully be so soon. Prior to moving material from `dev`
+into `master` we will try to use a `release` branch.

@@ -58,65 +58,65 @@ library
   default-language: Haskell2010
   ghc-options: -j2 -Wincomplete-patterns -Werror
 
--- executable bdscod-example
---   main-is: Main.hs
---   other-modules:
---       Paths_epi_sim
---   hs-source-dirs:
---       examples/bdscod
---   ghc-options: -threaded -rtsopts -with-rtsopts=-N
---   build-depends:
---       base >=4.7 && <5
---     , bytestring
---     , cassava
---     , epi-sim
---     , hspec
---     , mwc-random
---     , primitive
---     , statistics
---     , trifecta
---     , vector
---   default-language: Haskell2010
+executable bdscod-example
+  main-is: Main.hs
+  other-modules:
+      Paths_epi_sim
+  hs-source-dirs:
+      examples/bdscod
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , bytestring
+    , cassava
+    , epi-sim
+    , hspec
+    , mwc-random
+    , primitive
+    , statistics
+    , trifecta
+    , vector
+  default-language: Haskell2010
 
--- executable ibd-example
---   main-is: Main.hs
---   other-modules:
---       Paths_epi_sim
---   hs-source-dirs:
---       examples/inhomogeneous-birth-death
---   ghc-options: -threaded -rtsopts -with-rtsopts=-N
---   build-depends:
---       base >=4.7 && <5
---     , bytestring
---     , cassava
---     , epi-sim
---     , hspec
---     , mwc-random
---     , primitive
---     , statistics
---     , trifecta
---     , vector
---   default-language: Haskell2010
+executable ibd-example
+  main-is: Main.hs
+  other-modules:
+      Paths_epi_sim
+  hs-source-dirs:
+      examples/inhomogeneous-birth-death
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , bytestring
+    , cassava
+    , epi-sim
+    , hspec
+    , mwc-random
+    , primitive
+    , statistics
+    , trifecta
+    , vector
+  default-language: Haskell2010
 
--- executable ibds-example
---   main-is: Main.hs
---   other-modules:
---       Paths_epi_sim
---   hs-source-dirs:
---       examples/inhomogeneous-birth-death-sampling
---   ghc-options: -threaded -rtsopts -with-rtsopts=-N
---   build-depends:
---       base >=4.7 && <5
---     , bytestring
---     , cassava
---     , epi-sim
---     , hspec
---     , mwc-random
---     , primitive
---     , statistics
---     , trifecta
---     , vector
---   default-language: Haskell2010
+executable ibds-example
+  main-is: Main.hs
+  other-modules:
+      Paths_epi_sim
+  hs-source-dirs:
+      examples/inhomogeneous-birth-death-sampling
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , bytestring
+    , cassava
+    , epi-sim
+    , hspec
+    , mwc-random
+    , primitive
+    , statistics
+    , trifecta
+    , vector
+  default-language: Haskell2010
 
 test-suite epi-sim-test
   type: exitcode-stdio-1.0

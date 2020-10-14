@@ -1,6 +1,6 @@
 # epi-sim
-A tool for simulating epidemics, with a focus on phylodynamics and observation
-models.
+A library for simulating epidemics, with a focus on phylodynamics and
+observation models.
 
 ## Available models
 
@@ -22,10 +22,3 @@ There are functions to assist in extracting observations from a full simulation:
 `birthDeathSamplingOccurrenceObservedEvents`. In the case of a catastrophe event
 where multiple individuals may be removed, they are represented as a colon
 separated list of identifiers in the `primaryPerson` field.
-
-## Development
-
-The desired workflow is to keep a `dev` branch for development with `master`
-reserved for code that could be used by others. At the time of writing this is
-not the case but will hopefully be so soon. Prior to moving material from `dev`
-into `master` we will try to use a `release` branch.

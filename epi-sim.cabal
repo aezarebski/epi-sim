@@ -56,9 +56,6 @@ library
       Epidemic.BDSCOD
       Epidemic.BirthDeath
       Epidemic.BirthDeathSampling
-      Epidemic.BirthDeathSamplingCatastropheOccurrence
-      Epidemic.BirthDeathSamplingOccurrence
-      Epidemic.InhomogeneousBD
       Epidemic.InhomogeneousBDS
       Epidemic.Types.Events
       Epidemic.Types.Observations

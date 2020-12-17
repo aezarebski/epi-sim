@@ -40,7 +40,7 @@ birthDeathSamplingRates :: Rate -> Rate -> Rate -> BDSRates
 birthDeathSamplingRates = BDSRates -- birthRate deathRate samplingRate
 
 -- | Configuration of a birth-death-sampling simulation.
-configuration :: Time             -- ^ Duration of the simulation
+configuration :: AbsoluteTime             -- ^ Duration of the simulation
               -> (Rate,Rate,Rate) -- ^ Birth, Death and Sampling rates
               -> SimulationConfiguration BDSRates BDSPopulation
 configuration maxTime (birthRate, deathRate, samplingRate) =
@@ -51,40 +51,35 @@ configuration maxTime (birthRate, deathRate, samplingRate) =
 
 randomBirthDeathSamplingEvent ::
      BDSRates
-  -> Time
+  -> AbsoluteTime
   -> BDSPopulation
   -> Integer
   -> GenIO
-  -> IO (Time, EpidemicEvent, BDSPopulation, Integer)
-randomBirthDeathSamplingEvent bdsRates@(BDSRates br dr sr) currTime (BDSPopulation (People currPeople)) currId gen =
-  let netEventRate = fromJust $ eventRate bdsRates currTime 
+  -> IO (AbsoluteTime, EpidemicEvent, BDSPopulation, Integer)
+randomBirthDeathSamplingEvent bdsRates@(BDSRates br dr sr) currTime (BDSPopulation currPeople) currId gen =
+  let individualEventRate = fromJust $ eventRate bdsRates currTime
       eventWeights = V.fromList [br,dr,sr]
    in
-    do delay <- exponential (fromIntegral (V.length currPeople) * netEventRate) gen
-       eventIx <- categorical eventWeights gen
+    do delay <- exponential (fromIntegral (numPeople currPeople) * individualEventRate) gen
+       let newEventTime = timeAfterDelta currTime (TimeDelta delay)
        (selectedPerson, unselectedPeople) <- randomPerson currPeople gen
-       return $ case eventIx of
-         0 -> let newTime = currTime + delay
-                  (birthedPerson, newId) = newPerson currId
-                  event = Infection newTime selectedPerson birthedPerson
-              in ( newTime
-                 , event
-                 , BDSPopulation (People $ V.cons birthedPerson currPeople)
-                 , newId)
-         1 -> let newTime = currTime + delay
-                  event = Removal newTime selectedPerson
-              in (newTime, event, BDSPopulation (People unselectedPeople), currId)
-         2 -> let newTime = currTime + delay
-                  event = Sampling newTime selectedPerson
-              in (newTime, event, BDSPopulation (People unselectedPeople), currId)
+       eventIx <- categorical eventWeights gen
+       case eventIx of
+         0 -> let (birthedPerson, newId) = newPerson currId
+              in return ( newEventTime
+                        , Infection newEventTime selectedPerson birthedPerson
+                        , BDSPopulation (addPerson birthedPerson currPeople)
+                        , newId)
+         1 -> return (newEventTime, Removal newEventTime selectedPerson, BDSPopulation unselectedPeople, currId)
+         2 -> return (newEventTime, Sampling newEventTime selectedPerson, BDSPopulation unselectedPeople, currId)
          _ -> error "no birth-death-sampling event selected."
 
 allEvents ::
      BDSRates
-  -> Time
-  -> (Time, [EpidemicEvent], BDSPopulation, Integer)
+  -> AbsoluteTime
+  -> (AbsoluteTime, [EpidemicEvent], BDSPopulation, Integer)
   -> GenIO
-  -> IO (Time, [EpidemicEvent], BDSPopulation, Integer)
+  -> IO (AbsoluteTime, [EpidemicEvent], BDSPopulation, Integer)
 allEvents bdsRates maxTime currState@(currTime, currEvents, currPop, currId) gen =
   if isInfected currPop
     then do

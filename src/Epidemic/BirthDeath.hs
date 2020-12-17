@@ -42,45 +42,44 @@ birthDeathRates birthRate deathRate
   | otherwise = Nothing
 
 -- | Configuration of a birth-death simulation.
-configuration :: Time         -- ^ Duration of the simulation
+configuration :: AbsoluteTime         -- ^ Duration of the simulation
                  -> (Rate, Rate) -- ^ Birth and Death rates
                  -> Maybe (SimulationConfiguration BDRates BDPopulation)
 configuration maxTime (birthRate, deathRate) =
   let (seedPerson, newId) = newPerson initialIdentifier
       bdPop = BDPopulation (People $ V.singleton seedPerson)
    in do maybeBDRates <- birthDeathRates birthRate deathRate
-         if maxTime > 0 then Just (SimulationConfiguration maybeBDRates bdPop newId maxTime) else Nothing
+         if maxTime > AbsoluteTime 0 then Just (SimulationConfiguration maybeBDRates bdPop newId maxTime) else Nothing
 
 randomBirthDeathEvent ::
      BDRates
-  -> Time
+  -> AbsoluteTime
   -> BDPopulation
   -> Integer
   -> GenIO
-  -> IO (Time, EpidemicEvent, BDPopulation, Integer)
-randomBirthDeathEvent (BDRates br dr) currTime (BDPopulation (People currPeople)) currId gen = do
-  delay <- exponential (fromIntegral (V.length currPeople) * (br + dr)) gen
+  -> IO (AbsoluteTime, EpidemicEvent, BDPopulation, Integer)
+randomBirthDeathEvent (BDRates br dr) currTime (BDPopulation currPeople) currId gen = do
+  delay <- exponential (fromIntegral (numPeople currPeople) * (br + dr)) gen
+  let newTime = timeAfterDelta currTime (TimeDelta delay)
   isBirth <- bernoulli (br / (br + dr)) gen
   (selectedPerson, unselectedPeople) <- randomPerson currPeople gen
   return $
     if isBirth
-      then let newTime = currTime + delay
-               (birthedPerson, newId) = newPerson currId
-               event = Infection newTime selectedPerson birthedPerson
-            in ( newTime
-               , event
-               , BDPopulation (People $ V.cons birthedPerson currPeople)
-               , newId)
-      else let newTime = currTime + delay
-               event = Removal newTime selectedPerson
-            in (newTime, event, BDPopulation (People unselectedPeople), currId)
+    then let (birthedPerson, newId) = newPerson currId
+             event = Infection newTime selectedPerson birthedPerson
+         in ( newTime
+            , event
+            , BDPopulation (addPerson birthedPerson currPeople)
+            , newId)
+    else let event = Removal newTime selectedPerson
+         in (newTime, event, BDPopulation unselectedPeople, currId)
 
 allEvents ::
      BDRates
-  -> Time
-  -> (Time, [EpidemicEvent], BDPopulation, Integer)
+  -> AbsoluteTime
+  -> (AbsoluteTime, [EpidemicEvent], BDPopulation, Integer)
   -> GenIO
-  -> IO (Time, [EpidemicEvent], BDPopulation, Integer)
+  -> IO (AbsoluteTime, [EpidemicEvent], BDPopulation, Integer)
 allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
   if isInfected currPop
     then do

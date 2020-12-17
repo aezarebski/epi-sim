@@ -15,81 +15,80 @@ import Epidemic.Types.Parameter
 import Epidemic.Types.Population
 import GHC.Generics (Generic)
 
-
-
 -- | The number of people added or removed in an event.
 eventPopDelta :: EpidemicEvent -> Integer
-eventPopDelta e = case e of
-  Infection{} -> 1
-  Removal _ _ -> -1
-  Sampling _ _ -> -1
-  Catastrophe _ people -> fromIntegral $ numPeople people
-  Occurrence _ _ -> -1
-  Disaster _ people -> fromIntegral $ numPeople people
+eventPopDelta e =
+  case e of
+    Infection {} -> 1
+    Removal _ _ -> -1
+    Sampling _ _ -> -1
+    Catastrophe _ people -> fromIntegral $ numPeople people
+    Occurrence _ _ -> -1
+    Disaster _ people -> fromIntegral $ numPeople people
 
 -- | The first scheduled event after a given time.
-firstScheduled :: Time               -- ^ The given time
-               -> Timed Probability  -- ^ The information about all scheduled events
-               -> Maybe (Time,Probability)
+firstScheduled ::
+     AbsoluteTime -- ^ The given time
+  -> Timed Probability -- ^ The information about all scheduled events
+  -> Maybe (AbsoluteTime, Probability)
 firstScheduled time timedProb = do
   time' <- nextTime timedProb time
   prob' <- diracDeltaValue timedProb time'
-  return (time',prob')
+  return (time', prob')
 
 -- | Predicate for whether there is a scheduled event during an interval.
-noScheduledEvent :: Time                 -- ^ Start time for interval
-                 -> Time                 -- ^ End time for interval
-                 -> Timed Probability    -- ^ Information about all scheduled events
-                 -> Bool
+noScheduledEvent ::
+     AbsoluteTime -- ^ Start time for interval
+  -> AbsoluteTime -- ^ End time for interval
+  -> Timed Probability -- ^ Information about all scheduled events
+  -> Bool
 noScheduledEvent _ _ (Timed []) = True
 noScheduledEvent a b (Timed ((shedTime, _):scheduledEvents)) =
-  not (a < shedTime && shedTime <= b) && noScheduledEvent a b (Timed scheduledEvents)
+  not (a < shedTime && shedTime <= b) &&
+  noScheduledEvent a b (Timed scheduledEvents)
 
 personsInEvent :: EpidemicEvent -> [Person]
-personsInEvent e = case e of
-  (Infection _ p1 p2) -> [p1,p2]
-  (Removal _ p) -> [p]
-  (Sampling _ p) -> [p]
-  (Catastrophe _ (People persons)) -> V.toList persons
-  (Occurrence _ p) -> [p]
-  (Disaster _ (People persons)) -> V.toList persons
+personsInEvent e =
+  case e of
+    (Infection _ p1 p2) -> [p1, p2]
+    (Removal _ p) -> [p]
+    (Sampling _ p) -> [p]
+    (Catastrophe _ (People persons)) -> V.toList persons
+    (Occurrence _ p) -> [p]
+    (Disaster _ (People persons)) -> V.toList persons
 
 peopleInEvents :: [EpidemicEvent] -> People
 peopleInEvents events =
   People . V.fromList . nub . concat $ map personsInEvent events
 
-
 -- | Predicate for whether the first person infected the second in the given event
-infected :: Person -- ^ Potential infector
-         -> Person -- ^ Potential infectee
-         -> EpidemicEvent  -- ^ Given event
-         -> Bool
+infected ::
+     Person -- ^ Potential infector
+  -> Person -- ^ Potential infectee
+  -> EpidemicEvent -- ^ Given event
+  -> Bool
 infected p1 p2 e =
   case e of
     (Infection _ infector infectee) -> infector == p1 && infectee == p2
     _ -> False
 
-
 -- | The people infected by a particular person in a list of events.
-infectedBy :: Person  -- ^ Potential infector
-           -> [EpidemicEvent] -- ^ Events
-           -> People
+infectedBy ::
+     Person -- ^ Potential infector
+  -> [EpidemicEvent] -- ^ Events
+  -> People
 infectedBy person events =
   case events of
     [] -> People V.empty
-    (Infection _ infector infectee :es) ->
+    (Infection _ infector infectee:es) ->
       if infector == person
         then addPerson infectee $ infectedBy person es
         else infectedBy person es
     (_:es) -> infectedBy person es
 
-
 -- | Predicate for whether a person or one of their descendents satisfies a
 -- predicate
-hasDescendentWhich :: [EpidemicEvent]
-                   -> (Person -> Bool)
-                   -> Person
-                   -> Bool
+hasDescendentWhich :: [EpidemicEvent] -> (Person -> Bool) -> Person -> Bool
 hasDescendentWhich events predicate person =
   predicate person ||
   any (hasDescendentWhich events predicate) (V.toList descendents)
@@ -100,9 +99,10 @@ hasSampledDescendent :: [EpidemicEvent] -> Person -> Bool
 hasSampledDescendent events = hasDescendentWhich events (wasSampled events)
 
 -- | Predicate for whether a person was sampled in the given events
-wasSampled :: [EpidemicEvent] -- ^ The given events
-           -> Person  -- ^ The person of interest
-           -> Bool
+wasSampled ::
+     [EpidemicEvent] -- ^ The given events
+  -> Person -- ^ The person of interest
+  -> Bool
 wasSampled events person =
   case events of
     (Sampling _ sampledPerson:es) ->
@@ -127,11 +127,10 @@ samplingEvent events person =
     _:remainingEvents -> samplingEvent remainingEvents person
     _ -> error "person does not appear to have been sampled."
 
-
 class ModelParameters a where
-  rNaught :: a -> Time -> Maybe Double
-  eventRate :: a -> Time -> Maybe Rate
-  birthProb :: a -> Time -> Maybe Probability
+  rNaught :: a -> AbsoluteTime -> Maybe Double
+  eventRate :: a -> AbsoluteTime -> Maybe Rate
+  birthProb :: a -> AbsoluteTime -> Maybe Probability
 
 class Population a where
   susceptiblePeople :: a -> Maybe People

@@ -14,7 +14,7 @@ import qualified Data.ByteString.Char8 as Char8
 import GHC.Generics (Generic)
 import qualified Data.Vector as V
 import System.Random.MWC
-import System.Random.MWC.Distributions
+import System.Random.MWC.Distributions (exponential)
 import Control.Monad.Primitive (PrimMonad, PrimState)
 import Control.Applicative
 import Text.Trifecta
@@ -26,7 +26,7 @@ data SimulationConfiguration r p =
     { rates :: r
     , population :: p
     , newIdentifier :: Integer
-    , timeLimit :: Time
+    , timeLimit :: AbsoluteTime
     }
 
 initialIdentifier :: Integer
@@ -42,12 +42,12 @@ selectElem v n
     let (foo, bar) = V.splitAt n v
      in (V.head bar, foo V.++ (V.tail bar))
 
-randomPerson :: V.Vector Person -> GenIO -> IO (Person, V.Vector Person)
-randomPerson persons gen = do
+randomPerson :: People -> GenIO -> IO (Person, People)
+randomPerson people@(People persons) gen = do
   u <- uniform gen
-  return $ selectElem persons (floor (u * numPersons))
-  where
-    numPersons = fromIntegral $ V.length persons :: Double
+  let personIx = floor (u * (fromIntegral $ numPeople people :: Double))
+      (person, remPeople) = selectElem persons personIx
+   in return (person, People remPeople)
 
 
 type NName = Maybe String
@@ -142,7 +142,7 @@ count' p = go 0
 simulation :: (ModelParameters a)
            => Bool  -- ^ Condition upon at least two leaves in the reconstructed tree
            -> SimulationConfiguration a b
-           -> (a -> Time -> (Time, [EpidemicEvent], b, Integer) -> GenIO -> IO (Time, [EpidemicEvent], b, Integer))
+           -> (a -> AbsoluteTime -> (AbsoluteTime, [EpidemicEvent], b, Integer) -> GenIO -> IO (AbsoluteTime, [EpidemicEvent], b, Integer))
            -> IO [EpidemicEvent]
 simulation True config allEvents = do
   gen <- System.Random.MWC.create :: IO GenIO
@@ -150,7 +150,7 @@ simulation True config allEvents = do
 simulation False SimulationConfiguration {..} allEvents = do
   gen <- System.Random.MWC.create :: IO GenIO
   (_, events, _, _) <-
-    allEvents rates timeLimit (0, [], population, newIdentifier) gen
+    allEvents rates timeLimit (AbsoluteTime 0, [], population, newIdentifier) gen
   return $ sort events
 
 -- | Predicate for whether an epidemic event is either an occurrence or a
@@ -171,12 +171,12 @@ isReconTreeLeaf e = case e of
 
 
 simulation' :: (ModelParameters a) => SimulationConfiguration a b
-           -> (a -> Time -> (Time, [EpidemicEvent], b, Integer) -> GenIO -> IO (Time, [EpidemicEvent], b, Integer))
+           -> (a -> AbsoluteTime -> (AbsoluteTime, [EpidemicEvent], b, Integer) -> GenIO -> IO (AbsoluteTime, [EpidemicEvent], b, Integer))
            -> GenIO
            -> IO [EpidemicEvent]
 simulation' config@SimulationConfiguration {..} allEvents gen = do
   (_, events, _, _) <-
-    allEvents rates timeLimit (0, [], population, newIdentifier) gen
+    allEvents rates timeLimit (AbsoluteTime 0, [], population, newIdentifier) gen
   if count' isReconTreeLeaf events >= 2
     then return $ sort events
     else simulation' config allEvents gen
@@ -187,12 +187,12 @@ simulation' config@SimulationConfiguration {..} allEvents gen = do
 simulationWithSystemRandom :: (ModelParameters a)
                            => Bool  -- ^ Condition upon at least two leaves in the reconstructed tree
                            -> SimulationConfiguration a b
-                           -> (a -> Time -> (Time, [EpidemicEvent], b, Integer) -> GenIO -> IO (Time, [EpidemicEvent], b, Integer))
+                           -> (a -> AbsoluteTime -> (AbsoluteTime, [EpidemicEvent], b, Integer) -> GenIO -> IO (AbsoluteTime, [EpidemicEvent], b, Integer))
                            -> IO [EpidemicEvent]
 simulationWithSystemRandom atLeastCherry config@SimulationConfiguration {..} allEvents = do
   (_, events, _, _) <-
     withSystemRandom $ \g ->
-      allEvents rates timeLimit (0, [], population, newIdentifier) g
+      allEvents rates timeLimit (AbsoluteTime 0, [], population, newIdentifier) g
   if atLeastCherry
     then (if count' isReconTreeLeaf events >= 2
            then return $ sort events
@@ -205,30 +205,36 @@ finalSize :: [EpidemicEvent] -- ^ The events from the simulation
           -> Integer
 finalSize = foldl (\x y -> x + eventPopDelta y) 1
 
--- | Generate exponentially distributed random variates with inhomogeneous rate.
+-- | Generate exponentially distributed random variates with inhomogeneous rate
+-- starting from a particular point in time.
+--
+-- Assuming the @stepFunc@ is the intensity of arrivals and @t0@ is the start
+-- time this returns @t1@ the time of the next arrival.
 inhomExponential :: PrimMonad m
                  => Timed Double      -- ^ Step function
-                 -> Gen (PrimState m) -- ^ Generator.
-                 -> m Double
-inhomExponential stepFunc gen = do
-  maybeVariate <- randInhomExp 0 stepFunc gen
-  if Maybe.isJust maybeVariate
-    then return $ Maybe.fromJust maybeVariate
-    else inhomExponential stepFunc gen
+                 -> AbsoluteTime      -- ^ Start time
+                 -> Gen (PrimState m) -- ^ Generator
+                 -> m (Maybe AbsoluteTime)
+inhomExponential stepFunc t0 = randInhomExp t0 stepFunc
 
 -- | Generate exponentially distributed random variates with inhomogeneous rate.
+--
+-- __TODO__ The algorithm used here generates more variates than are needed. It
+-- would be nice to use a more efficient implementation.
+--
 randInhomExp :: PrimMonad m
-             => Double            -- ^ Timer
+             => AbsoluteTime      -- ^ Timer
              -> Timed Double      -- ^ Step function
              -> Gen (PrimState m) -- ^ Generator.
-             -> m (Maybe Double)
-randInhomExp crrT stepFunc gen =
+             -> m (Maybe AbsoluteTime)
+randInhomExp crrT stepFunc gen = 
   let crrR = cadlagValue stepFunc crrT
       nxtT = nextTime stepFunc crrT
-   in if (Maybe.isJust crrR && Maybe.isJust nxtT)
+   in if Maybe.isJust crrR && Maybe.isJust nxtT
         then do
           crrD <- exponential (Maybe.fromJust crrR) gen
-          if crrT + crrD < (Maybe.fromJust nxtT)
-            then return $ Just (crrD + crrT)
-            else (randInhomExp (Maybe.fromJust nxtT) stepFunc gen)
+          let propT = timeAfterDelta crrT (TimeDelta crrD)
+          if propT < Maybe.fromJust nxtT
+            then return $ Just propT
+            else randInhomExp (Maybe.fromJust nxtT) stepFunc gen
         else return Nothing

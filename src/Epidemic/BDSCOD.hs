@@ -49,8 +49,8 @@ instance Population BDSCODPopulation where
   isInfected (BDSCODPopulation (People people)) = not $ V.null people
 
 -- | Configuration of a birth-death-sampling-occurrence simulation
-configuration :: Time                                                            -- ^ Duration of the simulation
-              -> (Rate,Rate,Rate,[(Time,Probability)],Rate,[(Time,Probability)]) -- ^ Birth, Death, Sampling, Catastrophe probability and Occurrence rates
+configuration :: AbsoluteTime                                                    -- ^ Duration of the simulation
+              -> (Rate,Rate,Rate,[(AbsoluteTime,Probability)],Rate,[(AbsoluteTime,Probability)]) -- ^ Birth, Death, Sampling, Catastrophe probability and Occurrence rates
               -> Maybe (SimulationConfiguration BDSCODParameters BDSCODPopulation)
 configuration maxTime (birthRate, deathRate, samplingRate, catastropheSpec, occurrenceRate, disasterSpec) =
   do catastropheSpec' <- asTimed catastropheSpec
@@ -69,36 +69,36 @@ configuration maxTime (birthRate, deathRate, samplingRate, catastropheSpec, occu
 
 -- | Return a random event from the BDSCOD-process given the current state of the process.
 randomEvent :: BDSCODParameters  -- ^ Parameters of the process
-            -> Time              -- ^ The current time within the process
+            -> AbsoluteTime              -- ^ The current time within the process
             -> BDSCODPopulation  -- ^ The current state of the populaion
             -> Integer        -- ^ The current state of the identifier generator
             -> GenIO             -- ^ The current state of the PRNG
-            -> IO (Time, EpidemicEvent, BDSCODPopulation, Integer)
-randomEvent params@(BDSCODParameters br dr sr catastInfo occr disastInfo) currTime currPop@(BDSCODPopulation (People currPeople)) currId gen =
+            -> IO (AbsoluteTime, EpidemicEvent, BDSCODPopulation, Integer)
+randomEvent params@(BDSCODParameters br dr sr catastInfo occr disastInfo) currTime currPop@(BDSCODPopulation currPeople) currId gen =
   let netEventRate = fromJust $ eventRate params currTime
       eventWeights = V.fromList [br, dr, sr, occr]
-   in do delay <- exponential (fromIntegral (V.length currPeople) * netEventRate) gen
-         nextTime <- pure $ currTime + delay
-         if noScheduledEvent currTime nextTime (catastInfo <> disastInfo)
+   in do delay <- exponential (fromIntegral (numPeople currPeople) * netEventRate) gen
+         newEventTime <- pure $ timeAfterDelta currTime (TimeDelta delay)
+         if noScheduledEvent currTime newEventTime (catastInfo <> disastInfo)
            then do eventIx <- categorical eventWeights gen
                    (selectedPerson, unselectedPeople) <- randomPerson currPeople gen
                    return $ case eventIx of
                      0 -> let (birthedPerson, newId) = newPerson currId
-                              event = Infection nextTime selectedPerson birthedPerson
-                       in ( nextTime
+                              event = Infection newEventTime selectedPerson birthedPerson
+                       in ( newEventTime
                           , event
-                          , BDSCODPopulation (People $ V.cons birthedPerson currPeople)
+                          , BDSCODPopulation (addPerson birthedPerson currPeople)
                           , newId)
-                     1 -> (nextTime, Removal nextTime selectedPerson, BDSCODPopulation (People unselectedPeople), currId)
-                     2 -> (nextTime, Sampling nextTime selectedPerson, BDSCODPopulation (People unselectedPeople), currId)
-                     3 -> (nextTime, Occurrence nextTime selectedPerson, BDSCODPopulation (People unselectedPeople), currId)
+                     1 -> (newEventTime, Removal newEventTime selectedPerson, BDSCODPopulation unselectedPeople, currId)
+                     2 -> (newEventTime, Sampling newEventTime selectedPerson, BDSCODPopulation unselectedPeople, currId)
+                     3 -> (newEventTime, Occurrence newEventTime selectedPerson, BDSCODPopulation unselectedPeople, currId)
                      _ -> error "no birth, death, sampling, occurrence event selected."
 
-           else if noScheduledEvent currTime nextTime catastInfo
+           else if noScheduledEvent currTime newEventTime catastInfo
                   then let (Just (disastTime,disastProb)) = firstScheduled currTime disastInfo
                         in do (disastEvent,postDisastPop) <- randomDisasterEvent (disastTime,disastProb) currPop gen
                               return (disastTime,disastEvent,postDisastPop,currId)
-                else if noScheduledEvent currTime nextTime disastInfo
+                else if noScheduledEvent currTime newEventTime disastInfo
                         then let (Just (catastTime,catastProb)) = firstScheduled currTime catastInfo
                               in do (catastEvent,postCatastPop) <- randomCatastropheEvent (catastTime,catastProb) currPop gen
                                     return (catastTime,catastEvent,postCatastPop,currId)
@@ -111,7 +111,7 @@ randomEvent params@(BDSCODParameters br dr sr catastInfo occr disastInfo) currTi
 
 
 -- | Return a randomly sampled Catastrophe event
-randomCatastropheEvent :: (Time,Probability) -- ^ Time and probability of sampling in the catastrophe
+randomCatastropheEvent :: (AbsoluteTime,Probability) -- ^ Time and probability of sampling in the catastrophe
                        -> BDSCODPopulation    -- ^ The state of the population prior to the catastrophe
                        -> GenIO
                        -> IO (EpidemicEvent,BDSCODPopulation)
@@ -125,7 +125,7 @@ randomCatastropheEvent (catastTime, rhoProb) (BDSCODPopulation (People currPeopl
         , BDSCODPopulation (People unsampledPeople))
 
 -- | Return a randomly sampled Disaster event
-randomDisasterEvent :: (Time,Probability) -- ^ Time and probability of sampling in the disaster
+randomDisasterEvent :: (AbsoluteTime,Probability) -- ^ Time and probability of sampling in the disaster
                     -> BDSCODPopulation    -- ^ The state of the population prior to the disaster
                     -> GenIO
                     -> IO (EpidemicEvent,BDSCODPopulation)
@@ -140,10 +140,10 @@ randomDisasterEvent (disastTime, nuProb) (BDSCODPopulation (People currPeople)) 
 
 allEvents ::
      BDSCODParameters
-  -> Time
-  -> (Time, [EpidemicEvent], BDSCODPopulation, Integer)
+  -> AbsoluteTime
+  -> (AbsoluteTime, [EpidemicEvent], BDSCODPopulation, Integer)
   -> GenIO
-  -> IO (Time, [EpidemicEvent], BDSCODPopulation, Integer)
+  -> IO (AbsoluteTime, [EpidemicEvent], BDSCODPopulation, Integer)
 allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
   if isInfected currPop
     then do

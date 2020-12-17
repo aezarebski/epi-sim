@@ -1,5 +1,11 @@
 # Changelog for epi-sim
 
+## 0.3.0.0
+
+- Replace `Time` with `AbsoluteTime` and `TimeDelta` types to make it explicit
+  what is being represented.
+- Reduce the number of models that are included to the more interesting subset.
+
 ## 0.2.2.0
 
 - Clean up for a release candidate.

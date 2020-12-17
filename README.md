@@ -6,11 +6,8 @@ observation models.
 
 1. Birth-Death (see `Epidemic.BirthDeath`)
 2. Birth-Death-Sampling (see `Epidemic.BirthDeathSampling`)
-3. Birth-Death-Sampling-Occurrence (see `Epidemic.BirthDeathSamplingOccurrence`)
-4. Birth-Death-Sampling-Catastrophe-Occurrence (see `Epidemic.BirthDeathSamplingCatastropheOccurrence`)
-5. Birth-Death-Sampling-Catastrophe-Occurrence-Disaster (see `Epidemic.BDSCOD`)
-6. Inhomogeneous Birth-Death (see `Epidemic.InhomogeneousBD`)
-7. Inhomogeneous Birth-Death-Sampling (see `Epidemic.InhomogeneousBDS`)
+3. Birth-Death-Sampling-Catastrophe-Occurrence-Disaster (see `Epidemic.BDSCOD`)
+4. Inhomogeneous Birth-Death-Sampling (see `Epidemic.InhomogeneousBDS`)
 
 ## Output
 

@@ -45,27 +45,28 @@ instance Population InhomBDSPop where
 --
 -- Note that this requires that the rates are all positive, if they are not it
 -- will return @Nothing@.
-inhomBDSRates :: [(Time, Rate)] -- ^ birth rate
+inhomBDSRates :: Timed Rate     -- ^ birth rate
               -> Rate           -- ^ death rate
               -> Rate           -- ^ sample rate
               -> Maybe InhomBDSRates
-inhomBDSRates tBrPairs deathRate sampleRate
+inhomBDSRates timedBirthRate@(Timed tBrPairs) deathRate sampleRate
   | all (\x -> 0 < snd x) tBrPairs && deathRate >= 0 && sampleRate >= 0 =
-    (\tbr -> InhomBDSRates tbr deathRate sampleRate) <$> asTimed tBrPairs
+    Just $ InhomBDSRates timedBirthRate deathRate sampleRate
   | otherwise = Nothing
 
 -- | Configuration of a inhomogeneous birth-death-sampling simulation.
 --
 -- Note that this requires that the timed rates are all positive, if they are
 -- not it will return @Nothing@ which can lead to cryptic bugs.
-configuration :: Time                        -- ^ Duration of the simulation
-              -> ([(Time,Rate)], Rate, Rate) -- ^ Birth, Death and Sampling rates
+configuration :: AbsoluteTime -- ^ Stopping time of the simulation
+              -> ([(AbsoluteTime,Rate)], Rate, Rate) -- ^ Birth, Death and Sampling rates
               -> Maybe (SimulationConfiguration InhomBDSRates InhomBDSPop)
 configuration maxTime (tBrPairs, deathRate, sampleRate) =
   let (seedPerson, newId) = newPerson initialIdentifier
       bdsPop = InhomBDSPop (People $ V.singleton seedPerson)
-   in do maybeIBDSRates <- inhomBDSRates tBrPairs deathRate sampleRate
-         if maxTime > 0
+   in do timedBirthRate <- asTimed tBrPairs
+         maybeIBDSRates <- inhomBDSRates timedBirthRate deathRate sampleRate
+         if maxTime > AbsoluteTime 0
            then Just
                   (SimulationConfiguration maybeIBDSRates bdsPop newId maxTime)
            else Nothing
@@ -73,43 +74,36 @@ configuration maxTime (tBrPairs, deathRate, sampleRate) =
 -- | A random event and the state afterwards
 randomEvent ::
      InhomBDSRates -- ^ model parameters
-  -> Time          -- ^ the current time
+  -> AbsoluteTime  -- ^ the current time
   -> InhomBDSPop   -- ^ the population
-  -> Integer    -- ^ current identifier
+  -> Identifier -- ^ current identifier
   -> GenIO         -- ^ PRNG
-  -> IO (Time, EpidemicEvent, InhomBDSPop, Integer)
-randomEvent inhomRates@(InhomBDSRates brts@(Timed brts') dr sr) currTime (InhomBDSPop (people@(People peopleVec))) currId gen =
+  -> IO (AbsoluteTime, EpidemicEvent, InhomBDSPop, Identifier)
+randomEvent inhomRates@(InhomBDSRates brts dr sr) currTime (InhomBDSPop (people@(People peopleVec))) currId gen =
   let popSize = fromIntegral $ numPeople people :: Double
-      stepTimes = map fst brts'
-      stepFunction = fromJust $ asTimed [(t-currTime,popSize * fromJust (eventRate inhomRates t)) | t <- stepTimes]
+      -- we need a new step function to account for the population size.
+      (Just stepFunction) = asTimed [(t,popSize * fromJust (eventRate inhomRates t)) | t <- allTimes brts]
       eventWeights t = V.fromList [fromJust (cadlagValue brts t), dr, sr]
-   in do delay <- inhomExponential stepFunction gen
-         eventIx <- categorical (eventWeights (currTime + delay)) gen
-         (selectedPerson, unselectedPeople) <- randomPerson peopleVec gen
+   in do (Just newEventTime) <- inhomExponential stepFunction currTime gen
+         eventIx <- categorical (eventWeights newEventTime) gen
+         (selectedPerson, unselectedPeople) <- randomPerson people gen
          return $ case eventIx of
-           0 -> let newTime = currTime + delay
-                    (birthedPerson, newId) = newPerson currId
-                    event = Infection newTime selectedPerson birthedPerson
-                in ( newTime
-                   , event
-                   , InhomBDSPop (addPerson birthedPerson people)
-                   , newId)
-           1 -> let newTime = currTime + delay
-                    event = Removal newTime selectedPerson
-                in (newTime, event, InhomBDSPop (People unselectedPeople), currId)
-           2 -> let newTime = currTime + delay
-                    event = Sampling newTime selectedPerson
-                in (newTime, event, InhomBDSPop (People unselectedPeople), currId)
+           0 -> ( newEventTime
+                , Infection newEventTime selectedPerson birthedPerson
+                , InhomBDSPop (addPerson birthedPerson people)
+                , newId) where (birthedPerson, newId) = newPerson currId
+           1 -> (newEventTime, Removal newEventTime selectedPerson, InhomBDSPop unselectedPeople, currId)
+           2 -> (newEventTime, Sampling newEventTime selectedPerson, InhomBDSPop unselectedPeople, currId)
            _ -> error "no birth-death-sampling event selected."
 
 -- | The state of the simulation at the time of the last event prior to the
 -- stopping time.
 allEvents ::
      InhomBDSRates                            -- ^ model parameters
-  -> Time                                     -- ^ stopping time
-  -> (Time, [EpidemicEvent], InhomBDSPop, Integer) -- ^ simulation state
+  -> AbsoluteTime                                     -- ^ stopping time
+  -> (AbsoluteTime, [EpidemicEvent], InhomBDSPop, Identifier) -- ^ simulation state
   -> GenIO                                    -- ^ PRNG
-  -> IO (Time, [EpidemicEvent], InhomBDSPop, Integer)
+  -> IO (AbsoluteTime, [EpidemicEvent], InhomBDSPop, Identifier)
 allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
   if isInfected currPop
     then do
@@ -132,4 +126,4 @@ observedEvents [] = []
 observedEvents events = sort $ sampleTreeEvents''
   where
     sampleTreeEvents'' =
-      sampleTreeEvents . sampleTree $ transmissionTree events (Person 1)
+      sampleTreeEvents . sampleTree $ transmissionTree events (Person initialIdentifier)

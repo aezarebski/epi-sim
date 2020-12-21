@@ -4,6 +4,7 @@
 module Epidemic.Types.Population
   ( Person(Person)
   , People(People)
+  , Identifier(Identifier)
   , asPeople
   , includesPerson
   , haveCommonPeople
@@ -22,8 +23,24 @@ import qualified Data.Csv as Csv
 import qualified Data.Vector as V
 import GHC.Generics
 
+-- | A type to hold an integer which is unique to each 'Person'.
+newtype Identifier =
+  Identifier Integer
+  deriving (Show, Generic, Eq)
+
+instance Json.FromJSON Identifier
+
+instance Json.ToJSON Identifier
+
+instance Csv.ToField Identifier where
+  toField (Identifier n) = Csv.toField n
+
+instance Csv.FromField Identifier where
+  parseField f = Identifier <$> (Csv.parseField f :: Csv.Parser Integer)
+
+-- | A type to represent a single person in a group of 'People'
 newtype Person =
-  Person Integer
+  Person Identifier
   deriving (Show, Generic, Eq)
 
 instance Json.FromJSON Person
@@ -34,8 +51,10 @@ instance Csv.ToField Person where
   toField (Person n) = Csv.toField n
 
 instance Csv.FromField Person where
-  parseField f = Person <$> (Csv.parseField f :: Csv.Parser Integer)
+  parseField f =
+    Person . Identifier <$> (Csv.parseField f :: Csv.Parser Integer)
 
+-- | A type to represent a population.
 newtype People =
   People (V.Vector Person)
   deriving (Show, Eq, Generic)
@@ -50,7 +69,7 @@ instance Csv.ToField People where
 
 instance Csv.FromField People where
   parseField f =
-    (People . V.fromList) <$> (mapM Csv.parseField $ B.split (c2w ':') f)
+    People . V.fromList <$> mapM Csv.parseField (B.split (c2w ':') f)
 
 -- | A list of persons as a people
 asPeople :: [Person] -> People
@@ -82,4 +101,4 @@ removePerson person (People persons) = People $ V.filter (/= person) persons
 
 -- | A bytestring builder for a person
 personByteString :: Person -> BBuilder.Builder
-personByteString (Person n) = BBuilder.integerDec n
+personByteString (Person (Identifier n)) = BBuilder.integerDec n

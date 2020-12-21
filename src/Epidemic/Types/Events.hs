@@ -28,12 +28,12 @@ import GHC.Generics
 
 -- | Events that can occur in an epidemic with their absolute time.
 data EpidemicEvent
-  = Infection Time Person Person -- ^ infection time, infector, infectee
-  | Removal Time Person          -- ^ removal without observation
-  | Sampling Time Person         -- ^ removal and inclusion in phylogeny
-  | Catastrophe Time People      -- ^ scheduled sampling of lineages
-  | Occurrence Time Person       -- ^ removal and observed by not in phylogeny
-  | Disaster Time People         -- ^ scheduled occurrence of lineages
+  = Infection AbsoluteTime Person Person -- ^ infection time, infector, infectee
+  | Removal AbsoluteTime Person          -- ^ removal without observation
+  | Sampling AbsoluteTime Person         -- ^ removal and inclusion in phylogeny
+  | Catastrophe AbsoluteTime People      -- ^ scheduled sampling of lineages
+  | Occurrence AbsoluteTime Person       -- ^ removal and observed by not in phylogeny
+  | Disaster AbsoluteTime People         -- ^ scheduled occurrence of lineages
   deriving (Show, Generic, Eq)
 
 instance Json.FromJSON EpidemicEvent
@@ -67,13 +67,13 @@ et bs r = (== bs) . head $ V.toList r
 instance Csv.FromRecord EpidemicEvent where
   parseRecord r
     | et "infection" r =
-      Infection <$> (r Csv..! 1) <*> (Person <$> (r Csv..! 2)) <*>
+      Infection <$> (r Csv..! 1) <*> (Person <$> Identifier <$> (r Csv..! 2)) <*>
       (Person <$> (r Csv..! 3))
-    | et "removal" r = Removal <$> (r Csv..! 1) <*> (Person <$> (r Csv..! 2))
-    | et "sampling" r = Sampling <$> (r Csv..! 1) <*> (Person <$> (r Csv..! 2))
+    | et "removal" r = Removal <$> (r Csv..! 1) <*> (Person <$> Identifier <$> (r Csv..! 2))
+    | et "sampling" r = Sampling <$> (r Csv..! 1) <*> (Person <$> Identifier <$> (r Csv..! 2))
     | et "catastrophe" r = Catastrophe <$> (r Csv..! 1) <*> (r Csv..! 2)
     | et "occurrence" r =
-      Occurrence <$> (r Csv..! 1) <*> (Person <$> (r Csv..! 2))
+      Occurrence <$> (r Csv..! 1) <*> (Person <$> Identifier <$> (r Csv..! 2))
     | et "disaster" r = Disaster <$> (r Csv..! 1) <*> (r Csv..! 2)
     | otherwise = undefined
 
@@ -82,7 +82,7 @@ instance Ord EpidemicEvent where
   e1 <= e2 = eventTime e1 <= eventTime e2
 
 -- | The absolute time an event occurred.
-eventTime :: EpidemicEvent -> Time
+eventTime :: EpidemicEvent -> AbsoluteTime
 eventTime e =
   case e of
     Infection time _ _ -> time
@@ -245,7 +245,9 @@ pointProcessEvents (Branch _ lt rt) =
 
 class Newick t where
   -- | Return a representation of the tree in Newick format.
-  asNewickString :: (Time,Person) -> t -> Maybe (BBuilder.Builder, [EpidemicEvent])
+  asNewickString :: (AbsoluteTime,Person) -- ^ The person and time of the start of the tree
+                 -> t
+                 -> Maybe (BBuilder.Builder, [EpidemicEvent])
 
 
 ampersandBuilder :: BBuilder.Builder
@@ -274,33 +276,33 @@ instance Newick EpidemicTree where
     if p /= p'
       then Nothing
       else let identifier = personByteString p
-               bl = BBuilder.stringUtf8 "Infinity"
-            in Just (identifier <> colonBuilder <> bl, [])
+               branchLength = BBuilder.stringUtf8 "Infinity"
+            in Just (identifier <> colonBuilder <> branchLength, [])
 
   asNewickString (t, p) (Leaf e) =
     let identifier = personByteString p
-        bl a b = BBuilder.doubleDec $ b - a
+        branchLength a b = BBuilder.doubleDec td where (TimeDelta td) = timeDelta a b
     in case e of
       Infection {} -> Nothing
       (Removal t' p') ->
         if p /= p'
         then Nothing
-        else Just (identifier <> colonBuilder <> bl t t', [e])
+        else Just (identifier <> colonBuilder <> branchLength t t', [e])
       (Sampling t' p') ->
         if p /= p'
         then Nothing
-        else Just (identifier <> colonBuilder <> bl t t', [e])
+        else Just (identifier <> colonBuilder <> branchLength t t', [e])
       (Catastrophe t' ps) ->
         if ps `includesPerson` p
-        then Just (identifier <> colonBuilder <> bl t t', [e])
+        then Just (identifier <> colonBuilder <> branchLength t t', [e])
         else Nothing
       (Occurrence t' p') ->
         if p /= p'
         then Nothing
-        else Just (identifier <> colonBuilder <> bl t t', [e])
+        else Just (identifier <> colonBuilder <> branchLength t t', [e])
       (Disaster t' ps) ->
         if ps `includesPerson` p
-        then Just (identifier <> colonBuilder <> bl t t', [e])
+        then Just (identifier <> colonBuilder <> branchLength t t', [e])
         else Nothing
 
   asNewickString (t, p) (Branch e lt rt) =
@@ -311,11 +313,11 @@ instance Newick EpidemicTree where
           else do
             (leftNS, leftEs) <- asNewickString (t', p1) lt
             (rightNS, rightEs) <- asNewickString (t', p2) rt
-            let bl = BBuilder.doubleDec $ t' - t
+            let branchLength = BBuilder.doubleDec td where (TimeDelta td) = timeDelta t t'
             return
               ( leftBraceBuilder <>
                 leftNS <>
-                commaBuilder <> rightNS <> rightBraceBuilder <> colonBuilder <> bl
+                commaBuilder <> rightNS <> rightBraceBuilder <> colonBuilder <> branchLength
               , List.sort $ leftEs ++ rightEs)
       _ -> Nothing
 
@@ -323,12 +325,12 @@ instance Newick EpidemicTree where
 
 instance Newick ReconstructedTree where
   asNewickString (t, _) (RLeaf e) =
-    let bl a b = BBuilder.doubleDec $ b - a
+    let branchLength a b = BBuilder.doubleDec td where (TimeDelta td) = timeDelta a b
     in case e of
-      (Sampling t' p) -> Just ((personByteString p) <> colonBuilder <> bl t t', [e])
+      (Sampling t' p) -> Just ((personByteString p) <> colonBuilder <> branchLength t t', [e])
       Infection {} -> Nothing
       Removal {} -> Nothing
-      (Catastrophe t' ps) -> Just (catastrophePeopleBuilder ps <> colonBuilder <> bl t t', [e])
+      (Catastrophe t' ps) -> Just (catastrophePeopleBuilder ps <> colonBuilder <> branchLength t t', [e])
       Occurrence {} -> Nothing
       Disaster {} -> Nothing
 
@@ -338,10 +340,10 @@ instance Newick ReconstructedTree where
         do
           (leftNS, leftEs) <- asNewickString (t', p1) lt
           (rightNS, rightEs) <- asNewickString (t', p2) rt
-          let bl = BBuilder.doubleDec $ t' - t
+          let branchLength = BBuilder.doubleDec td where (TimeDelta td) = timeDelta t t'
           return
             ( leftBraceBuilder <>
               leftNS <>
-              commaBuilder <> rightNS <> rightBraceBuilder <> colonBuilder <> bl
+              commaBuilder <> rightNS <> rightBraceBuilder <> colonBuilder <> branchLength
             , List.sort $ leftEs ++ rightEs)
       _ -> Nothing

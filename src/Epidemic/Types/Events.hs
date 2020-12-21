@@ -67,13 +67,13 @@ et bs r = (== bs) . head $ V.toList r
 instance Csv.FromRecord EpidemicEvent where
   parseRecord r
     | et "infection" r =
-      Infection <$> (r Csv..! 1) <*> (Person <$> (r Csv..! 2)) <*>
+      Infection <$> (r Csv..! 1) <*> (Person <$> Identifier <$> (r Csv..! 2)) <*>
       (Person <$> (r Csv..! 3))
-    | et "removal" r = Removal <$> (r Csv..! 1) <*> (Person <$> (r Csv..! 2))
-    | et "sampling" r = Sampling <$> (r Csv..! 1) <*> (Person <$> (r Csv..! 2))
+    | et "removal" r = Removal <$> (r Csv..! 1) <*> (Person <$> Identifier <$> (r Csv..! 2))
+    | et "sampling" r = Sampling <$> (r Csv..! 1) <*> (Person <$> Identifier <$> (r Csv..! 2))
     | et "catastrophe" r = Catastrophe <$> (r Csv..! 1) <*> (r Csv..! 2)
     | et "occurrence" r =
-      Occurrence <$> (r Csv..! 1) <*> (Person <$> (r Csv..! 2))
+      Occurrence <$> (r Csv..! 1) <*> (Person <$> Identifier <$> (r Csv..! 2))
     | et "disaster" r = Disaster <$> (r Csv..! 1) <*> (r Csv..! 2)
     | otherwise = undefined
 

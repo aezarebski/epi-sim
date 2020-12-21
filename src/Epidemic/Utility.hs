@@ -25,15 +25,15 @@ data SimulationConfiguration r p =
   SimulationConfiguration
     { rates :: r
     , population :: p
-    , newIdentifier :: Integer
+    , newIdentifier :: Identifier
     , timeLimit :: AbsoluteTime
     }
 
-initialIdentifier :: Integer
-initialIdentifier = 1
+initialIdentifier :: Identifier
+initialIdentifier = Identifier 1
 
-newPerson :: Integer -> (Person, Integer)
-newPerson identifier = (Person identifier, identifier + 1)
+newPerson :: Identifier -> (Person, Identifier)
+newPerson id@(Identifier idInt)= (Person id, Identifier (idInt + 1))
 
 selectElem :: V.Vector a -> Int -> (a, V.Vector a)
 selectElem v n
@@ -142,7 +142,7 @@ count' p = go 0
 simulation :: (ModelParameters a)
            => Bool  -- ^ Condition upon at least two leaves in the reconstructed tree
            -> SimulationConfiguration a b
-           -> (a -> AbsoluteTime -> (AbsoluteTime, [EpidemicEvent], b, Integer) -> GenIO -> IO (AbsoluteTime, [EpidemicEvent], b, Integer))
+           -> (a -> AbsoluteTime -> (AbsoluteTime, [EpidemicEvent], b, Identifier) -> GenIO -> IO (AbsoluteTime, [EpidemicEvent], b, Identifier))
            -> IO [EpidemicEvent]
 simulation True config allEvents = do
   gen <- System.Random.MWC.create :: IO GenIO
@@ -171,7 +171,7 @@ isReconTreeLeaf e = case e of
 
 
 simulation' :: (ModelParameters a) => SimulationConfiguration a b
-           -> (a -> AbsoluteTime -> (AbsoluteTime, [EpidemicEvent], b, Integer) -> GenIO -> IO (AbsoluteTime, [EpidemicEvent], b, Integer))
+           -> (a -> AbsoluteTime -> (AbsoluteTime, [EpidemicEvent], b, Identifier) -> GenIO -> IO (AbsoluteTime, [EpidemicEvent], b, Identifier))
            -> GenIO
            -> IO [EpidemicEvent]
 simulation' config@SimulationConfiguration {..} allEvents gen = do
@@ -187,7 +187,7 @@ simulation' config@SimulationConfiguration {..} allEvents gen = do
 simulationWithSystemRandom :: (ModelParameters a)
                            => Bool  -- ^ Condition upon at least two leaves in the reconstructed tree
                            -> SimulationConfiguration a b
-                           -> (a -> AbsoluteTime -> (AbsoluteTime, [EpidemicEvent], b, Integer) -> GenIO -> IO (AbsoluteTime, [EpidemicEvent], b, Integer))
+                           -> (a -> AbsoluteTime -> (AbsoluteTime, [EpidemicEvent], b, Identifier) -> GenIO -> IO (AbsoluteTime, [EpidemicEvent], b, Identifier))
                            -> IO [EpidemicEvent]
 simulationWithSystemRandom atLeastCherry config@SimulationConfiguration {..} allEvents = do
   (_, events, _, _) <-

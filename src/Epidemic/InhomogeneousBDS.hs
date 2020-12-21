@@ -76,9 +76,9 @@ randomEvent ::
      InhomBDSRates -- ^ model parameters
   -> AbsoluteTime  -- ^ the current time
   -> InhomBDSPop   -- ^ the population
-  -> Integer       -- ^ current identifier
+  -> Identifier -- ^ current identifier
   -> GenIO         -- ^ PRNG
-  -> IO (AbsoluteTime, EpidemicEvent, InhomBDSPop, Integer)
+  -> IO (AbsoluteTime, EpidemicEvent, InhomBDSPop, Identifier)
 randomEvent inhomRates@(InhomBDSRates brts dr sr) currTime (InhomBDSPop (people@(People peopleVec))) currId gen =
   let popSize = fromIntegral $ numPeople people :: Double
       -- we need a new step function to account for the population size.
@@ -101,9 +101,9 @@ randomEvent inhomRates@(InhomBDSRates brts dr sr) currTime (InhomBDSPop (people@
 allEvents ::
      InhomBDSRates                            -- ^ model parameters
   -> AbsoluteTime                                     -- ^ stopping time
-  -> (AbsoluteTime, [EpidemicEvent], InhomBDSPop, Integer) -- ^ simulation state
+  -> (AbsoluteTime, [EpidemicEvent], InhomBDSPop, Identifier) -- ^ simulation state
   -> GenIO                                    -- ^ PRNG
-  -> IO (AbsoluteTime, [EpidemicEvent], InhomBDSPop, Integer)
+  -> IO (AbsoluteTime, [EpidemicEvent], InhomBDSPop, Identifier)
 allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
   if isInfected currPop
     then do
@@ -126,4 +126,4 @@ observedEvents [] = []
 observedEvents events = sort $ sampleTreeEvents''
   where
     sampleTreeEvents'' =
-      sampleTreeEvents . sampleTree $ transmissionTree events (Person 1)
+      sampleTreeEvents . sampleTree $ transmissionTree events (Person initialIdentifier)

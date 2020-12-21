@@ -71,9 +71,9 @@ configuration maxTime (birthRate, deathRate, samplingRate, catastropheSpec, occu
 randomEvent :: BDSCODParameters  -- ^ Parameters of the process
             -> AbsoluteTime              -- ^ The current time within the process
             -> BDSCODPopulation  -- ^ The current state of the populaion
-            -> Integer        -- ^ The current state of the identifier generator
+            -> Identifier        -- ^ The current state of the identifier generator
             -> GenIO             -- ^ The current state of the PRNG
-            -> IO (AbsoluteTime, EpidemicEvent, BDSCODPopulation, Integer)
+            -> IO (AbsoluteTime, EpidemicEvent, BDSCODPopulation, Identifier)
 randomEvent params@(BDSCODParameters br dr sr catastInfo occr disastInfo) currTime currPop@(BDSCODPopulation currPeople) currId gen =
   let netEventRate = fromJust $ eventRate params currTime
       eventWeights = V.fromList [br, dr, sr, occr]
@@ -141,9 +141,9 @@ randomDisasterEvent (disastTime, nuProb) (BDSCODPopulation (People currPeople)) 
 allEvents ::
      BDSCODParameters
   -> AbsoluteTime
-  -> (AbsoluteTime, [EpidemicEvent], BDSCODPopulation, Integer)
+  -> (AbsoluteTime, [EpidemicEvent], BDSCODPopulation, Identifier)
   -> GenIO
-  -> IO (AbsoluteTime, [EpidemicEvent], BDSCODPopulation, Integer)
+  -> IO (AbsoluteTime, [EpidemicEvent], BDSCODPopulation, Identifier)
 allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
   if isInfected currPop
     then do

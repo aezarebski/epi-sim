@@ -53,9 +53,9 @@ randomBirthDeathSamplingEvent ::
      BDSRates
   -> AbsoluteTime
   -> BDSPopulation
-  -> Integer
+  -> Identifier
   -> GenIO
-  -> IO (AbsoluteTime, EpidemicEvent, BDSPopulation, Integer)
+  -> IO (AbsoluteTime, EpidemicEvent, BDSPopulation, Identifier)
 randomBirthDeathSamplingEvent bdsRates@(BDSRates br dr sr) currTime (BDSPopulation currPeople) currId gen =
   let individualEventRate = fromJust $ eventRate bdsRates currTime
       eventWeights = V.fromList [br,dr,sr]
@@ -77,9 +77,9 @@ randomBirthDeathSamplingEvent bdsRates@(BDSRates br dr sr) currTime (BDSPopulati
 allEvents ::
      BDSRates
   -> AbsoluteTime
-  -> (AbsoluteTime, [EpidemicEvent], BDSPopulation, Integer)
+  -> (AbsoluteTime, [EpidemicEvent], BDSPopulation, Identifier)
   -> GenIO
-  -> IO (AbsoluteTime, [EpidemicEvent], BDSPopulation, Integer)
+  -> IO (AbsoluteTime, [EpidemicEvent], BDSPopulation, Identifier)
 allEvents bdsRates maxTime currState@(currTime, currEvents, currPop, currId) gen =
   if isInfected currPop
     then do

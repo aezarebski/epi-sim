@@ -55,9 +55,9 @@ randomBirthDeathEvent ::
      BDRates
   -> AbsoluteTime
   -> BDPopulation
-  -> Integer
+  -> Identifier
   -> GenIO
-  -> IO (AbsoluteTime, EpidemicEvent, BDPopulation, Integer)
+  -> IO (AbsoluteTime, EpidemicEvent, BDPopulation, Identifier)
 randomBirthDeathEvent (BDRates br dr) currTime (BDPopulation currPeople) currId gen = do
   delay <- exponential (fromIntegral (numPeople currPeople) * (br + dr)) gen
   let newTime = timeAfterDelta currTime (TimeDelta delay)
@@ -77,9 +77,9 @@ randomBirthDeathEvent (BDRates br dr) currTime (BDPopulation currPeople) currId 
 allEvents ::
      BDRates
   -> AbsoluteTime
-  -> (AbsoluteTime, [EpidemicEvent], BDPopulation, Integer)
+  -> (AbsoluteTime, [EpidemicEvent], BDPopulation, Identifier)
   -> GenIO
-  -> IO (AbsoluteTime, [EpidemicEvent], BDPopulation, Integer)
+  -> IO (AbsoluteTime, [EpidemicEvent], BDPopulation, Identifier)
 allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
   if isInfected currPop
     then do

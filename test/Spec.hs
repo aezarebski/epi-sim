@@ -25,19 +25,19 @@ withinNPercent n x y = x - d < y && y < x + d
   where
     d = n * x / 100
 
-p1 = Person 1
+p1 = Person (Identifier 1)
 
-p2 = Person 2
+p2 = Person (Identifier 2)
 
-p3 = Person 3
+p3 = Person (Identifier 3)
 
-p4 = Person 4
+p4 = Person (Identifier 4)
 
-p5 = Person 5
+p5 = Person (Identifier 5)
 
-p6 = Person 6
+p6 = Person (Identifier 6)
 
-p7 = Person 7
+p7 = Person (Identifier 7)
 
 -- | The first set of test data does not have any catastrophe events.
 demoFullEvents01 =
@@ -257,7 +257,7 @@ readwriteTests =
   do
     describe "Change Event read/write" $ do
       it "check we can writte an event" $
-        let demoPerson = Person 3
+        let demoPerson = Person (Identifier 3)
             demoPersonField = toField demoPerson
             demoPersonField' = "3"
             demoEvent = Removal (AbsoluteTime 1.0) demoPerson
@@ -416,9 +416,9 @@ equalBuilders a b = BBuilder.toLazyByteString a == BBuilder.toLazyByteString b
 
 
 newickTests =
-  let p1 = Person 1
-      p2 = Person 2
-      p3 = Person 3
+  let p1 = Person (Identifier 1)
+      p2 = Person (Identifier 2)
+      p3 = Person (Identifier 3)
       ps = asPeople [p1, p2]
       maybeEpiTree =
         maybeEpidemicTree
@@ -446,9 +446,9 @@ newickTests =
       equalBuilders (BBuilder.charUtf8 ':') (BBuilder.charUtf8 ':') `shouldBe` True
       equalBuilders (BBuilder.charUtf8 'a') (BBuilder.charUtf8 ':') `shouldBe` False
     it "derivedFrom works as expected" $ do
-      let p1 = Person 1
-      let p2 = Person 2
-      let p3 = Person 3
+      let p1 = Person (Identifier 1)
+      let p2 = Person (Identifier 2)
+      let p3 = Person (Identifier 3)
       let e = [Infection (AbsoluteTime 0.3) p1 p2]
       derivedFrom p1 e == derivedFrom p2 e `shouldBe` True
       derivedFrom p1 e /= derivedFrom p3 e `shouldBe` True
@@ -457,60 +457,60 @@ newickTests =
       derivedFrom p1 e == e `shouldBe` True
       let foo =
             derivedFrom
-            (Person 1)
-            [ Infection (AbsoluteTime 0.3) (Person 1) (Person 2)
-            , Sampling (AbsoluteTime 0.7) (Person 1)
+            (Person (Identifier 1))
+            [ Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2))
+            , Sampling (AbsoluteTime 0.7) (Person (Identifier 1))
             ]
       let bar =
             derivedFrom
-            (Person 2)
-            [ Infection (AbsoluteTime 0.3) (Person 1) (Person 2)
-            , Sampling (AbsoluteTime 0.7) (Person 1)
+            (Person (Identifier 2))
+            [ Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2))
+            , Sampling (AbsoluteTime 0.7) (Person (Identifier 1))
             ]
       foo == bar `shouldBe` True
     it "maybeEpidemicTree works as expected: 1" $ do
-          let e1 = Removal (AbsoluteTime 1) (Person 1)
+          let e1 = Removal (AbsoluteTime 1) (Person (Identifier 1))
           maybeEpidemicTree [e1] == Just (Leaf e1) `shouldBe` True
           let t1 =
                 maybeEpidemicTree
-                  [ Infection (AbsoluteTime 0.3) (Person 1) (Person 2)
-                  , Sampling (AbsoluteTime 0.6) (Person 2)
-                  , Sampling (AbsoluteTime 0.7) (Person 1)
+                  [ Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2))
+                  , Sampling (AbsoluteTime 0.6) (Person (Identifier 2))
+                  , Sampling (AbsoluteTime 0.7) (Person (Identifier 1))
                   ]
           let t2 =
                 Just
                   (Branch
-                     (Infection (AbsoluteTime 0.3) (Person 1) (Person 2))
-                     (Leaf (Sampling (AbsoluteTime 0.7) (Person 1)))
-                     (Leaf (Sampling (AbsoluteTime 0.6) (Person 2))))
+                     (Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2)))
+                     (Leaf (Sampling (AbsoluteTime 0.7) (Person (Identifier 1))))
+                     (Leaf (Sampling (AbsoluteTime 0.6) (Person (Identifier 2)))))
           t1 == t2 `shouldBe` True
-          maybeEpidemicTree [Infection (AbsoluteTime 0.3) (Person 1) (Person 2)] ==
+          maybeEpidemicTree [Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2))] ==
             Just
               (Branch
-                 (Infection (AbsoluteTime 0.3) (Person 1) (Person 2))
-                 (Shoot (Person 1))
-                 (Shoot (Person 2))) `shouldBe`
+                 (Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2)))
+                 (Shoot (Person (Identifier 1)))
+                 (Shoot (Person (Identifier 2)))) `shouldBe`
             True
           maybeEpidemicTree
-            [ Infection (AbsoluteTime 0.3) (Person 1) (Person 2)
-            , Sampling (AbsoluteTime 0.7) (Person 1)
+            [ Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2))
+            , Sampling (AbsoluteTime 0.7) (Person (Identifier 1))
             ] ==
             Just
               (Branch
-                 (Infection (AbsoluteTime 0.3) (Person 1) (Person 2))
-                 (Leaf (Sampling (AbsoluteTime 0.7) (Person 1)))
-                 (Shoot (Person 2))) `shouldBe`
+                 (Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2)))
+                 (Leaf (Sampling (AbsoluteTime 0.7) (Person (Identifier 1))))
+                 (Shoot (Person (Identifier 2)))) `shouldBe`
             True
           let trickyEvents =
-                [ Infection (AbsoluteTime 0.3) (Person 1) (Person 2)
-                , Infection (AbsoluteTime 0.4) (Person 2) (Person 3)
-                , Sampling (AbsoluteTime 0.6) (Person 3)
-                , Sampling (AbsoluteTime 0.7) (Person 1)
+                [ Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2))
+                , Infection (AbsoluteTime 0.4) (Person (Identifier 2)) (Person (Identifier 3))
+                , Sampling (AbsoluteTime 0.6) (Person (Identifier 3))
+                , Sampling (AbsoluteTime 0.7) (Person (Identifier 1))
                 ]
           isJust (maybeEpidemicTree trickyEvents) `shouldBe` True
     it "maybeEpidemicTree works as expected: 2" $ do
-      let p1 = Person 1
-          p2 = Person 2
+      let p1 = Person (Identifier 1)
+          p2 = Person (Identifier 2)
           demoEvents = [Catastrophe (AbsoluteTime 0.5) (asPeople []) -- Because the first event is a null event it can be ignored!
                        ,Infection (AbsoluteTime 1.0) p1 p2
                        ,Catastrophe (AbsoluteTime 1.5) (asPeople [])
@@ -518,23 +518,23 @@ newickTests =
       (length demoEvents == 4) `shouldBe` True
       (maybeEpidemicTree demoEvents == maybeEpidemicTree (tail demoEvents)) `shouldBe` True
     it "asNewickString works for EpidemicTree" $ do
-      let trickyEvents = [Infection (AbsoluteTime 0.3) (Person 1) (Person 2),Infection (AbsoluteTime 0.4) (Person 2) (Person 3),Sampling (AbsoluteTime 0.6) (Person 3),Sampling (AbsoluteTime 0.7) (Person 1)]
-      let maybeNewickPair = asNewickString (AbsoluteTime 0, Person 1) =<< maybeEpidemicTree trickyEvents
+      let trickyEvents = [Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2)),Infection (AbsoluteTime 0.4) (Person (Identifier 2)) (Person (Identifier 3)),Sampling (AbsoluteTime 0.6) (Person (Identifier 3)),Sampling (AbsoluteTime 0.7) (Person (Identifier 1))]
+      let maybeNewickPair = asNewickString (AbsoluteTime 0, Person (Identifier 1)) =<< maybeEpidemicTree trickyEvents
       let newickTarget = BBuilder.stringUtf8 "(1:0.39999999999999997,(2:Infinity,3:0.19999999999999996):0.10000000000000003):0.3"
       let maybeReconTree = maybeReconstructedTree =<< maybeEpidemicTree trickyEvents
       isJust maybeNewickPair `shouldBe` True
-      [Sampling (AbsoluteTime 0.6) (Person 3),Sampling (AbsoluteTime 0.7) (Person 1)] == snd (fromJust maybeNewickPair) `shouldBe` True
+      [Sampling (AbsoluteTime 0.6) (Person (Identifier 3)),Sampling (AbsoluteTime 0.7) (Person (Identifier 1))] == snd (fromJust maybeNewickPair) `shouldBe` True
       equalBuilders newickTarget (fst $ fromJust maybeNewickPair) `shouldBe` True
       isJust maybeReconTree `shouldBe` True
     it "asNewickString works for ReconstructedTree" $ do
-      isJust (asNewickString (AbsoluteTime 0,Person 1) (RLeaf (Sampling (AbsoluteTime 1) (Person 1)))) `shouldBe` True
-      let trickyEvents = [Infection (AbsoluteTime 0.3) (Person 1) (Person 2),Infection (AbsoluteTime 0.4) (Person 2) (Person 3),Sampling (AbsoluteTime 0.6) (Person 3),Sampling (AbsoluteTime 0.7) (Person 1)]
-      let maybeNewickPair = asNewickString (AbsoluteTime 0, Person 1) =<< maybeReconstructedTree =<< maybeEpidemicTree trickyEvents
+      isJust (asNewickString (AbsoluteTime 0,Person (Identifier 1)) (RLeaf (Sampling (AbsoluteTime 1) (Person (Identifier 1))))) `shouldBe` True
+      let trickyEvents = [Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2)),Infection (AbsoluteTime 0.4) (Person (Identifier 2)) (Person (Identifier 3)),Sampling (AbsoluteTime 0.6) (Person (Identifier 3)),Sampling (AbsoluteTime 0.7) (Person (Identifier 1))]
+      let maybeNewickPair = asNewickString (AbsoluteTime 0, Person (Identifier 1)) =<< maybeReconstructedTree =<< maybeEpidemicTree trickyEvents
       let newickTarget = BBuilder.stringUtf8 "(1:0.39999999999999997,3:0.3):0.3"
       isJust maybeNewickPair `shouldBe` True
-      [Sampling (AbsoluteTime 0.6) (Person 3),Sampling (AbsoluteTime 0.7) (Person 1)] == snd (fromJust maybeNewickPair) `shouldBe` True
+      [Sampling (AbsoluteTime 0.6) (Person (Identifier 3)),Sampling (AbsoluteTime 0.7) (Person (Identifier 1))] == snd (fromJust maybeNewickPair) `shouldBe` True
       equalBuilders newickTarget (fst $ fromJust maybeNewickPair) `shouldBe` True
-      let catasNewick = (asNewickString (AbsoluteTime 0,Person 1) (RLeaf (Catastrophe (AbsoluteTime 1) (asPeople [Person 1,Person 2]))))
+      let catasNewick = (asNewickString (AbsoluteTime 0,Person (Identifier 1)) (RLeaf (Catastrophe (AbsoluteTime 1) (asPeople [Person (Identifier 1),Person (Identifier 2)]))))
       let catasTarget =  BBuilder.stringUtf8 "1&2:1.0"
       equalBuilders catasTarget (fst $ fromJust catasNewick) `shouldBe` True
 

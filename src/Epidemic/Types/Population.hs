@@ -23,6 +23,7 @@ import qualified Data.Csv as Csv
 import qualified Data.Vector as V
 import GHC.Generics
 
+-- | A type to hold an integer which is unique to each 'Person'.
 newtype Identifier =
   Identifier Integer
   deriving (Show, Generic, Eq)
@@ -37,6 +38,7 @@ instance Csv.ToField Identifier where
 instance Csv.FromField Identifier where
   parseField f = Identifier <$> (Csv.parseField f :: Csv.Parser Integer)
 
+-- | A type to represent a single person in a group of 'People'
 newtype Person =
   Person Identifier
   deriving (Show, Generic, Eq)
@@ -52,6 +54,7 @@ instance Csv.FromField Person where
   parseField f =
     Person . Identifier <$> (Csv.parseField f :: Csv.Parser Integer)
 
+-- | A type to represent a population.
 newtype People =
   People (V.Vector Person)
   deriving (Show, Eq, Generic)

@@ -1,22 +1,23 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
+
 module Epidemic.Utility where
 
+import Control.Applicative
+import Control.Monad (liftM)
+import Control.Monad.Primitive (PrimMonad, PrimState)
+import qualified Data.ByteString as B
+import qualified Data.ByteString.Char8 as Char8
+import qualified Data.List as List
+import qualified Data.Maybe as Maybe
+import qualified Data.Vector as V
 import Epidemic.Types.Events
 import Epidemic.Types.Parameter
 import Epidemic.Types.Population
-import Control.Monad (liftM)
-import qualified Data.List as List
-import qualified Data.Maybe as Maybe
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Char8 as Char8
 import GHC.Generics (Generic)
-import qualified Data.Vector as V
 import System.Random.MWC
 import System.Random.MWC.Distributions (exponential)
-import Control.Monad.Primitive (PrimMonad, PrimState)
-import Control.Applicative
 import Text.Trifecta
 
 import Epidemic
@@ -33,7 +34,7 @@ initialIdentifier :: Identifier
 initialIdentifier = Identifier 1
 
 newPerson :: Identifier -> (Person, Identifier)
-newPerson id@(Identifier idInt)= (Person id, Identifier (idInt + 1))
+newPerson id@(Identifier idInt) = (Person id, Identifier (idInt + 1))
 
 selectElem :: V.Vector a -> Int -> (a, V.Vector a)
 selectElem v n
@@ -49,30 +50,38 @@ randomPerson people@(People persons) gen = do
       (person, remPeople) = selectElem persons personIx
    in return (person, People remPeople)
 
-
 type NName = Maybe String
 
 type NLength = Maybe Double
 
-data NBranch = NBranch NSubtree NLength deriving (Eq)
+data NBranch =
+  NBranch NSubtree NLength
+  deriving (Eq)
 
 instance Show NBranch where
   show (NBranch st (Just l)) = show st ++ ":" ++ show l
   show (NBranch st Nothing) = show st
 
-data NBranchSet = NBranchSet [NBranch] deriving (Eq)
+data NBranchSet =
+  NBranchSet [NBranch]
+  deriving (Eq)
 
 instance Show NBranchSet where
   show (NBranchSet bs) = "(" ++ (List.intercalate "," (map show bs)) ++ ")"
 
-data NSubtree = NLeaf NName | NInternal NBranchSet deriving (Eq)
+data NSubtree
+  = NLeaf NName
+  | NInternal NBranchSet
+  deriving (Eq)
 
 instance Show NSubtree where
   show (NLeaf (Just n)) = n
   show (NLeaf Nothing) = ""
   show (NInternal bs) = show bs
 
-data NTree = NTree [NBranch] deriving (Eq)
+data NTree =
+  NTree [NBranch]
+  deriving (Eq)
 
 instance Show NTree where
   show (NTree bs) = show (NBranchSet bs) ++ ";"
@@ -114,7 +123,7 @@ newickInternal = do
 
 -- Subtree → Leaf | Internal
 newickSubtree :: (TokenParsing f, Monad f, CharParsing f) => f NSubtree
-newickSubtree = choice [newickInternal,newickLeaf]
+newickSubtree = choice [newickInternal, newickLeaf]
 
 -- Tree → Subtree ";" | Branch ";"
 newickTree :: (TokenParsing f, Monad f, CharParsing f) => f NTree
@@ -210,11 +219,12 @@ finalSize = foldl (\x y -> x + eventPopDelta y) 1
 --
 -- Assuming the @stepFunc@ is the intensity of arrivals and @t0@ is the start
 -- time this returns @t1@ the time of the next arrival.
-inhomExponential :: PrimMonad m
-                 => Timed Double      -- ^ Step function
-                 -> AbsoluteTime      -- ^ Start time
-                 -> Gen (PrimState m) -- ^ Generator
-                 -> m (Maybe AbsoluteTime)
+inhomExponential ::
+     PrimMonad m
+  => Timed Double -- ^ Step function
+  -> AbsoluteTime -- ^ Start time
+  -> Gen (PrimState m) -- ^ Generator
+  -> m (Maybe AbsoluteTime)
 inhomExponential stepFunc t0 = randInhomExp t0 stepFunc
 
 -- | Generate exponentially distributed random variates with inhomogeneous rate.
@@ -222,12 +232,13 @@ inhomExponential stepFunc t0 = randInhomExp t0 stepFunc
 -- __TODO__ The algorithm used here generates more variates than are needed. It
 -- would be nice to use a more efficient implementation.
 --
-randInhomExp :: PrimMonad m
-             => AbsoluteTime      -- ^ Timer
-             -> Timed Double      -- ^ Step function
-             -> Gen (PrimState m) -- ^ Generator.
-             -> m (Maybe AbsoluteTime)
-randInhomExp crrT stepFunc gen = 
+randInhomExp ::
+     PrimMonad m
+  => AbsoluteTime -- ^ Timer
+  -> Timed Double -- ^ Step function
+  -> Gen (PrimState m) -- ^ Generator.
+  -> m (Maybe AbsoluteTime)
+randInhomExp crrT stepFunc gen =
   let crrR = cadlagValue stepFunc crrT
       nxtT = nextTime stepFunc crrT
    in if Maybe.isJust crrR && Maybe.isJust nxtT

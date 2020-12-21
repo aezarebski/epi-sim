@@ -2,6 +2,8 @@
 
 ## 0.3.0.0
 
+- Use a new type `Identifier` to represent indentities of people rather than a
+  raw integer.
 - Replace `Time` with `AbsoluteTime` and `TimeDelta` types to make it explicit
   what is being represented.
 - Reduce the number of models that are included to the more interesting subset.

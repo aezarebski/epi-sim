@@ -7,7 +7,7 @@ module Epidemic.BDSCOD
   ) where
 
 import Data.List (nub)
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, isJust, isNothing)
 import qualified Data.Vector as V
 import qualified Data.Vector.Generic as G
 import Epidemic
@@ -141,12 +141,15 @@ randomDisasterEvent (disastTime, nuProb) (BDSCODPopulation (People currPeople)) 
 allEvents ::
      BDSCODParameters
   -> AbsoluteTime
-  -> Maybe (BDSCODPopulation -> Bool)
+  -> Maybe (BDSCODPopulation -> Bool) -- ^ predicate for a valid population
   -> SimulationState BDSCODPopulation
   -> GenIO
   -> IO (SimulationState BDSCODPopulation)
-allEvents rates maxTime Nothing currState@(SimulationState (currTime, currEvents, currPop, currId)) gen =
-  if isInfected currPop
+allEvents _ _ _ TerminatedSimulation _ = return TerminatedSimulation
+allEvents rates maxTime maybePopPredicate currState@(SimulationState (currTime, currEvents, currPop, currId)) gen =
+  if isNothing maybePopPredicate || (isJust maybePopPredicate && fromJust maybePopPredicate currPop)
+  then
+    if isInfected currPop
     then do
       (newTime, event, newPop, newId) <-
         randomEvent rates currTime currPop currId gen
@@ -154,11 +157,12 @@ allEvents rates maxTime Nothing currState@(SimulationState (currTime, currEvents
         then allEvents
                rates
                maxTime
-               Nothing
+               maybePopPredicate
                (SimulationState (newTime, event : currEvents, newPop, newId))
                gen
         else return currState
     else return currState
+  else return TerminatedSimulation
 
 -- | The events from the nodes of a reconstructed tree __not__ in time sorted
 -- order.

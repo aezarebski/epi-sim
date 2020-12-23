@@ -3,7 +3,7 @@ module Epidemic.BirthDeathSampling
   , allEvents
   ) where
 
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, isJust, isNothing)
 import qualified Data.Vector as V
 import Epidemic.Types.Events
 import Epidemic.Types.Parameter
@@ -91,12 +91,15 @@ randomBirthDeathSamplingEvent bdsRates@(BDSRates br dr sr) currTime (BDSPopulati
 allEvents ::
      BDSRates
   -> AbsoluteTime
-  -> Maybe (BDSPopulation -> Bool)
+  -> Maybe (BDSPopulation -> Bool) -- ^ predicate for a valid population
   -> SimulationState BDSPopulation
   -> GenIO
   -> IO (SimulationState BDSPopulation)
-allEvents bdsRates maxTime Nothing currState@(SimulationState (currTime, currEvents, currPop, currId)) gen =
-  if isInfected currPop
+allEvents _ _ _ TerminatedSimulation _ = return TerminatedSimulation
+allEvents bdsRates maxTime maybePopPredicate currState@(SimulationState (currTime, currEvents, currPop, currId)) gen =
+  if isNothing maybePopPredicate || (isJust maybePopPredicate && fromJust maybePopPredicate currPop)
+  then
+    if isInfected currPop
     then do
       (newTime, event, newPop, newId) <-
         randomBirthDeathSamplingEvent bdsRates currTime currPop currId gen
@@ -104,8 +107,9 @@ allEvents bdsRates maxTime Nothing currState@(SimulationState (currTime, currEve
         then allEvents
                bdsRates
                maxTime
-               Nothing
+               maybePopPredicate
                (SimulationState (newTime, event : currEvents, newPop, newId))
                gen
         else return currState
     else return currState
+  else return TerminatedSimulation

@@ -11,7 +11,7 @@ import Epidemic.Types.Population
 import Epidemic.Types.Events
 import Epidemic.Types.Parameter
 import Control.Monad (liftM)
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, isJust, isNothing)
 import qualified Data.Vector as V
 import System.Random.MWC
 import System.Random.MWC.Distributions (categorical, exponential)
@@ -101,12 +101,15 @@ randomEvent inhomRates@(InhomBDSRates brts dr sr) currTime (InhomBDSPop (people@
 allEvents ::
      InhomBDSRates                            -- ^ model parameters
   -> AbsoluteTime                                     -- ^ stopping time
-  -> Maybe (InhomBDSPop -> Bool)
+  -> Maybe (InhomBDSPop -> Bool) -- ^ predicate for a valid population
   -> SimulationState InhomBDSPop -- ^ simulation state
   -> GenIO                                    -- ^ PRNG
   -> IO (SimulationState InhomBDSPop)
-allEvents rates maxTime Nothing currState@(SimulationState (currTime, currEvents, currPop, currId)) gen =
-  if isInfected currPop
+allEvents _ _ _ TerminatedSimulation _ = return TerminatedSimulation
+allEvents rates maxTime maybePopPredicate currState@(SimulationState (currTime, currEvents, currPop, currId)) gen =
+  if isNothing maybePopPredicate || (isJust maybePopPredicate && fromJust maybePopPredicate currPop)
+  then
+    if isInfected currPop
     then do
       (newTime, event, newPop, newId) <-
         randomEvent rates currTime currPop currId gen
@@ -114,11 +117,12 @@ allEvents rates maxTime Nothing currState@(SimulationState (currTime, currEvents
         then allEvents
                rates
                maxTime
-               Nothing
+               maybePopPredicate
                (SimulationState (newTime, event : currEvents, newPop, newId))
                gen
         else return currState
     else return currState
+  else return TerminatedSimulation
 
 
 -- | Just the observable events from a list of all the events in a simulation.

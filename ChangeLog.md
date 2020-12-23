@@ -2,10 +2,14 @@
 
 ## 0.3.0.0
 
+- Include a `SimulationState` type to model the state of a simulation
+  explicitly.
+- Include early termination of simulations as part of the interface.
+- Remove `BirthDeath` module.
 - Use a new type `Identifier` to represent indentities of people rather than a
   raw integer.
 - Replace `Time` with `AbsoluteTime` and `TimeDelta` types to make it explicit
-  what is being represented.
+  what is being represented. This is used in `SimulationConfiguration`.
 - Reduce the number of models that are included to the more interesting subset.
 
 ## 0.2.2.0

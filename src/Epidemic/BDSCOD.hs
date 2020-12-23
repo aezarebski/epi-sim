@@ -49,7 +49,7 @@ instance Population BDSCODPopulation where
   isInfected (BDSCODPopulation (People people)) = not $ V.null people
 
 -- | Configuration of a birth-death-sampling-occurrence simulation
-configuration :: AbsoluteTime                                                    -- ^ Duration of the simulation
+configuration :: TimeDelta -- ^ Duration of the simulation
               -> (Rate,Rate,Rate,[(AbsoluteTime,Probability)],Rate,[(AbsoluteTime,Probability)]) -- ^ Birth, Death, Sampling, Catastrophe probability and Occurrence rates
               -> Maybe (SimulationConfiguration BDSCODParameters BDSCODPopulation)
 configuration maxTime (birthRate, deathRate, samplingRate, catastropheSpec, occurrenceRate, disasterSpec) =
@@ -65,7 +65,7 @@ configuration maxTime (birthRate, deathRate, samplingRate, catastropheSpec, occu
            disasterSpec'
          (seedPerson, newId) = newPerson initialIdentifier
          bdscodPop = BDSCODPopulation (People $ V.singleton seedPerson)
-       in return $ SimulationConfiguration bdscodParams bdscodPop newId maxTime
+       in return $ SimulationConfiguration bdscodParams bdscodPop newId (AbsoluteTime 0) maxTime Nothing
 
 -- | Return a random event from the BDSCOD-process given the current state of the process.
 randomEvent :: BDSCODParameters  -- ^ Parameters of the process
@@ -141,10 +141,10 @@ randomDisasterEvent (disastTime, nuProb) (BDSCODPopulation (People currPeople)) 
 allEvents ::
      BDSCODParameters
   -> AbsoluteTime
-  -> (AbsoluteTime, [EpidemicEvent], BDSCODPopulation, Identifier)
+  -> SimulationState BDSCODPopulation
   -> GenIO
-  -> IO (AbsoluteTime, [EpidemicEvent], BDSCODPopulation, Identifier)
-allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
+  -> IO (SimulationState BDSCODPopulation)
+allEvents rates maxTime currState@(SimulationState (currTime, currEvents, currPop, currId)) gen =
   if isInfected currPop
     then do
       (newTime, event, newPop, newId) <-
@@ -153,7 +153,7 @@ allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
         then allEvents
                rates
                maxTime
-               (newTime, event : currEvents, newPop, newId)
+               (SimulationState (newTime, event : currEvents, newPop, newId))
                gen
         else return currState
     else return currState

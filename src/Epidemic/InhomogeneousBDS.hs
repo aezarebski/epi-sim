@@ -101,10 +101,11 @@ randomEvent inhomRates@(InhomBDSRates brts dr sr) currTime (InhomBDSPop (people@
 allEvents ::
      InhomBDSRates                            -- ^ model parameters
   -> AbsoluteTime                                     -- ^ stopping time
-  -> (AbsoluteTime, [EpidemicEvent], InhomBDSPop, Identifier) -- ^ simulation state
+  -> Maybe (InhomBDSPop -> Bool)
+  -> SimulationState InhomBDSPop -- ^ simulation state
   -> GenIO                                    -- ^ PRNG
-  -> IO (AbsoluteTime, [EpidemicEvent], InhomBDSPop, Identifier)
-allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
+  -> IO (SimulationState InhomBDSPop)
+allEvents rates maxTime Nothing currState@(SimulationState (currTime, currEvents, currPop, currId)) gen =
   if isInfected currPop
     then do
       (newTime, event, newPop, newId) <-
@@ -113,7 +114,8 @@ allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
         then allEvents
                rates
                maxTime
-               (newTime, event : currEvents, newPop, newId)
+               Nothing
+               (SimulationState (newTime, event : currEvents, newPop, newId))
                gen
         else return currState
     else return currState
@@ -123,7 +125,7 @@ allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
 observedEvents :: [EpidemicEvent] -- ^ All of the simulation events
                -> [EpidemicEvent]
 observedEvents [] = []
-observedEvents events = sort $ sampleTreeEvents''
+observedEvents events = sort sampleTreeEvents''
   where
     sampleTreeEvents'' =
       sampleTreeEvents . sampleTree $ transmissionTree events (Person initialIdentifier)

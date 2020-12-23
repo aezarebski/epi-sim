@@ -141,10 +141,11 @@ randomDisasterEvent (disastTime, nuProb) (BDSCODPopulation (People currPeople)) 
 allEvents ::
      BDSCODParameters
   -> AbsoluteTime
+  -> Maybe (BDSCODPopulation -> Bool)
   -> SimulationState BDSCODPopulation
   -> GenIO
   -> IO (SimulationState BDSCODPopulation)
-allEvents rates maxTime currState@(SimulationState (currTime, currEvents, currPop, currId)) gen =
+allEvents rates maxTime Nothing currState@(SimulationState (currTime, currEvents, currPop, currId)) gen =
   if isInfected currPop
     then do
       (newTime, event, newPop, newId) <-
@@ -153,6 +154,7 @@ allEvents rates maxTime currState@(SimulationState (currTime, currEvents, currPo
         then allEvents
                rates
                maxTime
+               Nothing
                (SimulationState (newTime, event : currEvents, newPop, newId))
                gen
         else return currState

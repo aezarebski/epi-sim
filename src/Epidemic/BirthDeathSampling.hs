@@ -91,10 +91,11 @@ randomBirthDeathSamplingEvent bdsRates@(BDSRates br dr sr) currTime (BDSPopulati
 allEvents ::
      BDSRates
   -> AbsoluteTime
-  -> (AbsoluteTime, [EpidemicEvent], BDSPopulation, Identifier)
+  -> Maybe (BDSPopulation -> Bool)
+  -> SimulationState BDSPopulation
   -> GenIO
-  -> IO (AbsoluteTime, [EpidemicEvent], BDSPopulation, Identifier)
-allEvents bdsRates maxTime currState@(currTime, currEvents, currPop, currId) gen =
+  -> IO (SimulationState BDSPopulation)
+allEvents bdsRates maxTime Nothing currState@(SimulationState (currTime, currEvents, currPop, currId)) gen =
   if isInfected currPop
     then do
       (newTime, event, newPop, newId) <-
@@ -103,7 +104,8 @@ allEvents bdsRates maxTime currState@(currTime, currEvents, currPop, currId) gen
         then allEvents
                bdsRates
                maxTime
-               (newTime, event : currEvents, newPop, newId)
+               Nothing
+               (SimulationState (newTime, event : currEvents, newPop, newId))
                gen
         else return currState
     else return currState

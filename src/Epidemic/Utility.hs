@@ -38,8 +38,10 @@ data SimulationConfiguration r p =
     , scValidPopulation :: Maybe (p -> Bool)
     }
 
-newtype SimulationState b =
-  SimulationState (AbsoluteTime, [EpidemicEvent], b, Identifier)
+data SimulationState b
+  = SimulationState (AbsoluteTime, [EpidemicEvent], b, Identifier)
+  | TerminatedSimulation
+  deriving (Eq, Show)
 
 initialIdentifier :: Identifier
 initialIdentifier = Identifier 1
@@ -164,7 +166,7 @@ simulation ::
      (ModelParameters a)
   => Bool -- ^ Condition upon at least two leaves in the reconstructed tree
   -> SimulationConfiguration a b
-  -> (a -> AbsoluteTime -> SimulationState b -> GenIO -> IO (SimulationState b))
+  -> (a -> AbsoluteTime -> Maybe (b -> Bool) -> SimulationState b -> GenIO -> IO (SimulationState b))
   -> IO [EpidemicEvent]
 simulation True config allEvents = do
   gen <- System.Random.MWC.create :: IO GenIO
@@ -175,6 +177,7 @@ simulation False SimulationConfiguration {..} allEvents = do
     allEvents
       scRates
       (timeAfterDelta scStartTime scSimDuration)
+      scValidPopulation
       (SimulationState (AbsoluteTime 0, [], scPopulation, scNewIdentifier))
       gen
   return $ sort events
@@ -200,7 +203,7 @@ isReconTreeLeaf e =
 simulation' ::
      (ModelParameters a)
   => SimulationConfiguration a b
-  -> (a -> AbsoluteTime -> SimulationState b -> GenIO -> IO (SimulationState b))
+  -> (a -> AbsoluteTime -> Maybe (b -> Bool) -> SimulationState b -> GenIO -> IO (SimulationState b))
   -> GenIO
   -> IO [EpidemicEvent]
 simulation' config@SimulationConfiguration {..} allEvents gen = do
@@ -208,6 +211,7 @@ simulation' config@SimulationConfiguration {..} allEvents gen = do
     allEvents
       scRates
       (timeAfterDelta scStartTime scSimDuration)
+      scValidPopulation
       (SimulationState (AbsoluteTime 0, [], scPopulation, scNewIdentifier))
       gen
   if count' isReconTreeLeaf events >= 2

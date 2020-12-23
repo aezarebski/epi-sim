@@ -54,7 +54,6 @@ library
   exposed-modules:
       Epidemic
       Epidemic.BDSCOD
-      Epidemic.BirthDeath
       Epidemic.BirthDeathSampling
       Epidemic.InhomogeneousBDS
       Epidemic.Types.Events

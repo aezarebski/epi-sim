@@ -11,7 +11,7 @@ import Epidemic.Types.Population
 import Epidemic.Types.Events
 import Epidemic.Types.Parameter
 import Control.Monad (liftM)
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, isJust, isNothing)
 import qualified Data.Vector as V
 import System.Random.MWC
 import System.Random.MWC.Distributions (categorical, exponential)
@@ -58,7 +58,7 @@ inhomBDSRates timedBirthRate@(Timed tBrPairs) deathRate sampleRate
 --
 -- Note that this requires that the timed rates are all positive, if they are
 -- not it will return @Nothing@ which can lead to cryptic bugs.
-configuration :: AbsoluteTime -- ^ Stopping time of the simulation
+configuration :: TimeDelta -- ^ Duration of the simulation after starting at time 0.
               -> ([(AbsoluteTime,Rate)], Rate, Rate) -- ^ Birth, Death and Sampling rates
               -> Maybe (SimulationConfiguration InhomBDSRates InhomBDSPop)
 configuration maxTime (tBrPairs, deathRate, sampleRate) =
@@ -66,9 +66,9 @@ configuration maxTime (tBrPairs, deathRate, sampleRate) =
       bdsPop = InhomBDSPop (People $ V.singleton seedPerson)
    in do timedBirthRate <- asTimed tBrPairs
          maybeIBDSRates <- inhomBDSRates timedBirthRate deathRate sampleRate
-         if maxTime > AbsoluteTime 0
+         if maxTime > TimeDelta 0
            then Just
-                  (SimulationConfiguration maybeIBDSRates bdsPop newId maxTime)
+                  (SimulationConfiguration maybeIBDSRates bdsPop newId (AbsoluteTime 0) maxTime Nothing)
            else Nothing
 
 -- | A random event and the state afterwards
@@ -101,11 +101,15 @@ randomEvent inhomRates@(InhomBDSRates brts dr sr) currTime (InhomBDSPop (people@
 allEvents ::
      InhomBDSRates                            -- ^ model parameters
   -> AbsoluteTime                                     -- ^ stopping time
-  -> (AbsoluteTime, [EpidemicEvent], InhomBDSPop, Identifier) -- ^ simulation state
+  -> Maybe (InhomBDSPop -> Bool) -- ^ predicate for a valid population
+  -> SimulationState InhomBDSPop -- ^ simulation state
   -> GenIO                                    -- ^ PRNG
-  -> IO (AbsoluteTime, [EpidemicEvent], InhomBDSPop, Identifier)
-allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
-  if isInfected currPop
+  -> IO (SimulationState InhomBDSPop)
+allEvents _ _ _ TerminatedSimulation _ = return TerminatedSimulation
+allEvents rates maxTime maybePopPredicate currState@(SimulationState (currTime, currEvents, currPop, currId)) gen =
+  if isNothing maybePopPredicate || (isJust maybePopPredicate && fromJust maybePopPredicate currPop)
+  then
+    if isInfected currPop
     then do
       (newTime, event, newPop, newId) <-
         randomEvent rates currTime currPop currId gen
@@ -113,17 +117,19 @@ allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
         then allEvents
                rates
                maxTime
-               (newTime, event : currEvents, newPop, newId)
+               maybePopPredicate
+               (SimulationState (newTime, event : currEvents, newPop, newId))
                gen
         else return currState
     else return currState
+  else return TerminatedSimulation
 
 
 -- | Just the observable events from a list of all the events in a simulation.
 observedEvents :: [EpidemicEvent] -- ^ All of the simulation events
                -> [EpidemicEvent]
 observedEvents [] = []
-observedEvents events = sort $ sampleTreeEvents''
+observedEvents events = sort sampleTreeEvents''
   where
     sampleTreeEvents'' =
       sampleTreeEvents . sampleTree $ transmissionTree events (Person initialIdentifier)

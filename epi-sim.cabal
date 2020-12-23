@@ -8,17 +8,9 @@ description:
   .
   /Available models/
   .
-  * Birth-Death (see `Epidemic.BirthDeath`)
-  .
   * Birth-Death-Sampling (see `Epidemic.BirthDeathSampling`)
   .
-  * Birth-Death-Sampling-Occurrence (see `Epidemic.BirthDeathSamplingOccurrence`)
-  .
-  * Birth-Death-Sampling-Catastrophe-Occurrence (see `Epidemic.BirthDeathSamplingCatastropheOccurrence`)
-  .
   * Birth-Death-Sampling-Catastrophe-Occurrence-Disaster (see `Epidemic.BDSCOD`)
-  .
-  * Inhomogeneous Birth-Death (see `Epidemic.InhomogeneousBD`)
   .
   * Inhomogeneous Birth-Death-Sampling (see `Epidemic.InhomogeneousBDS`)
   .
@@ -54,7 +46,6 @@ library
   exposed-modules:
       Epidemic
       Epidemic.BDSCOD
-      Epidemic.BirthDeath
       Epidemic.BirthDeathSampling
       Epidemic.InhomogeneousBDS
       Epidemic.Types.Events

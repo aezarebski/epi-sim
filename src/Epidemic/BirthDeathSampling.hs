@@ -40,14 +40,14 @@ birthDeathSamplingRates = BDSRates -- birthRate deathRate samplingRate
 
 -- | Configuration of a birth-death-sampling simulation.
 configuration ::
-     AbsoluteTime -- ^ Duration of the simulation
+     TimeDelta -- ^ Duration of the simulation
   -> (Rate, Rate, Rate) -- ^ Birth, Death and Sampling rates
   -> SimulationConfiguration BDSRates BDSPopulation
 configuration maxTime (birthRate, deathRate, samplingRate) =
   let bdsRates = birthDeathSamplingRates birthRate deathRate samplingRate
       (seedPerson, newId) = newPerson initialIdentifier
       bdsPop = BDSPopulation (People $ V.singleton seedPerson)
-   in SimulationConfiguration bdsRates bdsPop newId maxTime
+   in SimulationConfiguration bdsRates bdsPop newId (AbsoluteTime 0) maxTime Nothing
 
 randomBirthDeathSamplingEvent ::
      BDSRates

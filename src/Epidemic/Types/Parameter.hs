@@ -30,11 +30,14 @@ isInfiniteAbsoluteTime (AbsoluteTime t) = isInfinite t
 -- | Duration of time between two absolute times.
 newtype TimeDelta =
   TimeDelta Double
-  deriving (Generic, Eq, Show)
+  deriving (Generic, Eq, Show, Ord)
 
 instance Json.FromJSON TimeDelta
 
 instance Json.ToJSON TimeDelta
+
+instance Csv.ToField TimeDelta where
+  toField (TimeDelta td) = Csv.toField td
 
 -- | The duration of time between two absolute times
 --

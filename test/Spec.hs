@@ -10,7 +10,6 @@ import Data.Maybe (fromJust, isJust, isNothing)
 import qualified Data.Vector as V
 import Epidemic
 import qualified Epidemic.BDSCOD as BDSCOD
-import qualified Epidemic.BirthDeath as BD
 import qualified Epidemic.InhomogeneousBDS as InhomBDS
 import Epidemic.Types.Events
 import Epidemic.Types.Parameter
@@ -169,28 +168,10 @@ eventHandlingTests = do
     it "Disasters can be simulated" $ do
       demoSim <-
         simulation False
-          (fromJust (BDSCOD.configuration (AbsoluteTime 4) (1.3, 0.1, 0.1, [(AbsoluteTime 3, 0.5)], 0.2, [(AbsoluteTime 3.5, 0.5)])))
+          (fromJust (BDSCOD.configuration (TimeDelta 4) (1.3, 0.1, 0.1, [(AbsoluteTime 3, 0.5)], 0.2, [(AbsoluteTime 3.5, 0.5)])))
           BDSCOD.allEvents
       length demoSim > 1 `shouldBe` True
 
-birthDeathTests = do
-  describe "BirthDeath module tests" $ do
-    it "Construct a simulation configuration" $ do
-      (isJust (BD.configuration (AbsoluteTime 1) (1, 1))) `shouldBe` True
-      (isJust (BD.configuration (AbsoluteTime (-1)) (1, 1))) `shouldBe` False
-      (isJust (BD.configuration (AbsoluteTime 1) ((-1), 1))) `shouldBe` False
-      (isJust (BD.configuration (AbsoluteTime 1) (1, (-1)))) `shouldBe` False
-      (isJust (BD.configuration (AbsoluteTime 1) ((-1), (-1)))) `shouldBe` False
-    it "Mean behaviour is approximately correct" $
-      let mean xs = fromIntegral (sum xs) / (fromIntegral $ length xs)
-          meanFinalSize = exp ((2.1 - 0.2) * 1.5)
-          randomBDEvents =
-            simulationWithSystemRandom False
-              (fromJust $ BD.configuration (AbsoluteTime 1.5) (2.1, 0.2))
-              BD.allEvents
-          numRepeats = 3000
-       in do finalSizes <- replicateM numRepeats (finalSize <$> randomBDEvents)
-             (withinNPercent 5 (mean finalSizes) meanFinalSize) `shouldBe` True
 
 helperFuncTests = do
   describe "Helpers in Utility" $ do
@@ -312,7 +293,7 @@ inhomExpTests =
 
 illFormedTreeTest =
   describe "Prevent the simulator returning a broken tree" $ do
-  let simDuration = AbsoluteTime 0.2
+  let simDuration = TimeDelta 0.2
       simLambda = 3.2
       simMu = 0.3
       simPsi = 0.3
@@ -542,7 +523,6 @@ main :: IO ()
 main =
   hspec $ do
     eventHandlingTests
-    birthDeathTests
     helperFuncTests
     readwriteTests
     inhomExpTests

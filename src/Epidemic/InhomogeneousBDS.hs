@@ -58,7 +58,7 @@ inhomBDSRates timedBirthRate@(Timed tBrPairs) deathRate sampleRate
 --
 -- Note that this requires that the timed rates are all positive, if they are
 -- not it will return @Nothing@ which can lead to cryptic bugs.
-configuration :: AbsoluteTime -- ^ Stopping time of the simulation
+configuration :: TimeDelta -- ^ Duration of the simulation after starting at time 0.
               -> ([(AbsoluteTime,Rate)], Rate, Rate) -- ^ Birth, Death and Sampling rates
               -> Maybe (SimulationConfiguration InhomBDSRates InhomBDSPop)
 configuration maxTime (tBrPairs, deathRate, sampleRate) =
@@ -66,9 +66,9 @@ configuration maxTime (tBrPairs, deathRate, sampleRate) =
       bdsPop = InhomBDSPop (People $ V.singleton seedPerson)
    in do timedBirthRate <- asTimed tBrPairs
          maybeIBDSRates <- inhomBDSRates timedBirthRate deathRate sampleRate
-         if maxTime > AbsoluteTime 0
+         if maxTime > TimeDelta 0
            then Just
-                  (SimulationConfiguration maybeIBDSRates bdsPop newId maxTime)
+                  (SimulationConfiguration maybeIBDSRates bdsPop newId (AbsoluteTime 0) maxTime Nothing)
            else Nothing
 
 -- | A random event and the state afterwards

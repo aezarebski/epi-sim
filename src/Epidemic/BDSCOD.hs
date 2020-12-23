@@ -7,7 +7,7 @@ module Epidemic.BDSCOD
   ) where
 
 import Data.List (nub)
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, isJust, isNothing)
 import qualified Data.Vector as V
 import qualified Data.Vector.Generic as G
 import Epidemic
@@ -49,7 +49,7 @@ instance Population BDSCODPopulation where
   isInfected (BDSCODPopulation (People people)) = not $ V.null people
 
 -- | Configuration of a birth-death-sampling-occurrence simulation
-configuration :: AbsoluteTime                                                    -- ^ Duration of the simulation
+configuration :: TimeDelta -- ^ Duration of the simulation
               -> (Rate,Rate,Rate,[(AbsoluteTime,Probability)],Rate,[(AbsoluteTime,Probability)]) -- ^ Birth, Death, Sampling, Catastrophe probability and Occurrence rates
               -> Maybe (SimulationConfiguration BDSCODParameters BDSCODPopulation)
 configuration maxTime (birthRate, deathRate, samplingRate, catastropheSpec, occurrenceRate, disasterSpec) =
@@ -65,7 +65,7 @@ configuration maxTime (birthRate, deathRate, samplingRate, catastropheSpec, occu
            disasterSpec'
          (seedPerson, newId) = newPerson initialIdentifier
          bdscodPop = BDSCODPopulation (People $ V.singleton seedPerson)
-       in return $ SimulationConfiguration bdscodParams bdscodPop newId maxTime
+       in return $ SimulationConfiguration bdscodParams bdscodPop newId (AbsoluteTime 0) maxTime Nothing
 
 -- | Return a random event from the BDSCOD-process given the current state of the process.
 randomEvent :: BDSCODParameters  -- ^ Parameters of the process
@@ -141,11 +141,15 @@ randomDisasterEvent (disastTime, nuProb) (BDSCODPopulation (People currPeople)) 
 allEvents ::
      BDSCODParameters
   -> AbsoluteTime
-  -> (AbsoluteTime, [EpidemicEvent], BDSCODPopulation, Identifier)
+  -> Maybe (BDSCODPopulation -> Bool) -- ^ predicate for a valid population
+  -> SimulationState BDSCODPopulation
   -> GenIO
-  -> IO (AbsoluteTime, [EpidemicEvent], BDSCODPopulation, Identifier)
-allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
-  if isInfected currPop
+  -> IO (SimulationState BDSCODPopulation)
+allEvents _ _ _ TerminatedSimulation _ = return TerminatedSimulation
+allEvents rates maxTime maybePopPredicate currState@(SimulationState (currTime, currEvents, currPop, currId)) gen =
+  if isNothing maybePopPredicate || (isJust maybePopPredicate && fromJust maybePopPredicate currPop)
+  then
+    if isInfected currPop
     then do
       (newTime, event, newPop, newId) <-
         randomEvent rates currTime currPop currId gen
@@ -153,10 +157,12 @@ allEvents rates maxTime currState@(currTime, currEvents, currPop, currId) gen =
         then allEvents
                rates
                maxTime
-               (newTime, event : currEvents, newPop, newId)
+               maybePopPredicate
+               (SimulationState (newTime, event : currEvents, newPop, newId))
                gen
         else return currState
     else return currState
+  else return TerminatedSimulation
 
 -- | The events from the nodes of a reconstructed tree __not__ in time sorted
 -- order.

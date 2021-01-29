@@ -46,31 +46,32 @@ configuration ::
      TimeDelta
   -> (Rate, Int, Rate, Rate, [(AbsoluteTime, Probability)])
   -> Either String (SimulationConfiguration LogisticBDSDParameters LogisticBDSDPopulation)
-configuration simDuration (birthRate, capacity, deathRate, samplingRate, disasterSpec) = do
-  disasterTP <-
-    maybeToRight "could not construct timed probability" (asTimed disasterSpec)
-  if minimum [birthRate, deathRate, samplingRate] < 0
-    then Left "negative rate provided"
-    else if capacity < 1
-           then Left "insufficient population capacity"
-           else let logBDSDParams =
-                      LogisticBDSDParameters
-                        birthRate
-                        capacity
-                        deathRate
-                        samplingRate
-                        disasterTP
-                    (seedPerson, newId) = newPerson initialIdentifier
-                    logBDSDPop =
-                      LogisticBDSDPopulation (People $ V.singleton seedPerson)
-                 in return $
-                    SimulationConfiguration
-                      logBDSDParams
-                      logBDSDPop
-                      newId
-                      (AbsoluteTime 0)
-                      simDuration
-                      Nothing
+configuration simDuration (birthRate, capacity, deathRate, samplingRate, disasterSpec)
+  | minimum [birthRate, deathRate, samplingRate] < 0 =
+    Left "negative rate provided"
+  | capacity < 1 = Left "insufficient population capacity"
+  | otherwise = do
+    disasterTP <-
+      maybeToRight
+        "could not construct timed probability"
+        (asTimed disasterSpec)
+    let logBDSDParams =
+          LogisticBDSDParameters
+            birthRate
+            capacity
+            deathRate
+            samplingRate
+            disasterTP
+        (seedPerson, newId) = newPerson initialIdentifier
+        logBDSDPop = LogisticBDSDPopulation (People $ V.singleton seedPerson)
+     in return $
+        SimulationConfiguration
+          logBDSDParams
+          logBDSDPop
+          newId
+          (AbsoluteTime 0)
+          simDuration
+          Nothing
 
 -- | This acts as a coordinator of the whole simulation.
 --

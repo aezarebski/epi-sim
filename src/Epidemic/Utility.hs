@@ -281,3 +281,11 @@ randInhomExp crrT stepFunc gen =
             then return $ Just propT
             else randInhomExp (Maybe.fromJust nxtT) stepFunc gen
         else return Nothing
+
+-- | Helper function for converting between the Maybe monad and the Either
+-- monad.
+maybeToRight :: a -> Maybe b -> Either a b
+maybeToRight a maybeB =
+  case maybeB of
+    (Just b) -> Right b
+    Nothing -> Left a

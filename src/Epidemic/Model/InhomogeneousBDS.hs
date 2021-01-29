@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module Epidemic.InhomogeneousBDS
+module Epidemic.Model.InhomogeneousBDS
   ( configuration
   , allEvents
   , observedEvents

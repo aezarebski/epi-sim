@@ -45,9 +45,9 @@ source-repository head
 library
   exposed-modules:
       Epidemic
-      Epidemic.BDSCOD
-      Epidemic.BirthDeathSampling
-      Epidemic.InhomogeneousBDS
+      Epidemic.Model.BDSCOD
+      Epidemic.Model.BirthDeathSampling
+      Epidemic.Model.InhomogeneousBDS
       Epidemic.Types.Events
       Epidemic.Types.Observations
       Epidemic.Types.Parameter

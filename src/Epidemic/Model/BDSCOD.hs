@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module Epidemic.BDSCOD
+module Epidemic.Model.BDSCOD
   ( configuration
   , allEvents
   , observedEvents

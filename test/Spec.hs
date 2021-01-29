@@ -9,8 +9,8 @@ import Data.Csv
 import Data.Maybe (fromJust, isJust, isNothing)
 import qualified Data.Vector as V
 import Epidemic
-import qualified Epidemic.BDSCOD as BDSCOD
-import qualified Epidemic.InhomogeneousBDS as InhomBDS
+import qualified Epidemic.Model.BDSCOD as BDSCOD
+import qualified Epidemic.Model.InhomogeneousBDS as InhomBDS
 import Epidemic.Types.Events
 import Epidemic.Types.Parameter
 import Epidemic.Types.Population

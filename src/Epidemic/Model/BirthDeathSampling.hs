@@ -1,4 +1,4 @@
-module Epidemic.BirthDeathSampling
+module Epidemic.Model.BirthDeathSampling
   ( configuration
   , allEvents
   ) where

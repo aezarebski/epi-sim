@@ -2,6 +2,7 @@
 
 ## 0.3.0.0
 
+- Move the models into a new `Epidemic.Model` module.
 - Use a new type `Identifier` to represent indentities of people rather than a
   raw integer.
 - Replace `Time` with `AbsoluteTime` and `TimeDelta` types to make it explicit

@@ -48,6 +48,7 @@ library
       Epidemic.Model.BDSCOD
       Epidemic.Model.BirthDeathSampling
       Epidemic.Model.InhomogeneousBDS
+      Epidemic.Model.LogisticBDSD
       Epidemic.Types.Events
       Epidemic.Types.Observations
       Epidemic.Types.Parameter

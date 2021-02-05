@@ -8,6 +8,7 @@ import qualified Data.Vector as V
 import Epidemic.Types.Events
 import Epidemic.Types.Parameter
 import Epidemic.Types.Population
+import Epidemic.Types.Simulation (SimulationConfiguration(..),SimulationState(..))
 import System.Random.MWC
 import System.Random.MWC.Distributions (categorical, exponential)
 

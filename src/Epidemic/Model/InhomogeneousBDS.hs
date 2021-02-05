@@ -10,6 +10,7 @@ module Epidemic.Model.InhomogeneousBDS
 import Epidemic.Types.Population
 import Epidemic.Types.Events
 import Epidemic.Types.Parameter
+import Epidemic.Types.Simulation (SimulationConfiguration(..),SimulationState(..))
 import Control.Monad (liftM)
 import Data.Maybe (fromJust, isJust, isNothing)
 import qualified Data.Vector as V

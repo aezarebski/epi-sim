@@ -53,6 +53,7 @@ library
       Epidemic.Types.Observations
       Epidemic.Types.Parameter
       Epidemic.Types.Population
+      Epidemic.Types.Simulation
       Epidemic.Utility
   other-modules:
       Paths_epi_sim

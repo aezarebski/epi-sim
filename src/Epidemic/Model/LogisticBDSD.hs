@@ -17,10 +17,9 @@ import Epidemic.Types.Parameter
   , asTimed
   )
 import Epidemic.Types.Population (People(..))
+import Epidemic.Types.Simulation (SimulationConfiguration(..),SimulationState(..))
 import Epidemic.Utility
-  ( SimulationConfiguration(..)
-  , SimulationState(..)
-  , initialIdentifier
+  ( initialIdentifier
   , maybeToRight
   , newPerson
   )

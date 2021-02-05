@@ -6,6 +6,8 @@ module Epidemic.Model.InhomogeneousBDS
   , observedEvents
   , randomEvent
   , inhomBDSRates
+  , InhomBDSRates(..)
+  , InhomBDSPop(..)
   ) where
 
 import Control.Monad (liftM)

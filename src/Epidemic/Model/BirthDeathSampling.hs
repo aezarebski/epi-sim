@@ -2,7 +2,10 @@
 
 module Epidemic.Model.BirthDeathSampling
   ( configuration
+  , observedEvents
   , randomEvent
+  , BDSRates(..)
+  , BDSPopulation(..)
   ) where
 
 import Data.Maybe (fromJust, isJust, isNothing)
@@ -96,3 +99,8 @@ randomBirthDeathSamplingEvent bdsRates@(BDSRates br dr sr) currTime pop@(BDSPopu
                , BDSPopulation unselectedPeople
                , currId)
            _ -> error "no birth-death-sampling event selected."
+
+-- | Just the events that appear in the reconstructed tree.
+-- TODO Implement this!!!
+observedEvents :: [EpidemicEvent] -> Maybe [EpidemicEvent]
+observedEvents = undefined

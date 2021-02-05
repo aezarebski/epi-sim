@@ -8,6 +8,11 @@ import qualified Data.List as List
 import qualified Data.Maybe as Maybe
 import GHC.Generics
 
+class ModelParameters a where
+  rNaught :: a -> AbsoluteTime -> Maybe Double
+  eventRate :: a -> AbsoluteTime -> Maybe Rate
+  birthProb :: a -> AbsoluteTime -> Maybe Probability
+
 -- | Absolute time.
 newtype AbsoluteTime =
   AbsoluteTime Double

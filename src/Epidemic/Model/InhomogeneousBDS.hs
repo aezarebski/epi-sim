@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Epidemic.Model.InhomogeneousBDS
   ( configuration
@@ -26,19 +27,20 @@ import System.Random.MWC.Distributions (categorical, exponential)
 data InhomBDSRates =
   InhomBDSRates (Timed Rate) Rate Rate
 
-instance ModelParameters InhomBDSRates where
-  rNaught (InhomBDSRates timedBirthRate deathRate sampleRate) time =
-    let birthRate = cadlagValue timedBirthRate time
-     in liftM (/ (deathRate + sampleRate)) birthRate
-  eventRate (InhomBDSRates timedBirthRate deathRate sampleRate) time =
-    let birthRate = cadlagValue timedBirthRate time
-     in liftM (+ (deathRate + sampleRate)) birthRate
-  birthProb (InhomBDSRates timedBirthRate deathRate sampleRate) time =
-    liftM (\br -> br / (br + deathRate + sampleRate)) $ cadlagValue timedBirthRate time
-
-newtype InhomBDSPop =
+data InhomBDSPop =
   InhomBDSPop People
   deriving (Show)
+
+instance ModelParameters InhomBDSRates InhomBDSPop where
+  rNaught _ (InhomBDSRates timedBirthRate deathRate sampleRate) time =
+    let birthRate = cadlagValue timedBirthRate time
+     in liftM (/ (deathRate + sampleRate)) birthRate
+  eventRate _ (InhomBDSRates timedBirthRate deathRate sampleRate) time =
+    let birthRate = cadlagValue timedBirthRate time
+     in liftM (+ (deathRate + sampleRate)) birthRate
+  birthProb _ (InhomBDSRates timedBirthRate deathRate sampleRate) time =
+    liftM (\br -> br / (br + deathRate + sampleRate)) $ cadlagValue timedBirthRate time
+
 
 instance Population InhomBDSPop where
   susceptiblePeople _ = Nothing
@@ -87,10 +89,10 @@ randomEvent' ::
   -> Identifier -- ^ current identifier
   -> GenIO         -- ^ PRNG
   -> IO (AbsoluteTime, EpidemicEvent, InhomBDSPop, Identifier)
-randomEvent' inhomRates@(InhomBDSRates brts dr sr) currTime (InhomBDSPop (people@(People peopleVec))) currId gen =
+randomEvent' inhomRates@(InhomBDSRates brts dr sr) currTime pop@(InhomBDSPop (people@(People peopleVec))) currId gen =
   let popSize = fromIntegral $ numPeople people :: Double
       -- we need a new step function to account for the population size.
-      (Just stepFunction) = asTimed [(t,popSize * fromJust (eventRate inhomRates t)) | t <- allTimes brts]
+      (Just stepFunction) = asTimed [(t,popSize * fromJust (eventRate pop inhomRates t)) | t <- allTimes brts]
       eventWeights t = V.fromList [fromJust (cadlagValue brts t), dr, sr]
    in do (Just newEventTime) <- inhomExponential stepFunction currTime gen
          eventIx <- categorical (eventWeights newEventTime) gen

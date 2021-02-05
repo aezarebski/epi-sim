@@ -2,9 +2,16 @@
 
 ## 0.3.0.0
 
-- Move the models into a new `Epidemic.Model` module.
+- Extend the `ModelParameters` class to include a `Population` parameter type
+  since this is needed to compute event rates in for the logistic model.
+- Create `Epidemic.Type.Simulation` module for types relating to running generic
+  simulations from the models to avoid confusion as to where these are defined.
+- Move class definitions into corresponding `Epidemic.Type.X` modules.
+- Move the models into a new `Epidemic.Model` module so that it is clearer that
+  these are really just examples of putting together functionality provided by
+  the rest of the library.
 - Use a new type `Identifier` to represent indentities of people rather than a
-  raw integer.
+  raw integer this way it is clearer what it really is.
 - Replace `Time` with `AbsoluteTime` and `TimeDelta` types to make it explicit
   what is being represented.
 - Reduce the number of models that are included to the more interesting subset.

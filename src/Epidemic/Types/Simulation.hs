@@ -31,7 +31,7 @@ data SimulationState b
 
 data SimulationRandEvent a b where
   SimulationRandEvent
-    :: (ModelParameters a, Population b)
+    :: (ModelParameters a b, Population b)
     => (a
     -> AbsoluteTime
     -> b

@@ -1,17 +1,19 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Epidemic.Types.Parameter where
 
+import Epidemic.Types.Population (Population(..))
 import qualified Data.Aeson as Json
 import qualified Data.Csv as Csv
 import qualified Data.List as List
 import qualified Data.Maybe as Maybe
 import GHC.Generics
 
-class ModelParameters a where
-  rNaught :: a -> AbsoluteTime -> Maybe Double
-  eventRate :: a -> AbsoluteTime -> Maybe Rate
-  birthProb :: a -> AbsoluteTime -> Maybe Probability
+class (Population p) => ModelParameters a p where
+  rNaught :: p -> a -> AbsoluteTime -> Maybe Double
+  eventRate :: p -> a -> AbsoluteTime -> Maybe Rate
+  birthProb :: p -> a -> AbsoluteTime -> Maybe Probability
 
 -- | Absolute time.
 newtype AbsoluteTime =

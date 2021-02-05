@@ -1,3 +1,5 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
+
 module Epidemic.Model.LogisticBDSD
   ( configuration
   , observedEvents
@@ -36,14 +38,14 @@ data LogisticBDSDParameters =
     }
   deriving (Show)
 
-instance ModelParameters LogisticBDSDParameters where
-  rNaught params absTime = Just undefined
-  eventRate params absTime = Just undefined
-  birthProb params absTime = Just undefined
-
 newtype LogisticBDSDPopulation =
   LogisticBDSDPopulation People
   deriving (Show)
+
+instance ModelParameters LogisticBDSDParameters LogisticBDSDPopulation where
+  rNaught pop params absTime = Nothing
+  eventRate pop params absTime = Nothing
+  birthProb pop params absTime = Just undefined
 
 instance Population LogisticBDSDPopulation where
   susceptiblePeople pop = Just undefined
@@ -85,6 +87,7 @@ configuration simDuration (birthRate, capacity, deathRate, samplingRate, disaste
           simDuration
           Nothing
 
+-- | Defines how a single random event is simulated in this model.
 randomEvent :: SimulationRandEvent LogisticBDSDParameters LogisticBDSDPopulation
 randomEvent = SimulationRandEvent randEvent'
 

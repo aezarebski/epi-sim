@@ -202,7 +202,7 @@ sampleTreeEvents = nub . sampleTreeEvents'
 -- | Run the simulation and return a @SimulationState@ which holds the history
 -- of the simulation.
 allEvents ::
-     (ModelParameters a, Population b)
+     (ModelParameters a b, Population b)
   => SimulationRandEvent a b
   -> a
   -> AbsoluteTime

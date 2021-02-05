@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Epidemic.Model.BDSCOD
   ( configuration
@@ -35,17 +36,17 @@ data BDSCODParameters
   -- | birth rate, death rate, sampling rate, catastrophe specification, occurrence rate and disaster specification
   = BDSCODParameters Rate Rate Rate (Timed Probability) Rate (Timed Probability)
 
-instance ModelParameters BDSCODParameters where
-  rNaught (BDSCODParameters birthRate deathRate samplingRate _ occurrenceRate _) _ =
-    Just $ birthRate / (deathRate + samplingRate + occurrenceRate)
-  eventRate (BDSCODParameters birthRate deathRate samplingRate _ occurrenceRate _) _ =
-    Just $ birthRate + deathRate + samplingRate + occurrenceRate
-  birthProb (BDSCODParameters birthRate deathRate samplingRate _ occurrenceRate _) _ =
-    Just $ birthRate / (birthRate + deathRate + samplingRate + occurrenceRate)
-
-newtype BDSCODPopulation =
+data BDSCODPopulation =
   BDSCODPopulation People
   deriving (Show)
+
+instance ModelParameters BDSCODParameters BDSCODPopulation where
+  rNaught _ (BDSCODParameters birthRate deathRate samplingRate _ occurrenceRate _) _ =
+    Just $ birthRate / (deathRate + samplingRate + occurrenceRate)
+  eventRate _ (BDSCODParameters birthRate deathRate samplingRate _ occurrenceRate _) _ =
+    Just $ birthRate + deathRate + samplingRate + occurrenceRate
+  birthProb _ (BDSCODParameters birthRate deathRate samplingRate _ occurrenceRate _) _ =
+    Just $ birthRate / (birthRate + deathRate + samplingRate + occurrenceRate)
 
 instance Population BDSCODPopulation where
   susceptiblePeople _ = Nothing
@@ -84,7 +85,7 @@ randomEvent' :: BDSCODParameters  -- ^ Parameters of the process
             -> GenIO             -- ^ The current state of the PRNG
             -> IO (AbsoluteTime, EpidemicEvent, BDSCODPopulation, Identifier)
 randomEvent' params@(BDSCODParameters br dr sr catastInfo occr disastInfo) currTime currPop@(BDSCODPopulation currPeople) currId gen =
-  let netEventRate = fromJust $ eventRate params currTime
+  let netEventRate = fromJust $ eventRate currPop params currTime
       eventWeights = V.fromList [br, dr, sr, occr]
    in do delay <- exponential (fromIntegral (numPeople currPeople) * netEventRate) gen
          newEventTime <- pure $ timeAfterDelta currTime (TimeDelta delay)

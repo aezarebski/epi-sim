@@ -1,3 +1,5 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
+
 module Epidemic.Model.BirthDeathSampling
   ( configuration
   , randomEvent
@@ -21,17 +23,17 @@ import System.Random.MWC.Distributions (categorical, exponential)
 data BDSRates =
   BDSRates Rate Rate Rate
 
-instance ModelParameters BDSRates where
-  rNaught (BDSRates birthRate deathRate samplingRate) _ =
-    Just $ birthRate / (deathRate + samplingRate)
-  eventRate (BDSRates birthRate deathRate samplingRate) _ =
-    Just $ birthRate + deathRate + samplingRate
-  birthProb (BDSRates birthRate deathRate samplingRate) _ =
-    Just $ birthRate / (birthRate + deathRate + samplingRate)
-
 newtype BDSPopulation =
   BDSPopulation People
   deriving (Show)
+
+instance ModelParameters BDSRates BDSPopulation where
+  rNaught _ (BDSRates birthRate deathRate samplingRate) _ =
+    Just $ birthRate / (deathRate + samplingRate)
+  eventRate _ (BDSRates birthRate deathRate samplingRate) _ =
+    Just $ birthRate + deathRate + samplingRate
+  birthProb _ (BDSRates birthRate deathRate samplingRate) _ =
+    Just $ birthRate / (birthRate + deathRate + samplingRate)
 
 instance Population BDSPopulation where
   susceptiblePeople _ = Nothing
@@ -63,8 +65,8 @@ randomBirthDeathSamplingEvent ::
   -> Identifier
   -> GenIO
   -> IO (AbsoluteTime, EpidemicEvent, BDSPopulation, Identifier)
-randomBirthDeathSamplingEvent bdsRates@(BDSRates br dr sr) currTime (BDSPopulation currPeople) currId gen =
-  let individualEventRate = fromJust $ eventRate bdsRates currTime
+randomBirthDeathSamplingEvent bdsRates@(BDSRates br dr sr) currTime pop@(BDSPopulation currPeople) currId gen =
+  let individualEventRate = fromJust $ eventRate pop bdsRates currTime
       eventWeights = V.fromList [br, dr, sr]
    in do delay <-
            exponential

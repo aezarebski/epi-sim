@@ -5,6 +5,8 @@ module Epidemic.Model.BDSCOD
   ( configuration
   , observedEvents
   , randomEvent
+  , BDSCODParameters(..)
+  , BDSCODPopulation(..)
   ) where
 
 import Data.List (nub)

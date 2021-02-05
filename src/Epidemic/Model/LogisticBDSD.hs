@@ -45,15 +45,15 @@ newtype LogisticBDSDPopulation =
 
 instance ModelParameters LogisticBDSDParameters LogisticBDSDPopulation where
   rNaught _ _ _ = Nothing
-  eventRate (LogisticBDSDPopulation pop) LogisticBDSDParameters{..} _ =
+  eventRate (LogisticBDSDPopulation pop) LogisticBDSDParameters {..} _ =
     let propCapcity = fromIntegral (numPeople pop) / fromIntegral paramsCapacity
         br = paramsBirthRate * (1.0 - propCapcity)
-      in Just $ br + paramsDeathRate + paramsSamplingRate
-  birthProb lpop@(LogisticBDSDPopulation pop) lparam@LogisticBDSDParameters{..} absTime =
+     in Just $ br + paramsDeathRate + paramsSamplingRate
+  birthProb lpop@(LogisticBDSDPopulation pop) lparam@LogisticBDSDParameters {..} absTime =
     let propCapcity = fromIntegral (numPeople pop) / fromIntegral paramsCapacity
         br = paramsBirthRate * (1.0 - propCapcity)
-      in do er <- eventRate lpop lparam absTime
-            Just $ br / er
+     in do er <- eventRate lpop lparam absTime
+           Just $ br / er
 
 instance Population LogisticBDSDPopulation where
   susceptiblePeople _ = Nothing

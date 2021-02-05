@@ -1,4 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Epidemic.Model.LogisticBDSD
   ( configuration
@@ -19,7 +20,7 @@ import Epidemic.Types.Parameter
   , Timed(..)
   , asTimed
   )
-import Epidemic.Types.Population (Identifier(..), People(..), Population(..))
+import Epidemic.Types.Population (Identifier(..), People(..), Population(..), nullPeople, numPeople)
 import Epidemic.Types.Simulation
   ( SimulationConfiguration(..)
   , SimulationRandEvent(..)
@@ -43,15 +44,22 @@ newtype LogisticBDSDPopulation =
   deriving (Show)
 
 instance ModelParameters LogisticBDSDParameters LogisticBDSDPopulation where
-  rNaught pop params absTime = Nothing
-  eventRate pop params absTime = Nothing
-  birthProb pop params absTime = Just undefined
+  rNaught _ _ _ = Nothing
+  eventRate (LogisticBDSDPopulation pop) LogisticBDSDParameters{..} _ =
+    let propCapcity = fromIntegral (numPeople pop) / fromIntegral paramsCapacity
+        br = paramsBirthRate * (1.0 - propCapcity)
+      in Just $ br + paramsDeathRate + paramsSamplingRate
+  birthProb lpop@(LogisticBDSDPopulation pop) lparam@LogisticBDSDParameters{..} absTime =
+    let propCapcity = fromIntegral (numPeople pop) / fromIntegral paramsCapacity
+        br = paramsBirthRate * (1.0 - propCapcity)
+      in do er <- eventRate lpop lparam absTime
+            Just $ br / er
 
 instance Population LogisticBDSDPopulation where
-  susceptiblePeople pop = Just undefined
-  infectiousPeople pop = Just undefined
-  removedPeople pop = Just undefined
-  isInfected pop = undefined
+  susceptiblePeople _ = Nothing
+  infectiousPeople (LogisticBDSDPopulation people) = Just people
+  removedPeople _ = Nothing
+  isInfected (LogisticBDSDPopulation people) = not $ nullPeople people
 
 
 -- | Create an simulation configuration or return an error message if this is

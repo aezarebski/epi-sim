@@ -1,19 +1,22 @@
 module Epidemic.Model.BirthDeathSampling
   ( configuration
-  , allEvents
+  , randomEvent
   ) where
 
 import Data.Maybe (fromJust, isJust, isNothing)
 import qualified Data.Vector as V
+import Epidemic
 import Epidemic.Types.Events
 import Epidemic.Types.Parameter
 import Epidemic.Types.Population
-import Epidemic.Types.Simulation (SimulationConfiguration(..),SimulationState(..))
+import Epidemic.Types.Simulation
+  ( SimulationConfiguration(..)
+  , SimulationRandEvent(..)
+  , SimulationState(..)
+  )
+import Epidemic.Utility
 import System.Random.MWC
 import System.Random.MWC.Distributions (categorical, exponential)
-
-import Epidemic
-import Epidemic.Utility
 
 data BDSRates =
   BDSRates Rate Rate Rate
@@ -49,6 +52,9 @@ configuration maxTime (birthRate, deathRate, samplingRate) =
       (seedPerson, newId) = newPerson initialIdentifier
       bdsPop = BDSPopulation (People $ V.singleton seedPerson)
    in SimulationConfiguration bdsRates bdsPop newId (AbsoluteTime 0) maxTime Nothing
+
+randomEvent :: SimulationRandEvent BDSRates BDSPopulation
+randomEvent = SimulationRandEvent randomBirthDeathSamplingEvent
 
 randomBirthDeathSamplingEvent ::
      BDSRates
@@ -88,29 +94,3 @@ randomBirthDeathSamplingEvent bdsRates@(BDSRates br dr sr) currTime (BDSPopulati
                , BDSPopulation unselectedPeople
                , currId)
            _ -> error "no birth-death-sampling event selected."
-
-allEvents ::
-     BDSRates
-  -> AbsoluteTime
-  -> Maybe (BDSPopulation -> Bool) -- ^ predicate for a valid population
-  -> SimulationState BDSPopulation
-  -> GenIO
-  -> IO (SimulationState BDSPopulation)
-allEvents _ _ _ TerminatedSimulation _ = return TerminatedSimulation
-allEvents bdsRates maxTime maybePopPredicate currState@(SimulationState (currTime, currEvents, currPop, currId)) gen =
-  if isNothing maybePopPredicate || (isJust maybePopPredicate && fromJust maybePopPredicate currPop)
-  then
-    if isInfected currPop
-    then do
-      (newTime, event, newPop, newId) <-
-        randomBirthDeathSamplingEvent bdsRates currTime currPop currId gen
-      if newTime < maxTime
-        then allEvents
-               bdsRates
-               maxTime
-               maybePopPredicate
-               (SimulationState (newTime, event : currEvents, newPop, newId))
-               gen
-        else return currState
-    else return currState
-  else return TerminatedSimulation

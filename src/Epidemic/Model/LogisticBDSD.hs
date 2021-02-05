@@ -1,7 +1,7 @@
 module Epidemic.Model.LogisticBDSD
   ( configuration
-  , allEvents
   , observedEvents
+  , randomEvent
   , LogisticBDSDParameters(..)
   , LogisticBDSDPopulation(..)
   ) where
@@ -10,19 +10,20 @@ import qualified Data.Vector as V
 import Epidemic.Types.Events (EpidemicEvent(..))
 import Epidemic.Types.Parameter
   ( AbsoluteTime(..)
+  , ModelParameters(..)
   , Probability
   , Rate
   , TimeDelta
   , Timed(..)
   , asTimed
   )
-import Epidemic.Types.Population (People(..))
-import Epidemic.Types.Simulation (SimulationConfiguration(..),SimulationState(..))
-import Epidemic.Utility
-  ( initialIdentifier
-  , maybeToRight
-  , newPerson
+import Epidemic.Types.Population (Identifier(..), People(..), Population(..))
+import Epidemic.Types.Simulation
+  ( SimulationConfiguration(..)
+  , SimulationRandEvent(..)
+  , SimulationState(..)
   )
+import Epidemic.Utility (initialIdentifier, maybeToRight, newPerson)
 import System.Random.MWC (GenIO)
 
 data LogisticBDSDParameters =
@@ -35,9 +36,21 @@ data LogisticBDSDParameters =
     }
   deriving (Show)
 
+instance ModelParameters LogisticBDSDParameters where
+  rNaught params absTime = Just undefined
+  eventRate params absTime = Just undefined
+  birthProb params absTime = Just undefined
+
 newtype LogisticBDSDPopulation =
   LogisticBDSDPopulation People
   deriving (Show)
+
+instance Population LogisticBDSDPopulation where
+  susceptiblePeople pop = Just undefined
+  infectiousPeople pop = Just undefined
+  removedPeople pop = Just undefined
+  isInfected pop = undefined
+
 
 -- | Create an simulation configuration or return an error message if this is
 -- not possible.
@@ -72,18 +85,18 @@ configuration simDuration (birthRate, capacity, deathRate, samplingRate, disaste
           simDuration
           Nothing
 
--- | This acts as a coordinator of the whole simulation.
---
--- TODO Abstract this as it repeated across several modules
---
-allEvents ::
+randomEvent :: SimulationRandEvent LogisticBDSDParameters LogisticBDSDPopulation
+randomEvent = SimulationRandEvent randEvent'
+
+randEvent' ::
      LogisticBDSDParameters
   -> AbsoluteTime
-  -> Maybe (LogisticBDSDPopulation -> Bool)
-  -> SimulationState LogisticBDSDPopulation
+  -> LogisticBDSDPopulation
+  -> Identifier
   -> GenIO
-  -> IO (SimulationState LogisticBDSDPopulation)
-allEvents = undefined
+  -> IO (AbsoluteTime, EpidemicEvent, LogisticBDSDPopulation, Identifier)
+randEvent' = undefined
+
 
 -- | From a full list of epidemic events that occurred in a simulation return
 -- just the ones that were observed. For the logistic-BDSD this is those that

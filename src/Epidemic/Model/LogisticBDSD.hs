@@ -43,17 +43,23 @@ newtype LogisticBDSDPopulation =
   LogisticBDSDPopulation People
   deriving (Show)
 
+-- | The per lineage birth rate accounting for the population size.
+logisticBirthRate :: LogisticBDSDParameters -> LogisticBDSDPopulation -> Rate
+logisticBirthRate LogisticBDSDParameters {..} (LogisticBDSDPopulation pop) =
+  let propCapacity = fromIntegral (numPeople pop) / fromIntegral paramsCapacity
+   in paramsBirthRate * (1.0 - propCapacity)
+
 instance ModelParameters LogisticBDSDParameters LogisticBDSDPopulation where
   rNaught _ _ _ = Nothing
   eventRate (LogisticBDSDPopulation pop) LogisticBDSDParameters {..} _ =
     let propCapcity = fromIntegral (numPeople pop) / fromIntegral paramsCapacity
         br = paramsBirthRate * (1.0 - propCapcity)
      in Just $ br + paramsDeathRate + paramsSamplingRate
-  birthProb lpop@(LogisticBDSDPopulation pop) lparam@LogisticBDSDParameters {..} absTime =
-    let propCapcity = fromIntegral (numPeople pop) / fromIntegral paramsCapacity
-        br = paramsBirthRate * (1.0 - propCapcity)
-     in do er <- eventRate lpop lparam absTime
-           Just $ br / er
+  birthProb lpop lparam@LogisticBDSDParameters {..} absTime = do
+    er <- eventRate lpop lparam absTime
+    Just $ br / er
+    where
+      br = logisticBirthRate lparam lpop
 
 instance Population LogisticBDSDPopulation where
   susceptiblePeople _ = Nothing

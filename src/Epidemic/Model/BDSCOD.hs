@@ -90,15 +90,15 @@ randomEvent' params@(BDSCODParameters br dr sr catastInfo occr disastInfo) currT
   let netEventRate = fromJust $ eventRate currPop params currTime
       eventWeights = V.fromList [br, dr, sr, occr]
    in do delay <- exponential (fromIntegral (numPeople currPeople) * netEventRate) gen
-         newEventTime <- pure $ timeAfterDelta currTime (TimeDelta delay)
+         let newEventTime = timeAfterDelta currTime (TimeDelta delay)
          if noScheduledEvent currTime newEventTime (catastInfo <> disastInfo)
            then do eventIx <- categorical eventWeights gen
                    (selectedPerson, unselectedPeople) <- randomPerson currPeople gen
                    return $ case eventIx of
                      0 -> let (birthedPerson, newId) = newPerson currId
-                              event = Infection newEventTime selectedPerson birthedPerson
+                              infEvent = Infection newEventTime selectedPerson birthedPerson
                        in ( newEventTime
-                          , event
+                          , infEvent
                           , BDSCODPopulation (addPerson birthedPerson currPeople)
                           , newId)
                      1 -> (newEventTime, Removal newEventTime selectedPerson, BDSCODPopulation unselectedPeople, currId)
@@ -137,6 +137,7 @@ randomCatastropheEvent (catastTime, rhoProb) (BDSCODPopulation (People currPeopl
         , BDSCODPopulation (People unsampledPeople))
 
 -- | Return a randomly sampled Disaster event
+-- TODO Move this into the epidemic module to keep things DRY.
 randomDisasterEvent :: (AbsoluteTime,Probability) -- ^ Time and probability of sampling in the disaster
                     -> BDSCODPopulation    -- ^ The state of the population prior to the disaster
                     -> GenIO

@@ -1,9 +1,12 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
-module Epidemic.BDSCOD
+module Epidemic.Model.BDSCOD
   ( configuration
-  , allEvents
   , observedEvents
+  , randomEvent
+  , BDSCODParameters(..)
+  , BDSCODPopulation(..)
   ) where
 
 import Data.List (nub)
@@ -21,6 +24,11 @@ import Epidemic.Types.Events
   )
 import Epidemic.Types.Parameter
 import Epidemic.Types.Population
+import Epidemic.Types.Simulation
+  ( SimulationConfiguration(..)
+  , SimulationRandEvent(..)
+  , SimulationState(..)
+  )
 import Epidemic.Utility
 import System.Random.MWC
 import System.Random.MWC.Distributions (bernoulli, categorical, exponential)
@@ -30,17 +38,17 @@ data BDSCODParameters
   -- | birth rate, death rate, sampling rate, catastrophe specification, occurrence rate and disaster specification
   = BDSCODParameters Rate Rate Rate (Timed Probability) Rate (Timed Probability)
 
-instance ModelParameters BDSCODParameters where
-  rNaught (BDSCODParameters birthRate deathRate samplingRate _ occurrenceRate _) _ =
-    Just $ birthRate / (deathRate + samplingRate + occurrenceRate)
-  eventRate (BDSCODParameters birthRate deathRate samplingRate _ occurrenceRate _) _ =
-    Just $ birthRate + deathRate + samplingRate + occurrenceRate
-  birthProb (BDSCODParameters birthRate deathRate samplingRate _ occurrenceRate _) _ =
-    Just $ birthRate / (birthRate + deathRate + samplingRate + occurrenceRate)
-
-newtype BDSCODPopulation =
+data BDSCODPopulation =
   BDSCODPopulation People
   deriving (Show)
+
+instance ModelParameters BDSCODParameters BDSCODPopulation where
+  rNaught _ (BDSCODParameters birthRate deathRate samplingRate _ occurrenceRate _) _ =
+    Just $ birthRate / (deathRate + samplingRate + occurrenceRate)
+  eventRate _ (BDSCODParameters birthRate deathRate samplingRate _ occurrenceRate _) _ =
+    Just $ birthRate + deathRate + samplingRate + occurrenceRate
+  birthProb _ (BDSCODParameters birthRate deathRate samplingRate _ occurrenceRate _) _ =
+    Just $ birthRate / (birthRate + deathRate + samplingRate + occurrenceRate)
 
 instance Population BDSCODPopulation where
   susceptiblePeople _ = Nothing
@@ -67,26 +75,30 @@ configuration maxTime (birthRate, deathRate, samplingRate, catastropheSpec, occu
          bdscodPop = BDSCODPopulation (People $ V.singleton seedPerson)
        in return $ SimulationConfiguration bdscodParams bdscodPop newId (AbsoluteTime 0) maxTime Nothing
 
+-- | The way in which random events are generated in this model.
+randomEvent :: SimulationRandEvent BDSCODParameters BDSCODPopulation
+randomEvent = SimulationRandEvent randomEvent'
+
 -- | Return a random event from the BDSCOD-process given the current state of the process.
-randomEvent :: BDSCODParameters  -- ^ Parameters of the process
+randomEvent' :: BDSCODParameters  -- ^ Parameters of the process
             -> AbsoluteTime              -- ^ The current time within the process
             -> BDSCODPopulation  -- ^ The current state of the populaion
             -> Identifier        -- ^ The current state of the identifier generator
             -> GenIO             -- ^ The current state of the PRNG
             -> IO (AbsoluteTime, EpidemicEvent, BDSCODPopulation, Identifier)
-randomEvent params@(BDSCODParameters br dr sr catastInfo occr disastInfo) currTime currPop@(BDSCODPopulation currPeople) currId gen =
-  let netEventRate = fromJust $ eventRate params currTime
+randomEvent' params@(BDSCODParameters br dr sr catastInfo occr disastInfo) currTime currPop@(BDSCODPopulation currPeople) currId gen =
+  let netEventRate = fromJust $ eventRate currPop params currTime
       eventWeights = V.fromList [br, dr, sr, occr]
    in do delay <- exponential (fromIntegral (numPeople currPeople) * netEventRate) gen
-         newEventTime <- pure $ timeAfterDelta currTime (TimeDelta delay)
+         let newEventTime = timeAfterDelta currTime (TimeDelta delay)
          if noScheduledEvent currTime newEventTime (catastInfo <> disastInfo)
            then do eventIx <- categorical eventWeights gen
                    (selectedPerson, unselectedPeople) <- randomPerson currPeople gen
                    return $ case eventIx of
                      0 -> let (birthedPerson, newId) = newPerson currId
-                              event = Infection newEventTime selectedPerson birthedPerson
+                              infEvent = Infection newEventTime selectedPerson birthedPerson
                        in ( newEventTime
-                          , event
+                          , infEvent
                           , BDSCODPopulation (addPerson birthedPerson currPeople)
                           , newId)
                      1 -> (newEventTime, Removal newEventTime selectedPerson, BDSCODPopulation unselectedPeople, currId)
@@ -125,6 +137,7 @@ randomCatastropheEvent (catastTime, rhoProb) (BDSCODPopulation (People currPeopl
         , BDSCODPopulation (People unsampledPeople))
 
 -- | Return a randomly sampled Disaster event
+-- TODO Move this into the epidemic module to keep things DRY.
 randomDisasterEvent :: (AbsoluteTime,Probability) -- ^ Time and probability of sampling in the disaster
                     -> BDSCODPopulation    -- ^ The state of the population prior to the disaster
                     -> GenIO
@@ -137,32 +150,6 @@ randomDisasterEvent (disastTime, nuProb) (BDSCODPopulation (People currPeople)) 
    in return
         ( Disaster disastTime (People sampledPeople)
         , BDSCODPopulation (People unsampledPeople))
-
-allEvents ::
-     BDSCODParameters
-  -> AbsoluteTime
-  -> Maybe (BDSCODPopulation -> Bool) -- ^ predicate for a valid population
-  -> SimulationState BDSCODPopulation
-  -> GenIO
-  -> IO (SimulationState BDSCODPopulation)
-allEvents _ _ _ TerminatedSimulation _ = return TerminatedSimulation
-allEvents rates maxTime maybePopPredicate currState@(SimulationState (currTime, currEvents, currPop, currId)) gen =
-  if isNothing maybePopPredicate || (isJust maybePopPredicate && fromJust maybePopPredicate currPop)
-  then
-    if isInfected currPop
-    then do
-      (newTime, event, newPop, newId) <-
-        randomEvent rates currTime currPop currId gen
-      if newTime < maxTime
-        then allEvents
-               rates
-               maxTime
-               maybePopPredicate
-               (SimulationState (newTime, event : currEvents, newPop, newId))
-               gen
-        else return currState
-    else return currState
-  else return TerminatedSimulation
 
 -- | The events from the nodes of a reconstructed tree __not__ in time sorted
 -- order.

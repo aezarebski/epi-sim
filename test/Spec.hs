@@ -9,8 +9,8 @@ import Data.Csv
 import Data.Maybe (fromJust, isJust, isNothing)
 import qualified Data.Vector as V
 import Epidemic
-import qualified Epidemic.BDSCOD as BDSCOD
-import qualified Epidemic.InhomogeneousBDS as InhomBDS
+import qualified Epidemic.Model.BDSCOD as BDSCOD
+import qualified Epidemic.Model.InhomogeneousBDS as InhomBDS
 import Epidemic.Types.Events
 import Epidemic.Types.Parameter
 import Epidemic.Types.Population
@@ -169,7 +169,7 @@ eventHandlingTests = do
       demoSim <-
         simulation False
           (fromJust (BDSCOD.configuration (TimeDelta 4) (1.3, 0.1, 0.1, [(AbsoluteTime 3, 0.5)], 0.2, [(AbsoluteTime 3.5, 0.5)])))
-          BDSCOD.allEvents
+          (allEvents BDSCOD.randomEvent)
       length demoSim > 1 `shouldBe` True
 
 
@@ -290,7 +290,7 @@ inhomExpTests =
               withinNPercent 5 (mean x) mean2 `shouldBe` True
               withinNPercent 5 (variance x) var2 `shouldBe` True
 
-
+illFormedTreeTest :: SpecWith ()
 illFormedTreeTest =
   describe "Prevent the simulator returning a broken tree" $ do
   let simDuration = TimeDelta 0.2
@@ -307,7 +307,7 @@ illFormedTreeTest =
     in it "stress testing the observed events function" $
        do
          null (BDSCOD.observedEvents []) `shouldBe` True
-         simEvents <- simulation True (fromJust simConfig) BDSCOD.allEvents
+         simEvents <- simulation True (fromJust simConfig) (allEvents BDSCOD.randomEvent)
          any isReconTreeLeaf simEvents `shouldBe` True
          (length (fromJust $ BDSCOD.observedEvents simEvents) > 1) `shouldBe` True
 

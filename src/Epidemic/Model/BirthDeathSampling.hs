@@ -1,33 +1,42 @@
-module Epidemic.BirthDeathSampling
+{-# LANGUAGE MultiParamTypeClasses #-}
+
+module Epidemic.Model.BirthDeathSampling
   ( configuration
-  , allEvents
+  , observedEvents
+  , randomEvent
+  , BDSRates(..)
+  , BDSPopulation(..)
   ) where
 
 import Data.Maybe (fromJust, isJust, isNothing)
 import qualified Data.Vector as V
+import Epidemic
 import Epidemic.Types.Events
 import Epidemic.Types.Parameter
 import Epidemic.Types.Population
+import Epidemic.Types.Simulation
+  ( SimulationConfiguration(..)
+  , SimulationRandEvent(..)
+  , SimulationState(..)
+  )
+import Epidemic.Utility
 import System.Random.MWC
 import System.Random.MWC.Distributions (categorical, exponential)
-
-import Epidemic
-import Epidemic.Utility
 
 data BDSRates =
   BDSRates Rate Rate Rate
 
-instance ModelParameters BDSRates where
-  rNaught (BDSRates birthRate deathRate samplingRate) _ =
-    Just $ birthRate / (deathRate + samplingRate)
-  eventRate (BDSRates birthRate deathRate samplingRate) _ =
-    Just $ birthRate + deathRate + samplingRate
-  birthProb (BDSRates birthRate deathRate samplingRate) _ =
-    Just $ birthRate / (birthRate + deathRate + samplingRate)
-
 newtype BDSPopulation =
   BDSPopulation People
   deriving (Show)
+
+instance ModelParameters BDSRates BDSPopulation where
+  rNaught _ (BDSRates birthRate deathRate samplingRate) _ =
+    Just $ birthRate / (deathRate + samplingRate)
+  eventRate _ (BDSRates birthRate deathRate samplingRate) _ =
+    Just $ birthRate + deathRate + samplingRate
+  birthProb _ (BDSRates birthRate deathRate samplingRate) _ =
+    Just $ birthRate / (birthRate + deathRate + samplingRate)
 
 instance Population BDSPopulation where
   susceptiblePeople _ = Nothing
@@ -49,6 +58,9 @@ configuration maxTime (birthRate, deathRate, samplingRate) =
       bdsPop = BDSPopulation (People $ V.singleton seedPerson)
    in SimulationConfiguration bdsRates bdsPop newId (AbsoluteTime 0) maxTime Nothing
 
+randomEvent :: SimulationRandEvent BDSRates BDSPopulation
+randomEvent = SimulationRandEvent randomBirthDeathSamplingEvent
+
 randomBirthDeathSamplingEvent ::
      BDSRates
   -> AbsoluteTime
@@ -56,8 +68,8 @@ randomBirthDeathSamplingEvent ::
   -> Identifier
   -> GenIO
   -> IO (AbsoluteTime, EpidemicEvent, BDSPopulation, Identifier)
-randomBirthDeathSamplingEvent bdsRates@(BDSRates br dr sr) currTime (BDSPopulation currPeople) currId gen =
-  let individualEventRate = fromJust $ eventRate bdsRates currTime
+randomBirthDeathSamplingEvent bdsRates@(BDSRates br dr sr) currTime pop@(BDSPopulation currPeople) currId gen =
+  let individualEventRate = fromJust $ eventRate pop bdsRates currTime
       eventWeights = V.fromList [br, dr, sr]
    in do delay <-
            exponential
@@ -88,28 +100,7 @@ randomBirthDeathSamplingEvent bdsRates@(BDSRates br dr sr) currTime (BDSPopulati
                , currId)
            _ -> error "no birth-death-sampling event selected."
 
-allEvents ::
-     BDSRates
-  -> AbsoluteTime
-  -> Maybe (BDSPopulation -> Bool) -- ^ predicate for a valid population
-  -> SimulationState BDSPopulation
-  -> GenIO
-  -> IO (SimulationState BDSPopulation)
-allEvents _ _ _ TerminatedSimulation _ = return TerminatedSimulation
-allEvents bdsRates maxTime maybePopPredicate currState@(SimulationState (currTime, currEvents, currPop, currId)) gen =
-  if isNothing maybePopPredicate || (isJust maybePopPredicate && fromJust maybePopPredicate currPop)
-  then
-    if isInfected currPop
-    then do
-      (newTime, event, newPop, newId) <-
-        randomBirthDeathSamplingEvent bdsRates currTime currPop currId gen
-      if newTime < maxTime
-        then allEvents
-               bdsRates
-               maxTime
-               maybePopPredicate
-               (SimulationState (newTime, event : currEvents, newPop, newId))
-               gen
-        else return currState
-    else return currState
-  else return TerminatedSimulation
+-- | Just the events that appear in the reconstructed tree.
+-- TODO Implement this!!!
+observedEvents :: [EpidemicEvent] -> Maybe [EpidemicEvent]
+observedEvents = undefined

@@ -1,39 +1,48 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
-module Epidemic.InhomogeneousBDS
+module Epidemic.Model.InhomogeneousBDS
   ( configuration
-  , allEvents
   , observedEvents
+  , randomEvent
   , inhomBDSRates
+  , InhomBDSRates(..)
+  , InhomBDSPop(..)
   ) where
 
-import Epidemic.Types.Population
-import Epidemic.Types.Events
-import Epidemic.Types.Parameter
 import Control.Monad (liftM)
 import Data.Maybe (fromJust, isJust, isNothing)
 import qualified Data.Vector as V
+import Epidemic
+import Epidemic.Types.Events
+import Epidemic.Types.Parameter
+import Epidemic.Types.Population
+import Epidemic.Types.Simulation
+  ( SimulationConfiguration(..)
+  , SimulationRandEvent(..)
+  , SimulationState(..)
+  )
+import Epidemic.Utility
 import System.Random.MWC
 import System.Random.MWC.Distributions (categorical, exponential)
-import Epidemic
-import Epidemic.Utility
 
 data InhomBDSRates =
   InhomBDSRates (Timed Rate) Rate Rate
 
-instance ModelParameters InhomBDSRates where
-  rNaught (InhomBDSRates timedBirthRate deathRate sampleRate) time =
-    let birthRate = cadlagValue timedBirthRate time
-     in liftM (/ (deathRate + sampleRate)) birthRate
-  eventRate (InhomBDSRates timedBirthRate deathRate sampleRate) time =
-    let birthRate = cadlagValue timedBirthRate time
-     in liftM (+ (deathRate + sampleRate)) birthRate
-  birthProb (InhomBDSRates timedBirthRate deathRate sampleRate) time =
-    liftM (\br -> br / (br + deathRate + sampleRate)) $ cadlagValue timedBirthRate time
-
-newtype InhomBDSPop =
+data InhomBDSPop =
   InhomBDSPop People
   deriving (Show)
+
+instance ModelParameters InhomBDSRates InhomBDSPop where
+  rNaught _ (InhomBDSRates timedBirthRate deathRate sampleRate) time =
+    let birthRate = cadlagValue timedBirthRate time
+     in liftM (/ (deathRate + sampleRate)) birthRate
+  eventRate _ (InhomBDSRates timedBirthRate deathRate sampleRate) time =
+    let birthRate = cadlagValue timedBirthRate time
+     in liftM (+ (deathRate + sampleRate)) birthRate
+  birthProb _ (InhomBDSRates timedBirthRate deathRate sampleRate) time =
+    liftM (\br -> br / (br + deathRate + sampleRate)) $ cadlagValue timedBirthRate time
+
 
 instance Population InhomBDSPop where
   susceptiblePeople _ = Nothing
@@ -71,18 +80,21 @@ configuration maxTime (tBrPairs, deathRate, sampleRate) =
                   (SimulationConfiguration maybeIBDSRates bdsPop newId (AbsoluteTime 0) maxTime Nothing)
            else Nothing
 
+randomEvent :: SimulationRandEvent InhomBDSRates InhomBDSPop
+randomEvent = SimulationRandEvent randomEvent'
+
 -- | A random event and the state afterwards
-randomEvent ::
+randomEvent' ::
      InhomBDSRates -- ^ model parameters
   -> AbsoluteTime  -- ^ the current time
   -> InhomBDSPop   -- ^ the population
   -> Identifier -- ^ current identifier
   -> GenIO         -- ^ PRNG
   -> IO (AbsoluteTime, EpidemicEvent, InhomBDSPop, Identifier)
-randomEvent inhomRates@(InhomBDSRates brts dr sr) currTime (InhomBDSPop (people@(People peopleVec))) currId gen =
+randomEvent' inhomRates@(InhomBDSRates brts dr sr) currTime pop@(InhomBDSPop (people@(People peopleVec))) currId gen =
   let popSize = fromIntegral $ numPeople people :: Double
       -- we need a new step function to account for the population size.
-      (Just stepFunction) = asTimed [(t,popSize * fromJust (eventRate inhomRates t)) | t <- allTimes brts]
+      (Just stepFunction) = asTimed [(t,popSize * fromJust (eventRate pop inhomRates t)) | t <- allTimes brts]
       eventWeights t = V.fromList [fromJust (cadlagValue brts t), dr, sr]
    in do (Just newEventTime) <- inhomExponential stepFunction currTime gen
          eventIx <- categorical (eventWeights newEventTime) gen
@@ -95,35 +107,6 @@ randomEvent inhomRates@(InhomBDSRates brts dr sr) currTime (InhomBDSPop (people@
            1 -> (newEventTime, Removal newEventTime selectedPerson, InhomBDSPop unselectedPeople, currId)
            2 -> (newEventTime, Sampling newEventTime selectedPerson, InhomBDSPop unselectedPeople, currId)
            _ -> error "no birth-death-sampling event selected."
-
--- | The state of the simulation at the time of the last event prior to the
--- stopping time.
-allEvents ::
-     InhomBDSRates                            -- ^ model parameters
-  -> AbsoluteTime                                     -- ^ stopping time
-  -> Maybe (InhomBDSPop -> Bool) -- ^ predicate for a valid population
-  -> SimulationState InhomBDSPop -- ^ simulation state
-  -> GenIO                                    -- ^ PRNG
-  -> IO (SimulationState InhomBDSPop)
-allEvents _ _ _ TerminatedSimulation _ = return TerminatedSimulation
-allEvents rates maxTime maybePopPredicate currState@(SimulationState (currTime, currEvents, currPop, currId)) gen =
-  if isNothing maybePopPredicate || (isJust maybePopPredicate && fromJust maybePopPredicate currPop)
-  then
-    if isInfected currPop
-    then do
-      (newTime, event, newPop, newId) <-
-        randomEvent rates currTime currPop currId gen
-      if newTime < maxTime
-        then allEvents
-               rates
-               maxTime
-               maybePopPredicate
-               (SimulationState (newTime, event : currEvents, newPop, newId))
-               gen
-        else return currState
-    else return currState
-  else return TerminatedSimulation
-
 
 -- | Just the observable events from a list of all the events in a simulation.
 observedEvents :: [EpidemicEvent] -- ^ All of the simulation events

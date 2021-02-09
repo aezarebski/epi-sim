@@ -2,6 +2,7 @@
 
 ## 0.3.0.0
 
+- Update the resolver to 17.2
 - Extend the `ModelParameters` class to include a `Population` parameter type
   since this is needed to compute event rates in for the logistic model.
 - Create `Epidemic.Type.Simulation` module for types relating to running generic

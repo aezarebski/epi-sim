@@ -7,10 +7,12 @@
 - Create `Epidemic.Type.Simulation` module for types relating to running generic
   simulations from the models to avoid confusion as to where these are defined.
 - Move class definitions into corresponding `Epidemic.Type.X` modules.
+- Add a `Epidemic.Model.LogisticBDSD` module implementing a logistic birth-death
+  process with unscheduled sampling and scheduled unsequenced sampling.
 - Move the models into a new `Epidemic.Model` module so that it is clearer that
   these are really just examples of putting together functionality provided by
   the rest of the library.
-- Use a new type `Identifier` to represent indentities of people rather than a
+- Use a new type `Identifier` to represent identities of people rather than a
   raw integer this way it is clearer what it really is.
 - Replace `Time` with `AbsoluteTime` and `TimeDelta` types to make it explicit
   what is being represented.
@@ -26,7 +28,7 @@
   versions to use.
 - Remove dependency upon `epi-types` by moving its modules into this package and
   include the tests from that package.
-- Remove unsed `Setup.hs` file.
+- Remove unused `Setup.hs` file.
 
 ## 0.2.0.1
 

@@ -198,3 +198,35 @@ sampleTreeEvents' sTree =
 -- | The unique events in a sample tree.
 sampleTreeEvents :: SampleTree -> [EpidemicEvent]
 sampleTreeEvents = nub . sampleTreeEvents'
+
+-- | Run the simulation and return a @SimulationState@ which holds the history
+-- of the simulation.
+allEvents ::
+     (ModelParameters a b, Population b)
+  => SimulationRandEvent a b
+  -> a
+  -> AbsoluteTime
+  -> Maybe (b -> Bool) -- ^ predicate for a valid population
+  -> SimulationState b
+  -> GenIO
+  -> IO (SimulationState b)
+allEvents _ _ _ _ TerminatedSimulation _ = return TerminatedSimulation
+allEvents simRandEvent@(SimulationRandEvent randEvent) modelParams maxTime maybePopPredicate currState@(SimulationState (currTime, currEvents, currPop, currId)) gen =
+  if isNothing maybePopPredicate ||
+     (isJust maybePopPredicate && fromJust maybePopPredicate currPop)
+    then if isInfected currPop
+           then do
+             (newTime, event, newPop, newId) <-
+               randEvent modelParams currTime currPop currId gen
+             if newTime < maxTime
+               then allEvents
+                      simRandEvent
+                      modelParams
+                      maxTime
+                      maybePopPredicate
+                      (SimulationState
+                         (newTime, event : currEvents, newPop, newId))
+                      gen
+               else return currState
+           else return currState
+    else return TerminatedSimulation

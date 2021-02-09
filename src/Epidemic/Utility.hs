@@ -130,7 +130,6 @@ newickTree = do
 --   > (Success bar) = parseString newickTree mempty $ show foo
 --   > foo == bar
 --   True
-
 sort :: Ord a => [a] -> [a]
 sort = List.sort
 
@@ -182,7 +181,7 @@ isReconTreeLeaf e =
     _ -> False
 
 simulation' ::
-     (ModelParameters a)
+     (ModelParameters a b, Population b)
   => SimulationConfiguration a b
   -> (a -> AbsoluteTime -> Maybe (b -> Bool) -> SimulationState b -> GenIO -> IO (SimulationState b))
   -> GenIO

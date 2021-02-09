@@ -2,14 +2,21 @@
 
 ## 0.3.0.0
 
-- Include a `SimulationState` type to model the state of a simulation
-  explicitly.
-- Include early termination of simulations as part of the interface.
-- Remove `BirthDeath` module.
-- Use a new type `Identifier` to represent indentities of people rather than a
-  raw integer.
+- Update the resolver to 17.2
+- Extend the `ModelParameters` class to include a `Population` parameter type
+  since this is needed to compute event rates in for the logistic model.
+- Create `Epidemic.Type.Simulation` module for types relating to running generic
+  simulations from the models to avoid confusion as to where these are defined.
+- Move class definitions into corresponding `Epidemic.Type.X` modules.
+- Add a `Epidemic.Model.LogisticBDSD` module implementing a logistic birth-death
+  process with unscheduled sampling and scheduled unsequenced sampling.
+- Move the models into a new `Epidemic.Model` module so that it is clearer that
+  these are really just examples of putting together functionality provided by
+  the rest of the library.
+- Use a new type `Identifier` to represent identities of people rather than a
+  raw integer this way it is clearer what it really is.
 - Replace `Time` with `AbsoluteTime` and `TimeDelta` types to make it explicit
-  what is being represented. This is used in `SimulationConfiguration`.
+  what is being represented.
 - Reduce the number of models that are included to the more interesting subset.
 
 ## 0.2.2.0
@@ -22,7 +29,7 @@
   versions to use.
 - Remove dependency upon `epi-types` by moving its modules into this package and
   include the tests from that package.
-- Remove unsed `Setup.hs` file.
+- Remove unused `Setup.hs` file.
 
 ## 0.2.0.1
 

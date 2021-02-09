@@ -8,12 +8,19 @@ import qualified Data.ByteString as B
 import Data.ByteString.Internal (c2w)
 import Data.Csv
 import Data.List (nub)
+import Data.Maybe (fromJust, isJust, isNothing)
 import qualified Data.Vector as V
 import Data.Word
 import Epidemic.Types.Events
 import Epidemic.Types.Parameter
 import Epidemic.Types.Population
+import Epidemic.Types.Simulation
+  ( SimulationConfiguration(..)
+  , SimulationRandEvent(..)
+  , SimulationState(..)
+  )
 import GHC.Generics (Generic)
+import System.Random.MWC
 
 -- | The number of people added or removed in an event.
 eventPopDelta :: EpidemicEvent -> Integer
@@ -126,18 +133,6 @@ samplingEvent events person =
         else samplingEvent remainingEvents person
     _:remainingEvents -> samplingEvent remainingEvents person
     _ -> error "person does not appear to have been sampled."
-
-class ModelParameters a where
-  rNaught :: a -> AbsoluteTime -> Maybe Double
-  eventRate :: a -> AbsoluteTime -> Maybe Rate
-  birthProb :: a -> AbsoluteTime -> Maybe Probability
-
-class Population a where
-  susceptiblePeople :: a -> Maybe People
-  infectiousPeople :: a -> Maybe People
-  removedPeople :: a -> Maybe People
-  isInfected :: a -> Bool
-
 
 data TransmissionTree
   = TTUnresolved Person

@@ -4,6 +4,7 @@
 module Epidemic.Types.Population
   ( Person(Person)
   , People(People)
+  , Population(..)
   , Identifier(Identifier)
   , asPeople
   , includesPerson
@@ -22,6 +23,12 @@ import Data.ByteString.Internal (c2w)
 import qualified Data.Csv as Csv
 import qualified Data.Vector as V
 import GHC.Generics
+
+class Population a where
+  susceptiblePeople :: a -> Maybe People
+  infectiousPeople :: a -> Maybe People
+  removedPeople :: a -> Maybe People
+  isInfected :: a -> Bool
 
 -- | A type to hold an integer which is unique to each 'Person'.
 newtype Identifier =

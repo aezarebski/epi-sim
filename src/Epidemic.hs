@@ -32,6 +32,8 @@ eventPopDelta e =
     Catastrophe _ people -> fromIntegral $ numPeople people
     Occurrence _ _ -> -1
     Disaster _ people -> fromIntegral $ numPeople people
+    Extinction {} -> undefined
+    StoppingTime {} -> undefined
 
 -- | The first scheduled event after a given time.
 firstScheduled ::
@@ -63,6 +65,8 @@ personsInEvent e =
     (Catastrophe _ (People persons)) -> V.toList persons
     (Occurrence _ p) -> [p]
     (Disaster _ (People persons)) -> V.toList persons
+    Extinction {} -> undefined
+    StoppingTime {} -> undefined
 
 peopleInEvents :: [EpidemicEvent] -> People
 peopleInEvents events =
@@ -162,6 +166,8 @@ transmissionTree (e@(Disaster _ (People people)):es) person
   | person `V.elem` people = TTDeath (People people) e
   | otherwise = transmissionTree es person
 transmissionTree [] person = TTUnresolved person
+transmissionTree ((Extinction _):_) _ = undefined
+transmissionTree ((StoppingTime _):_) _ = undefined
 
 -- | A predicate for whether there is a sampled leaf in the transmission tree
 hasSampledLeaf :: TransmissionTree -> Bool

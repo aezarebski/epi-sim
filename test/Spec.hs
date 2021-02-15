@@ -535,19 +535,19 @@ logisticBDSDTests =
           do
             simEvents <- simulation True config1 (allEvents LogisticBDSD.randomEvent)
             isExtinctionOrStopping (head simEvents) `shouldBe` False
-            isExtinctionOrStopping (head (reverse simEvents)) `shouldBe` True
+            isExtinctionOrStopping (last simEvents) `shouldBe` True
             length simEvents > 3 `shouldBe` True
             any isSampling simEvents `shouldBe` True
             gen <- MWC.create
             simEventsAgain <- simulation' config1 (allEvents LogisticBDSD.randomEvent) gen
             isExtinctionOrStopping (head simEventsAgain) `shouldBe` False
-            isExtinctionOrStopping (head (reverse simEventsAgain)) `shouldBe` True
+            isExtinctionOrStopping (last simEventsAgain) `shouldBe` True
         it "check if there is no sampling then there should be no samples" $
           let (Right config2) = LogisticBDSD.configuration (TimeDelta 3.0) (1.7, 100, 0.5, 0.0, [])
           in do
             simEvents2 <- simulation False config2 (allEvents LogisticBDSD.randomEvent)
             isExtinctionOrStopping (head simEvents2) `shouldBe` False
-            isExtinctionOrStopping (head (reverse simEvents2)) `shouldBe` True
+            isExtinctionOrStopping (last simEvents2) `shouldBe` True
             length simEvents2 > 3 `shouldBe` True
             any isSampling simEvents2 `shouldBe` False
         it "check there are more events than observed events" $

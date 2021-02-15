@@ -523,20 +523,41 @@ newickTests =
 logisticBDSDTests :: SpecWith ()
 logisticBDSDTests =
   describe "Test the LogisticBDSD module" $
-  let (Right config) = LogisticBDSD.configuration (TimeDelta 2.0) (2.0, 100, 0.5, 0.1, [])
+  let (Right config1) = LogisticBDSD.configuration (TimeDelta 2.0) (2.0, 100, 0.5, 0.1, [])
       isExtinctionOrStopping e = case e of
         Extinction -> True
         StoppingTime -> True
         _ -> False
+      isSampling e = case e of
+        Sampling {} -> True
+        _ -> False
   in do it "check final value is extinction or stopping time" $
           do
-            simEvents <- simulation True config (allEvents LogisticBDSD.randomEvent)
+            simEvents <- simulation True config1 (allEvents LogisticBDSD.randomEvent)
             isExtinctionOrStopping (head simEvents) `shouldBe` False
             isExtinctionOrStopping (head (reverse simEvents)) `shouldBe` True
+            length simEvents > 3 `shouldBe` True
+            any isSampling simEvents `shouldBe` True
             gen <- MWC.create
-            simEvents2 <- simulation' config (allEvents LogisticBDSD.randomEvent) gen
+            simEventsAgain <- simulation' config1 (allEvents LogisticBDSD.randomEvent) gen
+            isExtinctionOrStopping (head simEventsAgain) `shouldBe` False
+            isExtinctionOrStopping (head (reverse simEventsAgain)) `shouldBe` True
+        it "check if there is no sampling then there should be no samples" $
+          let (Right config2) = LogisticBDSD.configuration (TimeDelta 3.0) (1.7, 100, 0.5, 0.0, [])
+          in do
+            simEvents2 <- simulation False config2 (allEvents LogisticBDSD.randomEvent)
             isExtinctionOrStopping (head simEvents2) `shouldBe` False
             isExtinctionOrStopping (head (reverse simEvents2)) `shouldBe` True
+            length simEvents2 > 3 `shouldBe` True
+            any isSampling simEvents2 `shouldBe` False
+        it "check there are more events than observed events" $
+          do
+            let (Right config3) = LogisticBDSD.configuration (TimeDelta 4.0) (3.0, 100, 0.5, 0.5, [])
+            simEvents3 <- simulation False config3 (allEvents LogisticBDSD.randomEvent)
+            length simEvents3 > 10 `shouldBe` True
+            any isSampling simEvents3 `shouldBe` True
+            let (Right obsEvents3) = LogisticBDSD.observedEvents simEvents3
+            length obsEvents3 < length simEvents3 `shouldBe` True
 
 
 

@@ -175,5 +175,6 @@ randomDisasterEvent (dsstrTime, dsstrProb) (LogisticBDSDPopulation (People currP
 -- just the ones that were observed. For the logistic-BDSD this is those that
 -- are part of the reconstructed tree and those that occurred in disasters. If
 -- this is not possible return an error message in a string.
+-- TODO Implement this function
 observedEvents :: [EpidemicEvent] -> Either String [EpidemicEvent]
 observedEvents = undefined

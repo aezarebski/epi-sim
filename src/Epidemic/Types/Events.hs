@@ -34,8 +34,8 @@ data EpidemicEvent
   | Catastrophe AbsoluteTime People -- ^ scheduled sampling of lineages
   | Occurrence AbsoluteTime Person -- ^ removal and observed by not in phylogeny
   | Disaster AbsoluteTime People -- ^ scheduled occurrence of lineages
-  | Extinction AbsoluteTime -- ^ epidemic went extinct
-  | StoppingTime AbsoluteTime -- ^ the simulation reached the stopping time
+  | Extinction -- ^ epidemic went extinct time time can be recovered from the preceeding removal
+  | StoppingTime -- ^ the simulation reached the stopping time
   deriving (Show, Generic, Eq)
 
 instance Json.FromJSON EpidemicEvent
@@ -62,9 +62,8 @@ instance Csv.ToRecord EpidemicEvent where
         Csv.record ["occurrence", Csv.toField time, Csv.toField person, "NA"]
       (Disaster time people) ->
         Csv.record ["disaster", Csv.toField time, Csv.toField people, "NA"]
-      (Extinction time) ->
-        Csv.record ["extinction", Csv.toField time, "NA", "NA"]
-      (StoppingTime time) -> Csv.record ["stop", Csv.toField time, "NA", "NA"]
+      Extinction -> Csv.record ["extinction", "NA", "NA", "NA"]
+      StoppingTime -> Csv.record ["stop", "NA", "NA", "NA"]
 
 et :: B.ByteString -> Csv.Record -> Bool
 et bs r = (== bs) . head $ V.toList r
@@ -98,8 +97,7 @@ eventTime e =
     Catastrophe time _ -> time
     Occurrence time _ -> time
     Disaster time _ -> time
-    Extinction time -> time
-    StoppingTime time -> time
+    _ -> undefined
 
 -- | The events that occurred as a result of the existance of the given person.
 derivedFrom ::
@@ -320,9 +318,8 @@ instance Newick EpidemicTree where
             if ps `includesPerson` p
               then Just (identifier <> colonBuilder <> branchLength t t', [e])
               else Nothing
-          (Extinction _) -> Nothing
-          (StoppingTime t') ->
-            Just (identifier <> colonBuilder <> branchLength t t', [e])
+          Extinction -> Nothing
+          StoppingTime -> Nothing
   asNewickString (t, p) (Branch e lt rt) =
     case e of
       (Infection t' p1 p2) ->

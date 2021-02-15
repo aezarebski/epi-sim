@@ -166,8 +166,8 @@ transmissionTree (e@(Disaster _ (People people)):es) person
   | person `V.elem` people = TTDeath (People people) e
   | otherwise = transmissionTree es person
 transmissionTree [] person = TTUnresolved person
-transmissionTree ((Extinction _):_) _ = undefined
-transmissionTree ((StoppingTime _):_) _ = undefined
+transmissionTree (Extinction:_) _ = undefined
+transmissionTree (StoppingTime:_) _ = undefined
 
 -- | A predicate for whether there is a sampled leaf in the transmission tree
 hasSampledLeaf :: TransmissionTree -> Bool
@@ -233,6 +233,6 @@ allEvents simRandEvent@(SimulationRandEvent randEvent) modelParams maxTime maybe
                       (SimulationState
                          (newTime, event : currEvents, newPop, newId))
                       gen
-               else return currState
-           else return currState
+               else return $ SimulationState (maxTime, StoppingTime : currEvents, currPop, currId)
+           else return $ SimulationState (currTime, Extinction : currEvents, currPop, currId)
     else return TerminatedSimulation

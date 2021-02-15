@@ -29,8 +29,7 @@ data SimulationConfiguration r p =
 
 -- | Either there is a valid simulation state which contains a sequence of
 -- epidemic events of there is a terminated simulation which indicates that
--- either the simulation has been rejected or some sort of numerical error has
--- been encountered.
+-- the simulation has been rejected.
 data SimulationState b
   = SimulationState (AbsoluteTime, [EpidemicEvent], b, Identifier)
   | TerminatedSimulation

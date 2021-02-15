@@ -11,6 +11,7 @@ import qualified Data.Vector as V
 import Epidemic
 import qualified Epidemic.Model.BDSCOD as BDSCOD
 import qualified Epidemic.Model.InhomogeneousBDS as InhomBDS
+import qualified Epidemic.Model.LogisticBDSD as LogisticBDSD
 import Epidemic.Types.Events
 import Epidemic.Types.Parameter
 import Epidemic.Types.Population
@@ -519,6 +520,26 @@ newickTests =
       let catasTarget =  BBuilder.stringUtf8 "1&2:1.0"
       equalBuilders catasTarget (fst $ fromJust catasNewick) `shouldBe` True
 
+logisticBDSDTests :: SpecWith ()
+logisticBDSDTests =
+  describe "Test the LogisticBDSD module" $
+  let (Right config) = LogisticBDSD.configuration (TimeDelta 2.0) (2.0, 100, 0.5, 0.1, [])
+      isExtinctionOrStopping e = case e of
+        Extinction -> True
+        StoppingTime -> True
+        _ -> False
+  in do it "check final value is extinction or stopping time" $
+          do
+            simEvents <- simulation True config (allEvents LogisticBDSD.randomEvent)
+            isExtinctionOrStopping (head simEvents) `shouldBe` False
+            isExtinctionOrStopping (head (reverse simEvents)) `shouldBe` True
+            gen <- MWC.create
+            simEvents2 <- simulation' config (allEvents LogisticBDSD.randomEvent) gen
+            isExtinctionOrStopping (head simEvents2) `shouldBe` False
+            isExtinctionOrStopping (head (reverse simEvents2)) `shouldBe` True
+
+
+
 main :: IO ()
 main =
   hspec $ do
@@ -531,3 +552,4 @@ main =
     helperTypeTests
     jsonTests
     newickTests
+    logisticBDSDTests

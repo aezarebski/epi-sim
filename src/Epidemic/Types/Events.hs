@@ -83,8 +83,16 @@ instance Csv.FromRecord EpidemicEvent where
     | et "disaster" r = Disaster <$> (r Csv..! 1) <*> (r Csv..! 2)
     | otherwise = undefined
 
--- | Epidemic Events are ordered based on which occurred first.
+-- | Epidemic Events are ordered based on which occurred first. Since
+-- 'Extinction' and 'StoppingTime' events are there as placeholders they are
+-- placed as the end of the order.
 instance Ord EpidemicEvent where
+  Extinction <= Extinction = True
+  Extinction <= StoppingTime = True
+  Extinction <= _ = False
+  StoppingTime <= Extinction = False
+  StoppingTime <= StoppingTime = True
+  StoppingTime <= _ = False
   e1 <= e2 = eventTime e1 <= eventTime e2
 
 -- | The absolute time an event occurred.

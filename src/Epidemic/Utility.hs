@@ -122,7 +122,7 @@ newickSubtree = choice [newickInternal, newickLeaf]
 newickTree :: (TokenParsing f, Monad f, CharParsing f) => f NTree
 newickTree = do
   (NBranchSet bs) <- parens newickBranchSet
-  symbolic ';'
+  _ <- symbolic ';'
   pure (NTree bs)
 
 -- | Example run

@@ -222,7 +222,7 @@ allEvents ::
   -> GenIO
   -> IO (SimulationState b)
 allEvents _ _ _ _ TerminatedSimulation _ = return TerminatedSimulation
-allEvents simRandEvent@(SimulationRandEvent randEvent) modelParams maxTime maybePopPredicate currState@(SimulationState (currTime, currEvents, currPop, currId)) gen =
+allEvents simRandEvent@(SimulationRandEvent randEvent) modelParams maxTime maybePopPredicate (SimulationState (currTime, currEvents, currPop, currId)) gen =
   if isNothing maybePopPredicate ||
      (isJust maybePopPredicate && fromJust maybePopPredicate currPop)
     then if isInfected currPop

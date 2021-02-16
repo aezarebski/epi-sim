@@ -12,7 +12,6 @@ module Epidemic.Types.Observations
 import qualified Data.Aeson as Json
 import qualified Data.ByteString.Builder as BBuilder
 import qualified Data.List as List
-import Data.Maybe (fromJust, isJust)
 import qualified Data.Vector as V
 import Epidemic.Types.Events
   ( EpidemicEvent(..)
@@ -66,22 +65,22 @@ data ReconstructedTree
 -- contains represents the transmission tree of the epidemic. In the case where
 -- there are no sequenced samples in the epidemic then there is no tree to
 -- reconstruct which is why this function is in the maybe monad.
-maybeReconstructedTree :: EpidemicTree -> Maybe ReconstructedTree
-maybeReconstructedTree Shoot {} = Nothing
+maybeReconstructedTree :: EpidemicTree -> Either String ReconstructedTree
+maybeReconstructedTree Shoot {} = Left "EpidemicTree is only a Shoot"
 maybeReconstructedTree (Leaf e) =
   case e of
-    Sampling {} -> Just $ RLeaf (Observation e)
-    Catastrophe {} -> Just $ RLeaf (Observation e)
-    _ -> Nothing
+    Sampling {} -> Right $ RLeaf (Observation e)
+    Catastrophe {} -> Right $ RLeaf (Observation e)
+    _ -> Left "Bad leaf in the EpidemicTree"
 maybeReconstructedTree (Branch e@Infection {} lt rt)
   | hasSequencedLeaf lt && hasSequencedLeaf rt = do
     rlt <- maybeReconstructedTree lt
     rrt <- maybeReconstructedTree rt
-    Just $ RBranch (Observation e) rlt rrt
+    Right $ RBranch (Observation e) rlt rrt
   | hasSequencedLeaf lt = maybeReconstructedTree lt
   | hasSequencedLeaf rt = maybeReconstructedTree rt
-  | otherwise = Nothing
-maybeReconstructedTree Branch {} = Nothing
+  | otherwise = Left "Neither subtree has a sequenced leaf"
+maybeReconstructedTree Branch {} = Left "EpidemicTree is a bad branch"
 
 -- | Predicate for whether an 'EpidemicTree' has any leaf which corresponds to a
 -- sequenced observation and hence should be included in a @ReconstructedTree@.
@@ -98,19 +97,11 @@ hasSequencedLeaf (Branch _ lt rt) = hasSequencedLeaf lt || hasSequencedLeaf rt
 -- reconstructed tree and any unsequenced samples.
 observedEvents :: [EpidemicEvent] -> Either String [Observation]
 observedEvents epiEvents =
-  let maybeEpiTree = maybeEpidemicTree epiEvents
-   in do epiTree <-
-           if isJust maybeEpiTree
-             then Right $ fromJust maybeEpiTree
-             else Left "Could not construct EpidemicTree"
-         let maybeReconTree = maybeReconstructedTree epiTree
-         reconTree <-
-           if isJust maybeReconTree
-             then Right $ fromJust maybeReconTree
-             else Left "Could not construct ReconstructedTree"
-         (PointProcessEvents ppes) <- pure $ pointProcessEvents epiTree
-         rtes <- pure $ reconstructedTreeEvents reconTree
-         return $ List.sort . List.nub $ ppes ++ rtes
+   do epiTree <- maybeEpidemicTree epiEvents
+      reconTree <- maybeReconstructedTree epiTree
+      (PointProcessEvents ppes) <- pure $ pointProcessEvents epiTree
+      rtes <- pure $ reconstructedTreeEvents reconTree
+      return $ List.sort . List.nub $ ppes ++ rtes
 
 reconstructedTreeEvents :: ReconstructedTree -> [Observation]
 reconstructedTreeEvents rt =

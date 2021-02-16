@@ -3,7 +3,6 @@
 
 module Epidemic.Model.LogisticBDSD
   ( configuration
-  , observedEvents
   , randomEvent
   , LogisticBDSDParameters(..)
   , LogisticBDSDPopulation(..)
@@ -170,11 +169,3 @@ randomDisasterEvent (dsstrTime, dsstrProb) (LogisticBDSDPopulation (People currP
    in return
         ( Disaster dsstrTime (People sampledPeople)
         , LogisticBDSDPopulation (People unsampledPeople))
-
--- | From a full list of epidemic events that occurred in a simulation return
--- just the ones that were observed. For the logistic-BDSD this is those that
--- are part of the reconstructed tree and those that occurred in disasters. If
--- this is not possible return an error message in a string.
--- TODO Implement this function
-observedEvents :: [EpidemicEvent] -> Either String [EpidemicEvent]
-observedEvents = undefined

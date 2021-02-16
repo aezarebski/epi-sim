@@ -2,6 +2,12 @@
 
 ## 0.3.0.0
 
+- Provide a `Epidemic.Types.Observations` module to provide the functionality
+  surrounding extracting the observed events from a simulation.
+- Add `Extinction` and `StoppingTime` constructors for the `EpidemicEvent` type
+  so that we can encode why the simulation finished in the events. As a result
+  of this change, every simulation that was not terminated early should end with
+  an `Extinction` event or a `StoppingTime` event.
 - Update the resolver to 17.2
 - Extend the `ModelParameters` class to include a `Population` parameter type
   since this is needed to compute event rates in for the logistic model.

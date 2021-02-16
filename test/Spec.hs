@@ -1,17 +1,24 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-import Control.Exception (evaluate)
 import Control.Monad
 import qualified Data.Aeson as Json
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Builder as BBuilder
 import Data.Csv
+import Data.Either (fromRight, isRight)
 import Data.Maybe (fromJust, isJust, isNothing)
 import qualified Data.Vector as V
 import Epidemic
 import qualified Epidemic.Model.BDSCOD as BDSCOD
 import qualified Epidemic.Model.InhomogeneousBDS as InhomBDS
+import qualified Epidemic.Model.LogisticBDSD as LogisticBDSD
 import Epidemic.Types.Events
+import Epidemic.Types.Observations
+  ( Observation(..)
+  , ReconstructedTree(..)
+  , maybeReconstructedTree
+  , observedEvents
+  )
 import Epidemic.Types.Parameter
 import Epidemic.Types.Population
 import Epidemic.Utility
@@ -20,6 +27,7 @@ import qualified System.Random.MWC as MWC
 import Test.Hspec
 
 -- | y is within n% of x from x.
+withinNPercent :: (Ord a, Fractional a) => a -> a -> a -> Bool
 withinNPercent n x y = x - d < y && y < x + d
   where
     d = n * x / 100
@@ -124,7 +132,7 @@ demoFullEvents04 =
   , Disaster (AbsoluteTime 9) (asPeople [p5, p6])
   ]
 
-demoSampleEvents04 =
+demoSampleEvents04 = map (Observation)
   [ Infection (AbsoluteTime 1) p1 p4
   , Infection (AbsoluteTime 2) p1 p2
   , Sampling (AbsoluteTime 3) p1
@@ -141,9 +149,9 @@ eventHandlingTests = do
                        ,Catastrophe (AbsoluteTime 1.5) (asPeople [])
                        ,Catastrophe (AbsoluteTime 2.0) (asPeople [p1,p2])]
       (length demoEvents == 4) `shouldBe` True
-      ((length <$> BDSCOD.observedEvents (tail demoEvents)) == (Just 2)) `shouldBe` True
-      ((length <$> BDSCOD.observedEvents (demoEvents)) == (Just 2)) `shouldBe` True
-      (BDSCOD.observedEvents (demoEvents) == BDSCOD.observedEvents (tail demoEvents)) `shouldBe` True
+      ((length <$> observedEvents (tail demoEvents)) == (Right 2)) `shouldBe` True
+      ((length <$> observedEvents (demoEvents)) == (Right 2)) `shouldBe` True
+      (observedEvents (demoEvents) == observedEvents (tail demoEvents)) `shouldBe` True
       (maybeEpidemicTree (demoEvents) == maybeEpidemicTree (tail demoEvents)) `shouldBe` True
   describe "Catastrophe definitions" $ do
     it "Check we can find a catastrophe" $ do
@@ -163,7 +171,7 @@ eventHandlingTests = do
       (noScheduledEvent (AbsoluteTime 2.28) (AbsoluteTime (2.28 + 0.42)) (Timed [(AbsoluteTime 2.3, 0.9)])) `shouldBe` False
   describe "Disaster definitions" $ do
     it "Disasters are handled correctly" $ do
-      (demoSampleEvents04 == fromJust (BDSCOD.observedEvents demoFullEvents04)) `shouldBe`
+      (demoSampleEvents04 == fromRight [] (observedEvents demoFullEvents04)) `shouldBe`
         True
     it "Disasters can be simulated" $ do
       demoSim <-
@@ -306,13 +314,10 @@ illFormedTreeTest =
       simConfig = BDSCOD.configuration simDuration simParams
     in it "stress testing the observed events function" $
        do
-         null (BDSCOD.observedEvents []) `shouldBe` True
+         null (observedEvents []) `shouldBe` True
          simEvents <- simulation True (fromJust simConfig) (allEvents BDSCOD.randomEvent)
          any isReconTreeLeaf simEvents `shouldBe` True
-         (length (fromJust $ BDSCOD.observedEvents simEvents) > 1) `shouldBe` True
-
-
-
+         (length (fromRight [] $ observedEvents simEvents) > 1) `shouldBe` True
 
 
 inhomogeneousBDSTest =
@@ -322,10 +327,10 @@ inhomogeneousBDSTest =
                           ,Sampling (AbsoluteTime 0.2) p1
                           ,Removal (AbsoluteTime 0.3) p3
                           ,Sampling (AbsoluteTime 0.4) p2]
-          demoObsEvents = [Infection (AbsoluteTime 0.1) p1 p2
+          demoObsEvents = map Observation [Infection (AbsoluteTime 0.1) p1 p2
                           ,Sampling (AbsoluteTime 0.2) p1
                           ,Sampling (AbsoluteTime 0.4) p2]
-          compObsEvents = InhomBDS.observedEvents demoAllEvents
+          compObsEvents = fromRight [] $ observedEvents demoAllEvents
        in do
         (compObsEvents == demoObsEvents) `shouldBe` True
 
@@ -451,7 +456,7 @@ newickTests =
       foo == bar `shouldBe` True
     it "maybeEpidemicTree works as expected: 1" $ do
           let e1 = Removal (AbsoluteTime 1) (Person (Identifier 1))
-          maybeEpidemicTree [e1] == Just (Leaf e1) `shouldBe` True
+          maybeEpidemicTree [e1] == Right (Leaf e1) `shouldBe` True
           let t1 =
                 maybeEpidemicTree
                   [ Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2))
@@ -459,14 +464,14 @@ newickTests =
                   , Sampling (AbsoluteTime 0.7) (Person (Identifier 1))
                   ]
           let t2 =
-                Just
+               Right
                   (Branch
                      (Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2)))
                      (Leaf (Sampling (AbsoluteTime 0.7) (Person (Identifier 1))))
                      (Leaf (Sampling (AbsoluteTime 0.6) (Person (Identifier 2)))))
           t1 == t2 `shouldBe` True
           maybeEpidemicTree [Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2))] ==
-            Just
+            Right
               (Branch
                  (Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2)))
                  (Shoot (Person (Identifier 1)))
@@ -476,7 +481,7 @@ newickTests =
             [ Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2))
             , Sampling (AbsoluteTime 0.7) (Person (Identifier 1))
             ] ==
-            Just
+            Right
               (Branch
                  (Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2)))
                  (Leaf (Sampling (AbsoluteTime 0.7) (Person (Identifier 1))))
@@ -488,7 +493,7 @@ newickTests =
                 , Sampling (AbsoluteTime 0.6) (Person (Identifier 3))
                 , Sampling (AbsoluteTime 0.7) (Person (Identifier 1))
                 ]
-          isJust (maybeEpidemicTree trickyEvents) `shouldBe` True
+          isRight (maybeEpidemicTree trickyEvents) `shouldBe` True
     it "maybeEpidemicTree works as expected: 2" $ do
       let p1 = Person (Identifier 1)
           p2 = Person (Identifier 2)
@@ -500,24 +505,66 @@ newickTests =
       (maybeEpidemicTree demoEvents == maybeEpidemicTree (tail demoEvents)) `shouldBe` True
     it "asNewickString works for EpidemicTree" $ do
       let trickyEvents = [Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2)),Infection (AbsoluteTime 0.4) (Person (Identifier 2)) (Person (Identifier 3)),Sampling (AbsoluteTime 0.6) (Person (Identifier 3)),Sampling (AbsoluteTime 0.7) (Person (Identifier 1))]
-      let maybeNewickPair = asNewickString (AbsoluteTime 0, Person (Identifier 1)) =<< maybeEpidemicTree trickyEvents
+      let maybeNewickPair = asNewickString (AbsoluteTime 0, Person (Identifier 1)) =<< (either2Maybe $ maybeEpidemicTree trickyEvents)
       let newickTarget = BBuilder.stringUtf8 "(1:0.39999999999999997,(2:Infinity,3:0.19999999999999996):0.10000000000000003):0.3"
-      let maybeReconTree = maybeReconstructedTree =<< maybeEpidemicTree trickyEvents
+      let maybeReconTree = maybeReconstructedTree =<< (maybeEpidemicTree trickyEvents)
       isJust maybeNewickPair `shouldBe` True
       [Sampling (AbsoluteTime 0.6) (Person (Identifier 3)),Sampling (AbsoluteTime 0.7) (Person (Identifier 1))] == snd (fromJust maybeNewickPair) `shouldBe` True
       equalBuilders newickTarget (fst $ fromJust maybeNewickPair) `shouldBe` True
-      isJust maybeReconTree `shouldBe` True
+      isRight maybeReconTree `shouldBe` True
     it "asNewickString works for ReconstructedTree" $ do
-      isJust (asNewickString (AbsoluteTime 0,Person (Identifier 1)) (RLeaf (Sampling (AbsoluteTime 1) (Person (Identifier 1))))) `shouldBe` True
+      isJust (asNewickString (AbsoluteTime 0,Person (Identifier 1)) (RLeaf (Observation (Sampling (AbsoluteTime 1) (Person (Identifier 1)))))) `shouldBe` True
       let trickyEvents = [Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2)),Infection (AbsoluteTime 0.4) (Person (Identifier 2)) (Person (Identifier 3)),Sampling (AbsoluteTime 0.6) (Person (Identifier 3)),Sampling (AbsoluteTime 0.7) (Person (Identifier 1))]
-      let maybeNewickPair = asNewickString (AbsoluteTime 0, Person (Identifier 1)) =<< maybeReconstructedTree =<< maybeEpidemicTree trickyEvents
+      let maybeNewickPair = asNewickString (AbsoluteTime 0, Person (Identifier 1)) =<< either2Maybe (maybeReconstructedTree =<< (maybeEpidemicTree trickyEvents))
       let newickTarget = BBuilder.stringUtf8 "(1:0.39999999999999997,3:0.3):0.3"
       isJust maybeNewickPair `shouldBe` True
       [Sampling (AbsoluteTime 0.6) (Person (Identifier 3)),Sampling (AbsoluteTime 0.7) (Person (Identifier 1))] == snd (fromJust maybeNewickPair) `shouldBe` True
       equalBuilders newickTarget (fst $ fromJust maybeNewickPair) `shouldBe` True
-      let catasNewick = (asNewickString (AbsoluteTime 0,Person (Identifier 1)) (RLeaf (Catastrophe (AbsoluteTime 1) (asPeople [Person (Identifier 1),Person (Identifier 2)]))))
+      let catasNewick = (asNewickString (AbsoluteTime 0,Person (Identifier 1)) (RLeaf (Observation (Catastrophe (AbsoluteTime 1) (asPeople [Person (Identifier 1),Person (Identifier 2)])))))
       let catasTarget =  BBuilder.stringUtf8 "1&2:1.0"
       equalBuilders catasTarget (fst $ fromJust catasNewick) `shouldBe` True
+
+logisticBDSDTests :: SpecWith ()
+logisticBDSDTests =
+  describe "Test the LogisticBDSD module" $
+  let (Right config1) = LogisticBDSD.configuration (TimeDelta 2.0) (2.0, 100, 0.5, 0.1, [])
+      isSampling e = case e of
+        Sampling {} -> True
+        _ -> False
+      removeExtAndStop = filter (not . isExtinctionOrStopping)
+  in do it "check final value is extinction or stopping time" $
+          do
+            simEvents <- simulation True config1 (allEvents LogisticBDSD.randomEvent)
+            isExtinctionOrStopping (head simEvents) `shouldBe` False
+            isExtinctionOrStopping (last simEvents) `shouldBe` True
+            length simEvents > 3 `shouldBe` True
+            any isSampling simEvents `shouldBe` True
+            gen <- MWC.create
+            simEventsAgain <- simulation' config1 (allEvents LogisticBDSD.randomEvent) gen
+            isExtinctionOrStopping (head simEventsAgain) `shouldBe` False
+            isExtinctionOrStopping (last simEventsAgain) `shouldBe` True
+        it "check if there is no sampling then there should be no samples" $
+          let (Right config2) = LogisticBDSD.configuration (TimeDelta 3.0) (1.7, 100, 0.5, 0.0, [])
+          in do
+            simEvents2 <- simulation False config2 (allEvents LogisticBDSD.randomEvent)
+            isExtinctionOrStopping (head simEvents2) `shouldBe` False
+            isExtinctionOrStopping (last simEvents2) `shouldBe` True
+            length simEvents2 > 3 `shouldBe` True
+            any isSampling simEvents2 `shouldBe` False
+        it "check there are more events than observed events" $
+          do
+            let (Right config3) = LogisticBDSD.configuration (TimeDelta 4.0) (3.0, 100, 0.5, 0.5, [])
+            simEvents3 <- simulation False config3 (allEvents LogisticBDSD.randomEvent)
+            length simEvents3 > 10 `shouldBe` True
+            any isSampling simEvents3 `shouldBe` True
+            let eitherObsEvents3 = observedEvents $ removeExtAndStop simEvents3
+            isRight eitherObsEvents3 `shouldBe` True
+            length (fromRight [] eitherObsEvents3) < length simEvents3 `shouldBe` True
+
+either2Maybe :: Either a b -> Maybe b
+either2Maybe x = case x of
+  Left _ -> Nothing
+  Right xb -> Just xb
 
 main :: IO ()
 main =
@@ -531,3 +578,4 @@ main =
     helperTypeTests
     jsonTests
     newickTests
+    logisticBDSDTests

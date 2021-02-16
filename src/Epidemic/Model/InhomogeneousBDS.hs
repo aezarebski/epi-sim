@@ -3,7 +3,6 @@
 
 module Epidemic.Model.InhomogeneousBDS
   ( configuration
-  , observedEvents
   , randomEvent
   , inhomBDSRates
   , InhomBDSRates(..)
@@ -11,7 +10,7 @@ module Epidemic.Model.InhomogeneousBDS
   ) where
 
 import Control.Monad (liftM)
-import Data.Maybe (fromJust, isJust, isNothing)
+import Data.Maybe (fromJust)
 import qualified Data.Vector as V
 import Epidemic
 import Epidemic.Types.Events
@@ -20,11 +19,10 @@ import Epidemic.Types.Population
 import Epidemic.Types.Simulation
   ( SimulationConfiguration(..)
   , SimulationRandEvent(..)
-  , SimulationState(..)
   )
 import Epidemic.Utility
 import System.Random.MWC
-import System.Random.MWC.Distributions (categorical, exponential)
+import System.Random.MWC.Distributions (categorical)
 
 data InhomBDSRates =
   InhomBDSRates (Timed Rate) Rate Rate
@@ -91,7 +89,7 @@ randomEvent' ::
   -> Identifier -- ^ current identifier
   -> GenIO         -- ^ PRNG
   -> IO (AbsoluteTime, EpidemicEvent, InhomBDSPop, Identifier)
-randomEvent' inhomRates@(InhomBDSRates brts dr sr) currTime pop@(InhomBDSPop (people@(People peopleVec))) currId gen =
+randomEvent' inhomRates@(InhomBDSRates brts dr sr) currTime pop@(InhomBDSPop (people@(People _))) currId gen =
   let popSize = fromIntegral $ numPeople people :: Double
       -- we need a new step function to account for the population size.
       (Just stepFunction) = asTimed [(t,popSize * fromJust (eventRate pop inhomRates t)) | t <- allTimes brts]
@@ -107,12 +105,3 @@ randomEvent' inhomRates@(InhomBDSRates brts dr sr) currTime pop@(InhomBDSPop (pe
            1 -> (newEventTime, Removal newEventTime selectedPerson, InhomBDSPop unselectedPeople, currId)
            2 -> (newEventTime, Sampling newEventTime selectedPerson, InhomBDSPop unselectedPeople, currId)
            _ -> error "no birth-death-sampling event selected."
-
--- | Just the observable events from a list of all the events in a simulation.
-observedEvents :: [EpidemicEvent] -- ^ All of the simulation events
-               -> [EpidemicEvent]
-observedEvents [] = []
-observedEvents events = sort sampleTreeEvents''
-  where
-    sampleTreeEvents'' =
-      sampleTreeEvents . sampleTree $ transmissionTree events (Person initialIdentifier)

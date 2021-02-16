@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE OverloadedStrings #-}
+
 module Epidemic where
 
 import Control.Monad
@@ -32,6 +33,8 @@ eventPopDelta e =
     Catastrophe _ people -> fromIntegral $ numPeople people
     Occurrence _ _ -> -1
     Disaster _ people -> fromIntegral $ numPeople people
+    Extinction {} -> undefined
+    StoppingTime {} -> undefined
 
 -- | The first scheduled event after a given time.
 firstScheduled ::
@@ -63,6 +66,8 @@ personsInEvent e =
     (Catastrophe _ (People persons)) -> V.toList persons
     (Occurrence _ p) -> [p]
     (Disaster _ (People persons)) -> V.toList persons
+    Extinction {} -> undefined
+    StoppingTime {} -> undefined
 
 peopleInEvents :: [EpidemicEvent] -> People
 peopleInEvents events =
@@ -143,7 +148,8 @@ data TransmissionTree
 -- | A transmission tree of all the events starting from a given person
 transmissionTree :: [EpidemicEvent] -> Person -> TransmissionTree
 transmissionTree (e@(Infection _ p1 p2):es) person
-  | p1 == person = TTBirth person e (transmissionTree es p1,transmissionTree es p2)
+  | p1 == person =
+    TTBirth person e (transmissionTree es p1, transmissionTree es p2)
   | null es = TTUnresolved person
   | otherwise = transmissionTree es person
 transmissionTree (e@(Removal _ p1):es) person
@@ -162,31 +168,36 @@ transmissionTree (e@(Disaster _ (People people)):es) person
   | person `V.elem` people = TTDeath (People people) e
   | otherwise = transmissionTree es person
 transmissionTree [] person = TTUnresolved person
+transmissionTree (Extinction:_) _ = undefined
+transmissionTree (StoppingTime:_) _ = undefined
 
 -- | A predicate for whether there is a sampled leaf in the transmission tree
 hasSampledLeaf :: TransmissionTree -> Bool
-hasSampledLeaf t = case t of
-  (TTUnresolved _) -> False
-  (TTDeath _ (Sampling _ _)) -> True
-  (TTDeath _ (Catastrophe _ _)) -> True
-  (TTDeath _ _) -> False
-  (TTBirth _ _ (t1,t2)) -> hasSampledLeaf t1 || hasSampledLeaf t2
+hasSampledLeaf t =
+  case t of
+    (TTUnresolved _) -> False
+    (TTDeath _ (Sampling _ _)) -> True
+    (TTDeath _ (Catastrophe _ _)) -> True
+    (TTDeath _ _) -> False
+    (TTBirth _ _ (t1, t2)) -> hasSampledLeaf t1 || hasSampledLeaf t2
 
 data SampleTree
-  = STBirth EpidemicEvent (SampleTree,SampleTree)
+  = STBirth EpidemicEvent (SampleTree, SampleTree)
   | STDeath EpidemicEvent
   deriving (Show)
 
 -- | A transmission tree with all non-sampling leaves removed
 sampleTree :: TransmissionTree -> SampleTree
-sampleTree transTree = case transTree of
-  (TTBirth _ e@Infection {} (t1,t2))
-    | hasSampledLeaf t1 && hasSampledLeaf t2 -> STBirth e (sampleTree t1,sampleTree t2)
-    | hasSampledLeaf t1 -> sampleTree t1
-    | hasSampledLeaf t2 -> sampleTree t2
-  (TTDeath _ e@(Sampling _ _)) -> STDeath e
-  (TTDeath _ e@(Catastrophe _ _)) -> STDeath e
-  _ -> error "ill-formed transmission tree"
+sampleTree transTree =
+  case transTree of
+    (TTBirth _ e@Infection {} (t1, t2))
+      | hasSampledLeaf t1 && hasSampledLeaf t2 ->
+        STBirth e (sampleTree t1, sampleTree t2)
+      | hasSampledLeaf t1 -> sampleTree t1
+      | hasSampledLeaf t2 -> sampleTree t2
+    (TTDeath _ e@(Sampling _ _)) -> STDeath e
+    (TTDeath _ e@(Catastrophe _ _)) -> STDeath e
+    _ -> error "ill-formed transmission tree"
 
 -- | Recurse through the tree and extract all birth and death events.
 sampleTreeEvents' :: SampleTree -> [EpidemicEvent]
@@ -211,7 +222,7 @@ allEvents ::
   -> GenIO
   -> IO (SimulationState b)
 allEvents _ _ _ _ TerminatedSimulation _ = return TerminatedSimulation
-allEvents simRandEvent@(SimulationRandEvent randEvent) modelParams maxTime maybePopPredicate currState@(SimulationState (currTime, currEvents, currPop, currId)) gen =
+allEvents simRandEvent@(SimulationRandEvent randEvent) modelParams maxTime maybePopPredicate (SimulationState (currTime, currEvents, currPop, currId)) gen =
   if isNothing maybePopPredicate ||
      (isJust maybePopPredicate && fromJust maybePopPredicate currPop)
     then if isInfected currPop
@@ -227,6 +238,10 @@ allEvents simRandEvent@(SimulationRandEvent randEvent) modelParams maxTime maybe
                       (SimulationState
                          (newTime, event : currEvents, newPop, newId))
                       gen
-               else return currState
-           else return currState
+               else return $
+                    SimulationState
+                      (maxTime, StoppingTime : currEvents, currPop, currId)
+           else return $
+                SimulationState
+                  (currTime, Extinction : currEvents, currPop, currId)
     else return TerminatedSimulation

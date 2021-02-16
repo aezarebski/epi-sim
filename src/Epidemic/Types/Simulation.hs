@@ -1,12 +1,15 @@
 {-# LANGUAGE GADTs #-}
 
-module Epidemic.Types.Simulation (SimulationConfiguration(..),SimulationState(..), SimulationRandEvent(..)) where
+module Epidemic.Types.Simulation
+  ( SimulationConfiguration(..)
+  , SimulationState(..)
+  , SimulationRandEvent(..)
+  ) where
 
 import Epidemic.Types.Events
 import Epidemic.Types.Parameter
 import Epidemic.Types.Population
 import System.Random.MWC
-
 
 data SimulationConfiguration r p =
   SimulationConfiguration
@@ -24,6 +27,9 @@ data SimulationConfiguration r p =
     , scValidPopulation :: Maybe (p -> Bool)
     }
 
+-- | Either there is a valid simulation state which contains a sequence of
+-- epidemic events of there is a terminated simulation which indicates that
+-- the simulation has been rejected.
 data SimulationState b
   = SimulationState (AbsoluteTime, [EpidemicEvent], b, Identifier)
   | TerminatedSimulation
@@ -32,10 +38,8 @@ data SimulationState b
 data SimulationRandEvent a b where
   SimulationRandEvent
     :: (ModelParameters a b, Population b)
-    => (a
-    -> AbsoluteTime
-    -> b
-    -> Identifier
-    -> GenIO
-    -> IO (AbsoluteTime, EpidemicEvent, b, Identifier))
+    => (a -> AbsoluteTime -> b -> Identifier -> GenIO -> IO ( AbsoluteTime
+                                                            , EpidemicEvent
+                                                            , b
+                                                            , Identifier))
     -> SimulationRandEvent a b

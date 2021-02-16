@@ -221,7 +221,6 @@ maybeEpidemicTree (e:es:ess) =
     _ -> Right (Leaf e)
 
 class Newick t
-  -- | Return a representation of the tree in Newick format.
   where
   asNewickString ::
        (AbsoluteTime, Person) -- ^ The person and time of the start of the tree

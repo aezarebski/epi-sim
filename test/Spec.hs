@@ -5,7 +5,7 @@ import qualified Data.Aeson as Json
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Builder as BBuilder
 import Data.Csv
-import Data.Either (fromRight)
+import Data.Either (fromRight, isRight)
 import Data.Maybe (fromJust, isJust, isNothing)
 import qualified Data.Vector as V
 import Epidemic
@@ -560,8 +560,10 @@ logisticBDSDTests =
             simEvents3 <- simulation False config3 (allEvents LogisticBDSD.randomEvent)
             length simEvents3 > 10 `shouldBe` True
             any isSampling simEvents3 `shouldBe` True
-            let (Right obsEvents3) = observedEvents simEvents3
-            length obsEvents3 < length simEvents3 `shouldBe` True
+            let eitherObsEvents3 = observedEvents simEvents3
+            print eitherObsEvents3 -- TODO Remove this when bug is fixed!!
+            isRight eitherObsEvents3 `shouldBe` True
+            length (fromRight [] eitherObsEvents3) < length simEvents3 `shouldBe` True
 
 
 

@@ -9,14 +9,16 @@ module Epidemic.Types.Observations
   , observedEvents
   ) where
 
-import qualified Data.List as List
-import qualified Data.Vector as V
 import qualified Data.Aeson as Json
 import qualified Data.ByteString.Builder as BBuilder
+import qualified Data.List as List
+import Data.Maybe (fromJust, isJust)
+import qualified Data.Vector as V
 import Epidemic.Types.Events
   ( EpidemicEvent(..)
   , EpidemicTree(..)
   , Newick(..)
+  , maybeEpidemicTree
   )
 import Epidemic.Types.Parameter (TimeDelta(..), timeDelta)
 import Epidemic.Types.Population (People(..), personByteString)
@@ -92,39 +94,31 @@ hasSequencedLeaf (Leaf e) =
     _ -> False
 hasSequencedLeaf (Branch _ lt rt) = hasSequencedLeaf lt || hasSequencedLeaf rt
 
+-- | The events that were observed during the epidemic, ie those in the
+-- reconstructed tree and any unsequenced samples.
 observedEvents :: [EpidemicEvent] -> Either String [Observation]
-observedEvents = undefined
+observedEvents epiEvents =
+  let maybeEpiTree = maybeEpidemicTree epiEvents
+   in do epiTree <-
+           if isJust maybeEpiTree
+             then Right $ fromJust maybeEpiTree
+             else Left "Could not construct EpidemicTree"
+         let maybeReconTree = maybeReconstructedTree epiTree
+         reconTree <-
+           if isJust maybeReconTree
+             then Right $ fromJust maybeReconTree
+             else Left "Could not construct ReconstructedTree"
+         (PointProcessEvents ppes) <- pure $ pointProcessEvents epiTree
+         rtes <- pure $ reconstructedTreeEvents reconTree
+         return $ List.sort . List.nub $ ppes ++ rtes
 
-
--- observedEvents :: [EpidemicEvent] -- ^ All of the simulation events
---                -> Maybe [EpidemicEvent]
--- observedEvents eEvents = do
---   epiTree <- maybeEpidemicTree eEvents
---   reconTree <- maybeReconstructedTree epiTree
---   let (PointProcessEvents nonReconTreeEvents) = pointProcessEvents epiTree
---   let reconTreeEvents = reconstructedTreeEvents reconTree
---   return . sort . nub $ nonReconTreeEvents ++ reconTreeEvents
-
--- -- | The events from the nodes of a reconstructed tree __not__ in time sorted
--- -- order.
--- reconstructedTreeEvents :: ReconstructedTree -> [EpidemicEvent]
--- reconstructedTreeEvents node = case node of
---   (RBranch e lt rt) -> e:(reconstructedTreeEvents lt ++ reconstructedTreeEvents rt)
---   (RLeaf e) -> [e]
-
-
-
-
-
-
--- observedEvents :: [EpidemicEvent] -- ^ All of the simulation events
---                -> [EpidemicEvent]
--- observedEvents [] = []
--- observedEvents events = sort sampleTreeEvents''
---   where
---     sampleTreeEvents'' =
---       sampleTreeEvents . sampleTree $ transmissionTree events (Person initialIdentifier)
-
+reconstructedTreeEvents :: ReconstructedTree -> [Observation]
+reconstructedTreeEvents rt =
+  case rt of
+    RBranch obs rtl rtr ->
+      List.sort $
+      obs : (reconstructedTreeEvents rtl ++ reconstructedTreeEvents rtr)
+    RLeaf obs -> [obs]
 
 instance Newick ReconstructedTree where
   asNewickString (t, _) (RLeaf (Observation e)) =
@@ -161,7 +155,6 @@ instance Newick ReconstructedTree where
           , List.sort $ leftEs ++ rightEs)
       _ -> Nothing
 
-
 ampersandBuilder :: BBuilder.Builder
 ampersandBuilder = BBuilder.charUtf8 '&'
 
@@ -181,6 +174,3 @@ rightBraceBuilder = BBuilder.charUtf8 ')'
 
 commaBuilder :: BBuilder.Builder
 commaBuilder = BBuilder.charUtf8 ','
-
-
-

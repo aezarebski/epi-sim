@@ -7,10 +7,6 @@ module Epidemic.Types.Events
   , EpidemicTree(Branch, Leaf, Shoot)
   , maybeEpidemicTree
   , eventTime
-  , ReconstructedTree(RBranch, RLeaf)
-  , maybeReconstructedTree
-  , PointProcessEvents(PointProcessEvents)
-  , pointProcessEvents
   , derivedFrom
   , Newick
   , asNewickString
@@ -41,6 +37,17 @@ data EpidemicEvent
 instance Json.FromJSON EpidemicEvent
 
 instance Json.ToJSON EpidemicEvent
+
+-- | A representation of the whole transmission tree in a realisation of an
+-- epidemic including the unobserved leaves. Lineages that are still extant are
+-- modelled as @Shoots@ and contain a `Person` as their data rather than an
+-- event since definition they do not have an event associated with them as a
+-- leaf.
+data EpidemicTree
+  = Branch EpidemicEvent EpidemicTree EpidemicTree -- ^ Internal node representing infection event
+  | Leaf EpidemicEvent -- ^ External node representing removal event which could be observed or not
+  | Shoot Person -- ^ External node representing extant lineages
+  deriving (Show, Eq)
 
 instance Csv.ToRecord EpidemicEvent where
   toRecord e =
@@ -154,17 +161,13 @@ derivedFromPeople people (e:es) =
             else derivedEvents
     _ -> [e]
 
-{-| A representation of the whole transmission tree in a realisation of an
-epidemic including the unobserved leaves. Lineages that are still extant are
-modelled as shoots and contain a `Person` as their data rather than an event.
--}
-data EpidemicTree
-  = Branch EpidemicEvent EpidemicTree EpidemicTree -- ^ Internal node representing infection event
-  | Leaf EpidemicEvent -- ^ External node representing removal event
-  | Shoot Person -- ^ External node representing extant lineages
-  deriving (Show, Eq)
 
--- | A tree representation of the epidemic events.
+-- | A tree representation of the /all/ the epidemic events including those that
+-- were not observed. The scheduled observations return 'Nothing' or just pass
+-- this event if there were no people sampled. This is because in these cases
+-- the event had no effect upon the transmission tree. If there were multiple
+-- people sampled in a scheduled event, then this event will appear in multiple
+-- leaves since each leaf is due to this event.
 maybeEpidemicTree ::
      [EpidemicEvent] -- ^ ordered epidemic events
   -> Maybe EpidemicTree
@@ -180,6 +183,8 @@ maybeEpidemicTree [e] =
         then Nothing
         else Just (Leaf e)
     Infection _ p1 p2 -> Just (Branch e (Shoot p1) (Shoot p2))
+    Extinction -> Nothing
+    StoppingTime -> Nothing
     _ -> Just (Leaf e)
 maybeEpidemicTree (e:es:ess) =
   case e of
@@ -205,64 +210,6 @@ maybeEpidemicTree (e:es:ess) =
         else Just (Leaf e)
     _ -> Just (Leaf e)
 
-{-| A representation of the reconstructed tree which is the phylogeny connecting
-  all the `Sampling` and `Catastrophe` events.
--}
-data ReconstructedTree
-  = RBranch EpidemicEvent ReconstructedTree ReconstructedTree
-  | RLeaf EpidemicEvent
-  deriving (Show, Eq)
-
--- | A tree representation of the reconstructed phylogeny.
-maybeReconstructedTree :: EpidemicTree -> Maybe ReconstructedTree
-maybeReconstructedTree Shoot {} = Nothing
-maybeReconstructedTree (Leaf e) =
-  case e of
-    Sampling {} -> Just $ RLeaf e
-    Catastrophe {} -> Just $ RLeaf e
-    _ -> Nothing
-maybeReconstructedTree (Branch e@Infection {} lt rt)
-  | hasSequencedLeaf lt && hasSequencedLeaf rt = do
-    rlt <- maybeReconstructedTree lt
-    rrt <- maybeReconstructedTree rt
-    Just $ RBranch e rlt rrt
-  | hasSequencedLeaf lt = maybeReconstructedTree lt
-  | hasSequencedLeaf rt = maybeReconstructedTree rt
-  | otherwise = Nothing
-maybeReconstructedTree Branch {} = Nothing
-
--- | Predicate for whether an `EpidemicTree` has a leaf which corresponds to a
--- node in the `ReconstructedTree`.
-hasSequencedLeaf :: EpidemicTree -> Bool
-hasSequencedLeaf Shoot {} = False
-hasSequencedLeaf (Leaf e) =
-  case e of
-    Sampling {} -> True
-    Catastrophe {} -> True
-    _ -> False
-hasSequencedLeaf (Branch _ lt rt) = hasSequencedLeaf lt || hasSequencedLeaf rt
-
-{-| A representation of the events that can be observed in an epidemic but which
-  are not included in the reconstructed tree, i.e. the `Occurrence` and
-  `Disaster` events.
--}
-newtype PointProcessEvents =
-  PointProcessEvents [EpidemicEvent]
-
--- | Extract the events from an epidemic tree which are observed but not part of
--- the reconstructed tree.
-pointProcessEvents :: EpidemicTree -> PointProcessEvents
-pointProcessEvents Shoot {} = PointProcessEvents []
-pointProcessEvents (Leaf e) =
-  case e of
-    Occurrence {} -> PointProcessEvents [e]
-    Disaster {} -> PointProcessEvents [e]
-    _ -> PointProcessEvents []
-pointProcessEvents (Branch _ lt rt) =
-  let (PointProcessEvents lEs) = pointProcessEvents lt
-      (PointProcessEvents rEs) = pointProcessEvents rt
-      allEs = List.sort $ lEs ++ rEs
-   in PointProcessEvents allEs
 
 class Newick t
   -- | Return a representation of the tree in Newick format.
@@ -272,8 +219,6 @@ class Newick t
     -> t
     -> Maybe (BBuilder.Builder, [EpidemicEvent])
 
-ampersandBuilder :: BBuilder.Builder
-ampersandBuilder = BBuilder.charUtf8 '&'
 
 colonBuilder :: BBuilder.Builder
 colonBuilder = BBuilder.charUtf8 ':'
@@ -286,11 +231,6 @@ rightBraceBuilder = BBuilder.charUtf8 ')'
 
 commaBuilder :: BBuilder.Builder
 commaBuilder = BBuilder.charUtf8 ','
-
-catastrophePeopleBuilder :: People -> BBuilder.Builder
-catastrophePeopleBuilder (People persons) =
-  mconcat $
-  List.intersperse ampersandBuilder [personByteString p | p <- V.toList persons]
 
 instance Newick EpidemicTree where
   asNewickString (_, p) (Shoot p') =
@@ -345,39 +285,4 @@ instance Newick EpidemicTree where
                 commaBuilder <>
                 rightNS <> rightBraceBuilder <> colonBuilder <> branchLength
               , List.sort $ leftEs ++ rightEs)
-      _ -> Nothing
-
-instance Newick ReconstructedTree where
-  asNewickString (t, _) (RLeaf e) =
-    let branchLength a b = BBuilder.doubleDec td
-          where
-            (TimeDelta td) = timeDelta a b
-     in case e of
-          (Sampling t' p) ->
-            Just
-              ((personByteString p) <> colonBuilder <> branchLength t t', [e])
-          Infection {} -> Nothing
-          Removal {} -> Nothing
-          (Catastrophe t' ps) ->
-            Just
-              ( catastrophePeopleBuilder ps <> colonBuilder <> branchLength t t'
-              , [e])
-          Occurrence {} -> Nothing
-          Disaster {} -> Nothing
-          Extinction {} -> Nothing
-          StoppingTime {} -> Nothing
-  asNewickString (t, _) (RBranch e lt rt) =
-    case e of
-      (Infection t' p1 p2) -> do
-        (leftNS, leftEs) <- asNewickString (t', p1) lt
-        (rightNS, rightEs) <- asNewickString (t', p2) rt
-        let branchLength = BBuilder.doubleDec td
-              where
-                (TimeDelta td) = timeDelta t t'
-        return
-          ( leftBraceBuilder <>
-            leftNS <>
-            commaBuilder <>
-            rightNS <> rightBraceBuilder <> colonBuilder <> branchLength
-          , List.sort $ leftEs ++ rightEs)
       _ -> Nothing

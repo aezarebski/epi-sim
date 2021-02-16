@@ -3,7 +3,6 @@
 
 module Epidemic.Model.InhomogeneousBDS
   ( configuration
-  , observedEvents
   , randomEvent
   , inhomBDSRates
   , InhomBDSRates(..)
@@ -107,12 +106,3 @@ randomEvent' inhomRates@(InhomBDSRates brts dr sr) currTime pop@(InhomBDSPop (pe
            1 -> (newEventTime, Removal newEventTime selectedPerson, InhomBDSPop unselectedPeople, currId)
            2 -> (newEventTime, Sampling newEventTime selectedPerson, InhomBDSPop unselectedPeople, currId)
            _ -> error "no birth-death-sampling event selected."
-
--- | Just the observable events from a list of all the events in a simulation.
-observedEvents :: [EpidemicEvent] -- ^ All of the simulation events
-               -> [EpidemicEvent]
-observedEvents [] = []
-observedEvents events = sort sampleTreeEvents''
-  where
-    sampleTreeEvents'' =
-      sampleTreeEvents . sampleTree $ transmissionTree events (Person initialIdentifier)

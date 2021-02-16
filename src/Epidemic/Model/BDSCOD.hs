@@ -3,7 +3,6 @@
 
 module Epidemic.Model.BDSCOD
   ( configuration
-  , observedEvents
   , randomEvent
   , BDSCODParameters(..)
   , BDSCODPopulation(..)
@@ -157,17 +156,3 @@ reconstructedTreeEvents :: ReconstructedTree -> [EpidemicEvent]
 reconstructedTreeEvents node = case node of
   (RBranch e lt rt) -> e:(reconstructedTreeEvents lt ++ reconstructedTreeEvents rt)
   (RLeaf e) -> [e]
-
--- | Just the observable events from a list of all the events that occurred in a
--- simulation of the BDSCOD-process. These events are the result of extracting
--- the events from the reconstructed tree and getting the point process events
--- that make up the unsequenced samples (see `pointProcessEvents` for details on
--- this latter data.)
-observedEvents :: [EpidemicEvent] -- ^ All of the simulation events
-               -> Maybe [EpidemicEvent]
-observedEvents eEvents = do
-  epiTree <- maybeEpidemicTree eEvents
-  reconTree <- maybeReconstructedTree epiTree
-  let (PointProcessEvents nonReconTreeEvents) = pointProcessEvents epiTree
-  let reconTreeEvents = reconstructedTreeEvents reconTree
-  return . sort . nub $ nonReconTreeEvents ++ reconTreeEvents

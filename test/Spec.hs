@@ -456,7 +456,7 @@ newickTests =
       foo == bar `shouldBe` True
     it "maybeEpidemicTree works as expected: 1" $ do
           let e1 = Removal (AbsoluteTime 1) (Person (Identifier 1))
-          maybeEpidemicTree [e1] == Just (Leaf e1) `shouldBe` True
+          maybeEpidemicTree [e1] == Right (Leaf e1) `shouldBe` True
           let t1 =
                 maybeEpidemicTree
                   [ Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2))
@@ -464,14 +464,14 @@ newickTests =
                   , Sampling (AbsoluteTime 0.7) (Person (Identifier 1))
                   ]
           let t2 =
-                Just
+               Right
                   (Branch
                      (Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2)))
                      (Leaf (Sampling (AbsoluteTime 0.7) (Person (Identifier 1))))
                      (Leaf (Sampling (AbsoluteTime 0.6) (Person (Identifier 2)))))
           t1 == t2 `shouldBe` True
           maybeEpidemicTree [Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2))] ==
-            Just
+            Right
               (Branch
                  (Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2)))
                  (Shoot (Person (Identifier 1)))
@@ -481,7 +481,7 @@ newickTests =
             [ Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2))
             , Sampling (AbsoluteTime 0.7) (Person (Identifier 1))
             ] ==
-            Just
+            Right
               (Branch
                  (Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2)))
                  (Leaf (Sampling (AbsoluteTime 0.7) (Person (Identifier 1))))
@@ -493,7 +493,7 @@ newickTests =
                 , Sampling (AbsoluteTime 0.6) (Person (Identifier 3))
                 , Sampling (AbsoluteTime 0.7) (Person (Identifier 1))
                 ]
-          isJust (maybeEpidemicTree trickyEvents) `shouldBe` True
+          isRight (maybeEpidemicTree trickyEvents) `shouldBe` True
     it "maybeEpidemicTree works as expected: 2" $ do
       let p1 = Person (Identifier 1)
           p2 = Person (Identifier 2)
@@ -505,17 +505,17 @@ newickTests =
       (maybeEpidemicTree demoEvents == maybeEpidemicTree (tail demoEvents)) `shouldBe` True
     it "asNewickString works for EpidemicTree" $ do
       let trickyEvents = [Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2)),Infection (AbsoluteTime 0.4) (Person (Identifier 2)) (Person (Identifier 3)),Sampling (AbsoluteTime 0.6) (Person (Identifier 3)),Sampling (AbsoluteTime 0.7) (Person (Identifier 1))]
-      let maybeNewickPair = asNewickString (AbsoluteTime 0, Person (Identifier 1)) =<< maybeEpidemicTree trickyEvents
+      let maybeNewickPair = asNewickString (AbsoluteTime 0, Person (Identifier 1)) =<< (either2Maybe $ maybeEpidemicTree trickyEvents)
       let newickTarget = BBuilder.stringUtf8 "(1:0.39999999999999997,(2:Infinity,3:0.19999999999999996):0.10000000000000003):0.3"
-      let maybeReconTree = maybeReconstructedTree =<< maybeEpidemicTree trickyEvents
+      let maybeReconTree = maybeReconstructedTree =<< (maybeEpidemicTree trickyEvents)
       isJust maybeNewickPair `shouldBe` True
       [Sampling (AbsoluteTime 0.6) (Person (Identifier 3)),Sampling (AbsoluteTime 0.7) (Person (Identifier 1))] == snd (fromJust maybeNewickPair) `shouldBe` True
       equalBuilders newickTarget (fst $ fromJust maybeNewickPair) `shouldBe` True
-      isJust maybeReconTree `shouldBe` True
+      isRight maybeReconTree `shouldBe` True
     it "asNewickString works for ReconstructedTree" $ do
       isJust (asNewickString (AbsoluteTime 0,Person (Identifier 1)) (RLeaf (Observation (Sampling (AbsoluteTime 1) (Person (Identifier 1)))))) `shouldBe` True
       let trickyEvents = [Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2)),Infection (AbsoluteTime 0.4) (Person (Identifier 2)) (Person (Identifier 3)),Sampling (AbsoluteTime 0.6) (Person (Identifier 3)),Sampling (AbsoluteTime 0.7) (Person (Identifier 1))]
-      let maybeNewickPair = asNewickString (AbsoluteTime 0, Person (Identifier 1)) =<< maybeReconstructedTree =<< maybeEpidemicTree trickyEvents
+      let maybeNewickPair = asNewickString (AbsoluteTime 0, Person (Identifier 1)) =<< either2Maybe (maybeReconstructedTree =<< (maybeEpidemicTree trickyEvents))
       let newickTarget = BBuilder.stringUtf8 "(1:0.39999999999999997,3:0.3):0.3"
       isJust maybeNewickPair `shouldBe` True
       [Sampling (AbsoluteTime 0.6) (Person (Identifier 3)),Sampling (AbsoluteTime 0.7) (Person (Identifier 1))] == snd (fromJust maybeNewickPair) `shouldBe` True
@@ -528,13 +528,10 @@ logisticBDSDTests :: SpecWith ()
 logisticBDSDTests =
   describe "Test the LogisticBDSD module" $
   let (Right config1) = LogisticBDSD.configuration (TimeDelta 2.0) (2.0, 100, 0.5, 0.1, [])
-      isExtinctionOrStopping e = case e of
-        Extinction -> True
-        StoppingTime -> True
-        _ -> False
       isSampling e = case e of
         Sampling {} -> True
         _ -> False
+      removeExtAndStop = filter (not . isExtinctionOrStopping)
   in do it "check final value is extinction or stopping time" $
           do
             simEvents <- simulation True config1 (allEvents LogisticBDSD.randomEvent)
@@ -560,12 +557,14 @@ logisticBDSDTests =
             simEvents3 <- simulation False config3 (allEvents LogisticBDSD.randomEvent)
             length simEvents3 > 10 `shouldBe` True
             any isSampling simEvents3 `shouldBe` True
-            let eitherObsEvents3 = observedEvents simEvents3
-            print eitherObsEvents3 -- TODO Remove this when bug is fixed!!
+            let eitherObsEvents3 = observedEvents $ removeExtAndStop simEvents3
             isRight eitherObsEvents3 `shouldBe` True
             length (fromRight [] eitherObsEvents3) < length simEvents3 `shouldBe` True
 
-
+either2Maybe :: Either a b -> Maybe b
+either2Maybe x = case x of
+  Left _ -> Nothing
+  Right xb -> Just xb
 
 main :: IO ()
 main =

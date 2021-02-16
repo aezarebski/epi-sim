@@ -2,6 +2,8 @@
 
 ## 0.3.0.0
 
+- Provide a `Epidemic.Types.Observations` module to provide the functionality
+  surrounding extracting the observed events from a simulation.
 - Add `Extinction` and `StoppingTime` constructors for the `EpidemicEvent` type
   so that we can encode why the simulation finished in the events. As a result
   of this change, every simulation that was not terminated early should end with

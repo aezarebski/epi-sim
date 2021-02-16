@@ -6,6 +6,7 @@ module Epidemic.Types.Events
               Occurrence, Disaster, Extinction, StoppingTime)
   , EpidemicTree(Branch, Leaf, Shoot)
   , maybeEpidemicTree
+  , isExtinctionOrStopping
   , eventTime
   , derivedFrom
   , Newick
@@ -71,6 +72,15 @@ instance Csv.ToRecord EpidemicEvent where
         Csv.record ["disaster", Csv.toField time, Csv.toField people, "NA"]
       Extinction -> Csv.record ["extinction", "NA", "NA", "NA"]
       StoppingTime -> Csv.record ["stop", "NA", "NA", "NA"]
+
+-- | Predicate for whether an @EpidemicEvent@ is one of the terminal events of
+-- extinction or the stopping time having been reached.
+isExtinctionOrStopping :: EpidemicEvent -> Bool
+isExtinctionOrStopping e =
+  case e of
+    Extinction -> True
+    StoppingTime -> True
+    _ -> False
 
 et :: B.ByteString -> Csv.Record -> Bool
 et bs r = (== bs) . head $ V.toList r
@@ -161,31 +171,31 @@ derivedFromPeople people (e:es) =
             else derivedEvents
     _ -> [e]
 
-
--- | A tree representation of the /all/ the epidemic events including those that
--- were not observed. The scheduled observations return 'Nothing' or just pass
--- this event if there were no people sampled. This is because in these cases
--- the event had no effect upon the transmission tree. If there were multiple
--- people sampled in a scheduled event, then this event will appear in multiple
--- leaves since each leaf is due to this event.
+-- | A tree representation of /all/ the epidemic events including those that
+-- were not observed. The scheduled observations can return a 'Left' or just
+-- proceed to the next epidemic event if there were no people sampled. This is
+-- because in these cases the event had no effect upon the transmission tree. If
+-- there were multiple people sampled in a scheduled event, then this event will
+-- appear in multiple leaves since each leaf is due to this event.
 maybeEpidemicTree ::
      [EpidemicEvent] -- ^ ordered epidemic events
-  -> Maybe EpidemicTree
-maybeEpidemicTree [] = Nothing
+  -> Either String EpidemicTree
+maybeEpidemicTree [] =
+  Left "There are no EpidemicEvents to construct a tree with."
 maybeEpidemicTree [e] =
   case e of
     Catastrophe _ people ->
       if nullPeople people
-        then Nothing
-        else Just (Leaf e)
+        then Left "The last event is a catastrophe with no people sampled"
+        else Right (Leaf e)
     Disaster _ people ->
       if nullPeople people
-        then Nothing
-        else Just (Leaf e)
-    Infection _ p1 p2 -> Just (Branch e (Shoot p1) (Shoot p2))
-    Extinction -> Nothing
-    StoppingTime -> Nothing
-    _ -> Just (Leaf e)
+        then Left "The last event is a disaster with no people sampled"
+        else Right (Leaf e)
+    Infection _ p1 p2 -> Right (Branch e (Shoot p1) (Shoot p2))
+    Extinction -> Left "Extinction event encountered"
+    StoppingTime -> Left "Stopping time encountered"
+    _ -> Right (Leaf e)
 maybeEpidemicTree (e:es:ess) =
   case e of
     Infection _ p1 p2 ->
@@ -193,23 +203,22 @@ maybeEpidemicTree (e:es:ess) =
           infecteeEvents = derivedFrom p2 (es : ess)
        in do leftTree <-
                if null infectorEvents
-                 then Just (Shoot p1)
+                 then Right (Shoot p1)
                  else maybeEpidemicTree infectorEvents
              rightTree <-
                if null infecteeEvents
-                 then Just (Shoot p2)
+                 then Right (Shoot p2)
                  else maybeEpidemicTree infecteeEvents
              return $ Branch e leftTree rightTree
     Catastrophe _ people ->
       if nullPeople people
         then maybeEpidemicTree (es : ess)
-        else Just (Leaf e)
+        else Right (Leaf e)
     Disaster _ people ->
       if nullPeople people
         then maybeEpidemicTree (es : ess)
-        else Just (Leaf e)
-    _ -> Just (Leaf e)
-
+        else Right (Leaf e)
+    _ -> Right (Leaf e)
 
 class Newick t
   -- | Return a representation of the tree in Newick format.
@@ -218,7 +227,6 @@ class Newick t
        (AbsoluteTime, Person) -- ^ The person and time of the start of the tree
     -> t
     -> Maybe (BBuilder.Builder, [EpidemicEvent])
-
 
 colonBuilder :: BBuilder.Builder
 colonBuilder = BBuilder.charUtf8 ':'

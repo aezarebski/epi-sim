@@ -34,7 +34,6 @@ import Epidemic.Types.Population
 import Epidemic.Types.Simulation
   ( SimulationConfiguration(..)
   , SimulationRandEvent(..)
-  , SimulationState(..)
   )
 import Epidemic.Utility
   ( initialIdentifier

@@ -7,7 +7,7 @@ module Epidemic.Model.BirthDeathSampling
   , BDSPopulation(..)
   ) where
 
-import Data.Maybe (fromJust, isJust, isNothing)
+import Data.Maybe (fromJust)
 import qualified Data.Vector as V
 import Epidemic
 import Epidemic.Types.Events
@@ -16,7 +16,6 @@ import Epidemic.Types.Population
 import Epidemic.Types.Simulation
   ( SimulationConfiguration(..)
   , SimulationRandEvent(..)
-  , SimulationState(..)
   )
 import Epidemic.Utility
 import System.Random.MWC

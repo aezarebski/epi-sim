@@ -65,8 +65,8 @@ configuration ::
      , Rate
      , [(AbsoluteTime, Probability)]
      , Rate
-     , [(AbsoluteTime, Probability)] -- ^ Birth, Death, Sampling, Catastrophe probability and Occurrence rates
-      )
+     , [(AbsoluteTime, Probability)]
+      ) -- ^ Birth, Death, Sampling, Catastrophe probability and Occurrence rates
   -> Maybe (SimulationConfiguration BDSCODParameters BDSCODPopulation)
 configuration maxTime (birthRate, deathRate, samplingRate, catastropheSpec, occurrenceRate, disasterSpec) = do
   catastropheSpec' <- asTimed catastropheSpec

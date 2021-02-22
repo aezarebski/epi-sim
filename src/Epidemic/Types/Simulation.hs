@@ -14,8 +14,8 @@ import System.Random.MWC
 
 data SimulationConfiguration r p =
   SimulationConfiguration
-      -- | The event rates
-    { scRates :: r
+    { -- | The event rates
+      scRates :: r
       -- | The population
     , scPopulation :: p
       -- | A new identifier

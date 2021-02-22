@@ -9,6 +9,17 @@ module Epidemic.Model.InhomogeneousBDS
   , InhomBDSPop(..)
   ) where
 
+import Epidemic.Types.Time
+  ( AbsoluteTime(..)
+  , Timed(..)
+  , TimeDelta(..)
+  , allTimes
+  , asTimed
+  , diracDeltaValue
+  , nextTime
+  , cadlagValue
+  , timeAfterDelta
+  )
 import Control.Monad (liftM)
 import Data.Maybe (fromJust)
 import qualified Data.Vector as V

@@ -5,6 +5,19 @@ import qualified Data.Aeson as Json
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Builder as BBuilder
 import Data.Csv
+import Epidemic.Types.Time
+  ( AbsoluteTime(..)
+  , TimeDelta(..)
+  , Timed(..)
+  , isAscending
+  , hasTime
+  , cadlagValue
+  , diracDeltaValue
+  , nextTime
+  , timeAfterDelta
+  , allTimes
+  , asTimed
+  )
 import Data.Either (fromRight, isRight)
 import Data.Maybe (fromJust, isJust, isNothing)
 import qualified Data.Vector as V

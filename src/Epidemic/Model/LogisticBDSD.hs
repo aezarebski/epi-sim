@@ -13,15 +13,21 @@ import qualified Data.Vector as V
 import qualified Data.Vector.Generic as G
 import Epidemic (noScheduledEvent, firstScheduled)
 import Epidemic.Types.Events (EpidemicEvent(..))
-import Epidemic.Types.Parameter
+import Epidemic.Types.Time
   ( AbsoluteTime(..)
-  , ModelParameters(..)
+  , Timed(..)
+  , TimeDelta(..)
+  , asTimed
+  , allTimes
+  , diracDeltaValue
+  , nextTime
+  , cadlagValue
+  , timeAfterDelta
+  )
+import Epidemic.Types.Parameter
+  (  ModelParameters(..)
   , Probability
   , Rate
-  , TimeDelta(..)
-  , Timed(..)
-  , asTimed
-  , timeAfterDelta
   )
 import Epidemic.Types.Population
   ( Identifier(..)

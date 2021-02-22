@@ -21,6 +21,7 @@ import qualified Data.List as List
 import qualified Data.Vector as V
 import Epidemic.Types.Parameter
 import Epidemic.Types.Population
+import Epidemic.Types.Time (AbsoluteTime(..), TimeDelta(..), timeDelta)
 import GHC.Generics
 
 -- | Events that can occur in an epidemic with their absolute time.
@@ -220,8 +221,7 @@ maybeEpidemicTree (e:es:ess) =
         else Right (Leaf e)
     _ -> Right (Leaf e)
 
-class Newick t
-  where
+class Newick t where
   asNewickString ::
        (AbsoluteTime, Person) -- ^ The person and time of the start of the tree
     -> t

@@ -19,6 +19,17 @@ import Epidemic.Types.Simulation
   ( SimulationConfiguration(..)
   , SimulationRandEvent(..)
   )
+import Epidemic.Types.Time
+  ( AbsoluteTime(..)
+  , TimeDelta(..)
+  , Timed(..)
+  , cadlagValue
+  , diracDeltaValue
+  , nextTime
+  , timeAfterDelta
+  , allTimes
+  , asTimed
+  )
 import Epidemic.Utility
 import System.Random.MWC
 import System.Random.MWC.Distributions (bernoulli, categorical, exponential)
@@ -54,7 +65,8 @@ configuration ::
      , Rate
      , [(AbsoluteTime, Probability)]
      , Rate
-     , [(AbsoluteTime, Probability)]) -- ^ Birth, Death, Sampling, Catastrophe probability and Occurrence rates
+     , [(AbsoluteTime, Probability)] -- ^ Birth, Death, Sampling, Catastrophe probability and Occurrence rates
+      )
   -> Maybe (SimulationConfiguration BDSCODParameters BDSCODPopulation)
 configuration maxTime (birthRate, deathRate, samplingRate, catastropheSpec, occurrenceRate, disasterSpec) = do
   catastropheSpec' <- asTimed catastropheSpec

@@ -7,6 +7,17 @@ module Epidemic.Model.BirthDeathSampling
   , BDSPopulation(..)
   ) where
 
+import Epidemic.Types.Time
+  ( AbsoluteTime(..)
+  , Timed(..)
+  , TimeDelta(..)
+  , allTimes
+  , asTimed
+  , diracDeltaValue
+  , nextTime
+  , cadlagValue
+  , timeAfterDelta
+  )
 import Data.Maybe (fromJust)
 import qualified Data.Vector as V
 import Epidemic

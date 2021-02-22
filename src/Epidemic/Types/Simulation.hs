@@ -9,12 +9,13 @@ module Epidemic.Types.Simulation
 import Epidemic.Types.Events
 import Epidemic.Types.Parameter
 import Epidemic.Types.Population
+import Epidemic.Types.Time (AbsoluteTime(..), TimeDelta(..), timeDelta)
 import System.Random.MWC
 
 data SimulationConfiguration r p =
   SimulationConfiguration
-    { -- | The event rates
-      scRates :: r
+      -- | The event rates
+    { scRates :: r
       -- | The population
     , scPopulation :: p
       -- | A new identifier

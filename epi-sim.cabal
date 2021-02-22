@@ -47,6 +47,7 @@ library
     Epidemic.Types.Parameter
     Epidemic.Types.Population
     Epidemic.Types.Simulation
+    Epidemic.Types.Time
     Epidemic.Utility
 
   other-modules:    Paths_epi_sim

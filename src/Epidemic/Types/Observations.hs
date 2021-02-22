@@ -19,7 +19,7 @@ import Epidemic.Types.Events
   , Newick(..)
   , maybeEpidemicTree
   )
-import Epidemic.Types.Parameter (TimeDelta(..), timeDelta)
+import Epidemic.Types.Time (TimeDelta(..), timeDelta)
 import Epidemic.Types.Population (People(..), personByteString)
 import GHC.Generics
 

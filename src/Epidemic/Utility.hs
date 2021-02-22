@@ -17,11 +17,19 @@ import Epidemic.Types.Events
 import Epidemic.Types.Parameter
 import Epidemic.Types.Population
 import Epidemic.Types.Simulation
+import Epidemic.Types.Time
+  ( AbsoluteTime(..)
+  , Timed(..)
+  , TimeDelta(..)
+  , diracDeltaValue
+  , nextTime
+  , cadlagValue
+  , timeAfterDelta
+  )
 import GHC.Generics (Generic)
 import System.Random.MWC
 import System.Random.MWC.Distributions (exponential)
 import Text.Trifecta
-
 
 initialIdentifier :: Identifier
 initialIdentifier = Identifier 1

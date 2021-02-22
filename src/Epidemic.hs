@@ -20,6 +20,7 @@ import Epidemic.Types.Simulation
   , SimulationRandEvent(..)
   , SimulationState(..)
   )
+import Epidemic.Types.Time (AbsoluteTime(..), Timed(..), diracDeltaValue, nextTime)
 import GHC.Generics (Generic)
 import System.Random.MWC
 

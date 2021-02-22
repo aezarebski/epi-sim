@@ -2,6 +2,9 @@
 
 ## 0.3.0.0
 
+- Add an `ARCHITECTURE.md` file to outline the structure of this package.
+- Move all the temporal types into their own submodule `Epidemic.Types.Time` so
+  they are easier to isolate.
 - Provide a `Epidemic.Types.Observations` module to provide the functionality
   surrounding extracting the observed events from a simulation.
 - Add `Extinction` and `StoppingTime` constructors for the `EpidemicEvent` type

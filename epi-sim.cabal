@@ -30,6 +30,7 @@ category:           Simulation
 extra-source-files:
   ChangeLog.md
   README.md
+  ARCHITECTURE.md
 
 source-repository head
   type:     git

@@ -115,22 +115,13 @@ simulation False SimulationConfiguration {..} allEvents = do
       gen
   return $ sort events
 
--- | Predicate for whether an epidemic event is either an occurrence or a
--- disaaster.
-isNonReconTreeObservation :: EpidemicEvent -> Bool
-isNonReconTreeObservation e =
-  case e of
-    Occurrence {} -> True
-    Disaster {} -> True
-    _ -> False
-
 -- | Predicate for whether an epidemic event will appear as a leaf in the
 -- reconstructed tree.
 isReconTreeLeaf :: EpidemicEvent -> Bool
 isReconTreeLeaf e =
   case e of
-    Sampling {} -> True
-    Catastrophe {} -> True
+    IndividualSample {..} -> indSampSeq
+    PopulationSample {..} -> popSampSeq
     _ -> False
 
 simulation' ::

@@ -5,6 +5,10 @@
 module Epidemic.Types.Events
   ( EpidemicEvent(Infection, Removal, IndividualSample,
               PopulationSample)
+  , popSampPeople
+  , popSampSeq
+  , indSampPerson
+  , indSampSeq
   , EpidemicTree(Branch, Leaf, Shoot)
   , maybeEpidemicTree
   , eventTime

@@ -96,28 +96,6 @@ infectedBy person events =
         else infectedBy person es
     (_:es) -> infectedBy person es
 
-data TransmissionTree
-  = TTUnresolved Person
-  | TTDeath People EpidemicEvent
-  | TTBirth Person EpidemicEvent (TransmissionTree, TransmissionTree)
-  deriving (Show)
-
-data SampleTree
-  = STBirth EpidemicEvent (SampleTree, SampleTree)
-  | STDeath EpidemicEvent
-  deriving (Show)
-
--- | Recurse through the tree and extract all birth and death events.
-sampleTreeEvents' :: SampleTree -> [EpidemicEvent]
-sampleTreeEvents' sTree =
-  case sTree of
-    (STDeath e) -> [e]
-    (STBirth e (s1, s2)) -> e : sampleTreeEvents s1 ++ sampleTreeEvents s2
-
--- | The unique events in a sample tree.
-sampleTreeEvents :: SampleTree -> [EpidemicEvent]
-sampleTreeEvents = nub . sampleTreeEvents'
-
 -- | Run the simulation and return a @SimulationState@ which holds the history
 -- of the simulation.
 allEvents ::

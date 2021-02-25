@@ -1,5 +1,9 @@
 # Changelog for epi-sim
 
+## 0.4.0.0
+
+- Remove dependency on `trifecta` since this functionality is not necessary.
+
 ## 0.3.0.0
 
 - Update the resolver to 17.2

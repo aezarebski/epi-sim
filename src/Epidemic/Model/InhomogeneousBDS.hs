@@ -15,6 +15,11 @@ import Data.Maybe (fromJust, isJust, isNothing)
 import qualified Data.Vector as V
 import Epidemic
 import Epidemic.Types.Events
+  ( EpidemicEvent(..)
+  , eventsInRTree
+  , maybeEpidemicTree
+  , maybeReconstructedTree
+  )
 import Epidemic.Types.Parameter
 import Epidemic.Types.Population
 import Epidemic.Types.Simulation
@@ -86,33 +91,49 @@ randomEvent = SimulationRandEvent randomEvent'
 -- | A random event and the state afterwards
 randomEvent' ::
      InhomBDSRates -- ^ model parameters
-  -> AbsoluteTime  -- ^ the current time
-  -> InhomBDSPop   -- ^ the population
+  -> AbsoluteTime -- ^ the current time
+  -> InhomBDSPop -- ^ the population
   -> Identifier -- ^ current identifier
-  -> GenIO         -- ^ PRNG
+  -> GenIO -- ^ PRNG
   -> IO (AbsoluteTime, EpidemicEvent, InhomBDSPop, Identifier)
 randomEvent' inhomRates@(InhomBDSRates brts dr sr) currTime pop@(InhomBDSPop (people@(People peopleVec))) currId gen =
   let popSize = fromIntegral $ numPeople people :: Double
       eventWeights t = V.fromList [fromJust (cadlagValue brts t), dr, sr]
       -- we need a new step function to account for the population size.
-      (Just stepFunction) = asTimed [(t,popSize * fromJust (eventRate pop inhomRates t)) | t <- allTimes brts]
+      (Just stepFunction) =
+        asTimed
+          [ (t, popSize * fromJust (eventRate pop inhomRates t))
+          | t <- allTimes brts
+          ]
    in do (Just newEventTime) <- inhomExponential stepFunction currTime gen
          eventIx <- categorical (eventWeights newEventTime) gen
          (selectedPerson, unselectedPeople) <- randomPerson people gen
-         return $ case eventIx of
-           0 -> ( newEventTime
-                , Infection newEventTime selectedPerson birthedPerson
-                , InhomBDSPop (addPerson birthedPerson people)
-                , newId) where (birthedPerson, newId) = newPerson currId
-           1 -> (newEventTime, Removal newEventTime selectedPerson, InhomBDSPop unselectedPeople, currId)
-           2 -> (newEventTime, IndividualSample newEventTime selectedPerson True, InhomBDSPop unselectedPeople, currId)
-           _ -> error "no birth-death-sampling event selected."
+         return $
+           case eventIx of
+             0 ->
+               ( newEventTime
+               , Infection newEventTime selectedPerson birthedPerson
+               , InhomBDSPop (addPerson birthedPerson people)
+               , newId)
+               where (birthedPerson, newId) = newPerson currId
+             1 ->
+               ( newEventTime
+               , Removal newEventTime selectedPerson
+               , InhomBDSPop unselectedPeople
+               , currId)
+             2 ->
+               ( newEventTime
+               , IndividualSample newEventTime selectedPerson True
+               , InhomBDSPop unselectedPeople
+               , currId)
+             _ -> error "no birth-death-sampling event selected."
 
--- | Just the observable events from a list of all the events in a simulation.
-observedEvents :: [EpidemicEvent] -- ^ All of the simulation events
-               -> [EpidemicEvent]
-observedEvents [] = []
-observedEvents events = sort sampleTreeEvents''
-  where
-    sampleTreeEvents'' =
-      sampleTreeEvents . sampleTree $ transmissionTree events (Person initialIdentifier)
+-- | The observed events from the epidemic.
+observedEvents ::
+     [EpidemicEvent] -- ^ All of the simulation events
+  -> Maybe [EpidemicEvent]
+observedEvents [] = Just []
+observedEvents events = do
+  epiTree <- maybeEpidemicTree events
+  recTree <- maybeReconstructedTree epiTree
+  Just . sort $ eventsInRTree recTree

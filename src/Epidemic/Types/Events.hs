@@ -14,6 +14,7 @@ module Epidemic.Types.Events
   , eventTime
   , ReconstructedTree(RBranch, RLeaf)
   , maybeReconstructedTree
+  , eventsInRTree
   , PointProcessEvents(PointProcessEvents)
   , pointProcessEvents
   , derivedFrom
@@ -176,6 +177,10 @@ maybeReconstructedTree (Branch e@Infection {} lt rt)
   | hasSequencedLeaf rt = maybeReconstructedTree rt
   | otherwise = Nothing
 maybeReconstructedTree Branch {} = Nothing
+
+-- | The events from a 'ReconstructedTree'
+eventsInRTree :: ReconstructedTree -> [EpidemicEvent]
+eventsInRTree = undefined
 
 -- | Predicate for whether an 'EpidemicTree' has a leaf representing a sequenced
 -- sample. This is used to determine if the tree needs to be included in the

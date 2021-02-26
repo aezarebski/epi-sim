@@ -102,8 +102,8 @@ randomEvent' params@(BDSCODParameters br dr sr catastInfo occr disastInfo) currT
                           , BDSCODPopulation (addPerson birthedPerson currPeople)
                           , newId)
                      1 -> (newEventTime, Removal newEventTime selectedPerson, BDSCODPopulation unselectedPeople, currId)
-                     2 -> (newEventTime, Sampling newEventTime selectedPerson, BDSCODPopulation unselectedPeople, currId)
-                     3 -> (newEventTime, Occurrence newEventTime selectedPerson, BDSCODPopulation unselectedPeople, currId)
+                     2 -> (newEventTime, IndividualSample newEventTime selectedPerson True, BDSCODPopulation unselectedPeople, currId)
+                     3 -> (newEventTime, IndividualSample newEventTime selectedPerson False, BDSCODPopulation unselectedPeople, currId)
                      _ -> error "no birth, death, sampling, occurrence event selected."
 
            else if noScheduledEvent currTime newEventTime catastInfo
@@ -133,7 +133,7 @@ randomCatastropheEvent (catastTime, rhoProb) (BDSCODPopulation (People currPeopl
       sampledPeople = filterZip snd currPeople rhoBernoullis
       unsampledPeople = filterZip (not . snd) currPeople rhoBernoullis
    in return
-        ( Catastrophe catastTime (People sampledPeople)
+        ( PopulationSample catastTime (People sampledPeople) True
         , BDSCODPopulation (People unsampledPeople))
 
 -- | Return a randomly sampled Disaster event
@@ -148,11 +148,12 @@ randomDisasterEvent (disastTime, nuProb) (BDSCODPopulation (People currPeople)) 
       sampledPeople = filterZip snd currPeople nuBernoullis
       unsampledPeople = filterZip (not . snd) currPeople nuBernoullis
    in return
-        ( Disaster disastTime (People sampledPeople)
+        ( PopulationSample disastTime (People sampledPeople) False
         , BDSCODPopulation (People unsampledPeople))
 
 -- | The events from the nodes of a reconstructed tree __not__ in time sorted
--- order.
+-- order. TODO Double check if this can be replaced with a function from
+-- Epidemic.Types.Events!!!
 reconstructedTreeEvents :: ReconstructedTree -> [EpidemicEvent]
 reconstructedTreeEvents node = case node of
   (RBranch e lt rt) -> e:(reconstructedTreeEvents lt ++ reconstructedTreeEvents rt)

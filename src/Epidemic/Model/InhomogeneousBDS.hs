@@ -46,8 +46,8 @@ instance ModelParameters InhomBDSRates InhomBDSPop where
     let birthRate = cadlagValue timedBirthRate time
      in liftM (+ (deathRate + sampleRate)) birthRate
   birthProb _ (InhomBDSRates timedBirthRate deathRate sampleRate) time =
-    liftM (\br -> br / (br + deathRate + sampleRate)) $ cadlagValue timedBirthRate time
-
+    liftM (\br -> br / (br + deathRate + sampleRate)) $
+    cadlagValue timedBirthRate time
 
 instance Population InhomBDSPop where
   susceptiblePeople _ = Nothing
@@ -59,10 +59,11 @@ instance Population InhomBDSPop where
 --
 -- Note that this requires that the rates are all positive, if they are not it
 -- will return @Nothing@.
-inhomBDSRates :: Timed Rate     -- ^ birth rate
-              -> Rate           -- ^ death rate
-              -> Rate           -- ^ sample rate
-              -> Maybe InhomBDSRates
+inhomBDSRates ::
+     Timed Rate -- ^ birth rate
+  -> Rate -- ^ death rate
+  -> Rate -- ^ sample rate
+  -> Maybe InhomBDSRates
 inhomBDSRates timedBirthRate@(Timed tBrPairs) deathRate sampleRate
   | all (\x -> 0 < snd x) tBrPairs && deathRate >= 0 && sampleRate >= 0 =
     Just $ InhomBDSRates timedBirthRate deathRate sampleRate
@@ -72,9 +73,10 @@ inhomBDSRates timedBirthRate@(Timed tBrPairs) deathRate sampleRate
 --
 -- Note that this requires that the timed rates are all positive, if they are
 -- not it will return @Nothing@ which can lead to cryptic bugs.
-configuration :: TimeDelta -- ^ Duration of the simulation after starting at time 0.
-              -> ([(AbsoluteTime,Rate)], Rate, Rate) -- ^ Birth, Death and Sampling rates
-              -> Maybe (SimulationConfiguration InhomBDSRates InhomBDSPop)
+configuration ::
+     TimeDelta -- ^ Duration of the simulation after starting at time 0.
+  -> ([(AbsoluteTime, Rate)], Rate, Rate) -- ^ Birth, Death and Sampling rates
+  -> Maybe (SimulationConfiguration InhomBDSRates InhomBDSPop)
 configuration maxTime (tBrPairs, deathRate, sampleRate) =
   let (seedPerson, newId) = newPerson initialIdentifier
       bdsPop = InhomBDSPop (People $ V.singleton seedPerson)
@@ -82,7 +84,13 @@ configuration maxTime (tBrPairs, deathRate, sampleRate) =
          maybeIBDSRates <- inhomBDSRates timedBirthRate deathRate sampleRate
          if maxTime > TimeDelta 0
            then Just
-                  (SimulationConfiguration maybeIBDSRates bdsPop newId (AbsoluteTime 0) maxTime Nothing)
+                  (SimulationConfiguration
+                     maybeIBDSRates
+                     bdsPop
+                     newId
+                     (AbsoluteTime 0)
+                     maxTime
+                     Nothing)
            else Nothing
 
 randomEvent :: SimulationRandEvent InhomBDSRates InhomBDSPop
@@ -128,7 +136,8 @@ randomEvent' inhomRates@(InhomBDSRates brts dr sr) currTime pop@(InhomBDSPop (pe
                , currId)
              _ -> error "no birth-death-sampling event selected."
 
--- | The observed events from the epidemic.
+-- | The observed events from the epidemic. Any events will be returned in
+-- chronological order.
 observedEvents ::
      [EpidemicEvent] -- ^ All of the simulation events
   -> Maybe [EpidemicEvent]

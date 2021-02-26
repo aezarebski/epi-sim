@@ -93,9 +93,9 @@ randomEvent' ::
   -> IO (AbsoluteTime, EpidemicEvent, InhomBDSPop, Identifier)
 randomEvent' inhomRates@(InhomBDSRates brts dr sr) currTime pop@(InhomBDSPop (people@(People peopleVec))) currId gen =
   let popSize = fromIntegral $ numPeople people :: Double
+      eventWeights t = V.fromList [fromJust (cadlagValue brts t), dr, sr]
       -- we need a new step function to account for the population size.
       (Just stepFunction) = asTimed [(t,popSize * fromJust (eventRate pop inhomRates t)) | t <- allTimes brts]
-      eventWeights t = V.fromList [fromJust (cadlagValue brts t), dr, sr]
    in do (Just newEventTime) <- inhomExponential stepFunction currTime gen
          eventIx <- categorical (eventWeights newEventTime) gen
          (selectedPerson, unselectedPeople) <- randomPerson people gen
@@ -105,7 +105,7 @@ randomEvent' inhomRates@(InhomBDSRates brts dr sr) currTime pop@(InhomBDSPop (pe
                 , InhomBDSPop (addPerson birthedPerson people)
                 , newId) where (birthedPerson, newId) = newPerson currId
            1 -> (newEventTime, Removal newEventTime selectedPerson, InhomBDSPop unselectedPeople, currId)
-           2 -> (newEventTime, Sampling newEventTime selectedPerson, InhomBDSPop unselectedPeople, currId)
+           2 -> (newEventTime, IndividualSample newEventTime selectedPerson True, InhomBDSPop unselectedPeople, currId)
            _ -> error "no birth-death-sampling event selected."
 
 -- | Just the observable events from a list of all the events in a simulation.

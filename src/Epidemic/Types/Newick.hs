@@ -14,8 +14,8 @@ import Epidemic.Types.Population
 import Epidemic.Types.Time
 import GHC.Generics
 
+-- | Class of types that can be expressed in Newick format.
 class Newick t
-  -- | Return a representation of the tree in Newick format.
   where
   asNewickString ::
        (AbsoluteTime, Person) -- ^ The person and time of the root of the tree

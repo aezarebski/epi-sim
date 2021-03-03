@@ -132,12 +132,12 @@ data EpidemicTree
   deriving (Show, Eq)
 
 -- | If possible return an 'EpidemicTree' describing the /sorted/ list of
--- 'EpidemicEvents'.
+-- 'EpidemicEvent'.
 maybeEpidemicTree ::
      [EpidemicEvent] -- ^ ordered epidemic events
   -> Either String EpidemicTree
 maybeEpidemicTree [] =
-  Left "There are no EpidemicEvents to construct a tree with."
+  Left "There are no EpidemicEvent values to construct a tree with."
 maybeEpidemicTree [e] =
   case e of
     Infection _ p1 p2 -> Right (Branch e (Shoot p1) (Shoot p2))

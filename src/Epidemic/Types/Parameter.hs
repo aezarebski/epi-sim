@@ -3,22 +3,15 @@
 
 module Epidemic.Types.Parameter where
 
-import qualified Data.Aeson as Json
-import qualified Data.Csv as Csv
-import qualified Data.List as List
-import qualified Data.Maybe as Maybe
 import Epidemic.Types.Population (Population(..))
-import Epidemic.Types.Time (AbsoluteTime(..), TimeDelta(..), timeDelta)
-import GHC.Generics
+import Epidemic.Types.Time (AbsoluteTime(..))
 
+-- | Class of types that can be considered parameterisations of a epidemic
+-- model.
 class (Population p) => ModelParameters a p where
   rNaught :: p -> a -> AbsoluteTime -> Maybe Double
   eventRate :: p -> a -> AbsoluteTime -> Maybe Rate
   birthProb :: p -> a -> AbsoluteTime -> Maybe Probability
-
--- -- | Predicate for an infinite absolute time
--- isInfiniteAbsoluteTime :: AbsoluteTime -> Bool
--- isInfiniteAbsoluteTime (AbsoluteTime t) = isInfinite t
 
 type Rate = Double
 

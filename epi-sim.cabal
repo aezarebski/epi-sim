@@ -56,7 +56,6 @@ library
       aeson       >=1.4.7   && <1.6
     , base        >=4.14.1  && <4.15
     , bytestring  >=0.10.10 && <0.11
-    , cassava     >=0.5.2   && <0.6
     , hspec       >=2.7.6   && <2.8
     , mwc-random  >=0.14.0  && <0.16
     , primitive   >=0.7.0   && <0.8
@@ -76,7 +75,6 @@ test-suite epi-sim-test
       aeson
     , base
     , bytestring
-    , cassava
     , epi-sim
     , hspec
     , mwc-random

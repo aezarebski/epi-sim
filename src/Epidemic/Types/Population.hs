@@ -20,10 +20,10 @@ import qualified Data.Aeson as Json
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Builder as BBuilder
 import Data.ByteString.Internal (c2w)
-import qualified Data.Csv as Csv
 import qualified Data.Vector as V
 import GHC.Generics
 
+-- | Class of types that can represent populations in an epidemic simulation.
 class Population a where
   susceptiblePeople :: a -> Maybe People
   infectiousPeople :: a -> Maybe People
@@ -39,12 +39,6 @@ instance Json.FromJSON Identifier
 
 instance Json.ToJSON Identifier
 
-instance Csv.ToField Identifier where
-  toField (Identifier n) = Csv.toField n
-
-instance Csv.FromField Identifier where
-  parseField f = Identifier <$> (Csv.parseField f :: Csv.Parser Integer)
-
 -- | A type to represent a single person in a group of 'People'
 newtype Person =
   Person Identifier
@@ -54,13 +48,6 @@ instance Json.FromJSON Person
 
 instance Json.ToJSON Person
 
-instance Csv.ToField Person where
-  toField (Person n) = Csv.toField n
-
-instance Csv.FromField Person where
-  parseField f =
-    Person . Identifier <$> (Csv.parseField f :: Csv.Parser Integer)
-
 -- | A type to represent a population.
 newtype People =
   People (V.Vector Person)
@@ -69,14 +56,6 @@ newtype People =
 instance Json.FromJSON People
 
 instance Json.ToJSON People
-
-instance Csv.ToField People where
-  toField (People persons) =
-    B.intercalate ":" $ V.toList $ V.map Csv.toField persons
-
-instance Csv.FromField People where
-  parseField f =
-    People . V.fromList <$> mapM Csv.parseField (B.split (c2w ':') f)
 
 -- | A list of persons as a people
 asPeople :: [Person] -> People

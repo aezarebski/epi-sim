@@ -17,7 +17,6 @@ module Epidemic.Types.Time
   ) where
 
 import qualified Data.Aeson as Json
-import qualified Data.Csv as Csv
 import qualified Data.List as List
 import qualified Data.Maybe as Maybe
 import GHC.Generics
@@ -31,12 +30,6 @@ instance Json.FromJSON AbsoluteTime
 
 instance Json.ToJSON AbsoluteTime
 
-instance Csv.ToField AbsoluteTime where
-  toField (AbsoluteTime at) = Csv.toField at
-
-instance Csv.FromField AbsoluteTime where
-  parseField s = AbsoluteTime <$> Csv.parseField s
-
 -- | Predicate for an infinite absolute time
 isInfiniteAbsoluteTime :: AbsoluteTime -> Bool
 isInfiniteAbsoluteTime (AbsoluteTime t) = isInfinite t
@@ -49,9 +42,6 @@ newtype TimeDelta =
 instance Json.FromJSON TimeDelta
 
 instance Json.ToJSON TimeDelta
-
-instance Csv.ToField TimeDelta where
-  toField (TimeDelta td) = Csv.toField td
 
 -- | The duration of time between two absolute times
 --

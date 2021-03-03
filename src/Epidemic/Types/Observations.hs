@@ -35,8 +35,8 @@ instance Json.FromJSON Observation
 instance Json.ToJSON Observation
 
 -- | A representation of the events that can be observed in an epidemic but
--- which are not included in the reconstructed tree, i.e. the `Occurrence` and
--- 'Disaster' events.
+-- which are not included in the reconstructed tree, ie the unsequenced
+-- observations.
 newtype PointProcessEvents =
   PointProcessEvents [Observation]
 
@@ -56,7 +56,7 @@ pointProcessEvents (Branch _ lt rt) =
    in PointProcessEvents allEs
 
 -- | A representation of the reconstructed tree, ie the tree where the leaves
--- correspond to the 'Sampling' and 'Catastrophe' events.
+-- correspond to sequenced observations.
 data ReconstructedTree
   = RBranch Observation ReconstructedTree ReconstructedTree
   | RLeaf Observation

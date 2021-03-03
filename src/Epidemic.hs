@@ -8,7 +8,6 @@ module Epidemic where
 import Control.Monad
 import qualified Data.ByteString as B
 import Data.ByteString.Internal (c2w)
-import Data.Csv
 import Data.List (nub)
 import Data.Maybe (fromJust, isJust, isNothing)
 import qualified Data.Vector as V

@@ -2,6 +2,7 @@
 
 ## 0.4.0.0
 
+- Remove CSV export, now there is only JSON export.
 - Move the Newick material into `Epidemic.Types.Newick`.
 - Remvoe the `TransmissionTree` and `SampleTree` data types because there is
   already the `EpidemicTree` and `ReconstructedTree` in the

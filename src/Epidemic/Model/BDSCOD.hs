@@ -132,11 +132,10 @@ randomEvent' params@(BDSCODParameters br dr sr catastInfo occr disastInfo) currT
 
 
 -- | Return a randomly sampled Catastrophe event
-randomCatastropheEvent ::
-     (AbsoluteTime, Probability) -- ^ Time and probability of sampling in the catastrophe
-  -> BDSCODPopulation -- ^ The state of the population prior to the catastrophe
-  -> GenIO
-  -> IO (EpidemicEvent, BDSCODPopulation)
+randomCatastropheEvent :: (AbsoluteTime,Probability) -- ^ Time and probability of sampling in the catastrophe
+                       -> BDSCODPopulation    -- ^ The state of the population prior to the catastrophe
+                       -> GenIO
+                       -> IO (EpidemicEvent,BDSCODPopulation)
 randomCatastropheEvent (catastTime, rhoProb) (BDSCODPopulation (People currPeople)) gen = do
   rhoBernoullis <- G.replicateM (V.length currPeople) (bernoulli rhoProb gen)
   let filterZip predicate a b = fst . V.unzip . V.filter predicate $ V.zip a b
@@ -148,11 +147,10 @@ randomCatastropheEvent (catastTime, rhoProb) (BDSCODPopulation (People currPeopl
 
 -- | Return a randomly sampled Disaster event
 -- TODO Move this into the epidemic module to keep things DRY.
-randomDisasterEvent ::
-     (AbsoluteTime, Probability) -- ^ Time and probability of sampling in the disaster
-  -> BDSCODPopulation -- ^ The state of the population prior to the disaster
-  -> GenIO
-  -> IO (EpidemicEvent, BDSCODPopulation)
+randomDisasterEvent :: (AbsoluteTime,Probability) -- ^ Time and probability of sampling in the disaster
+                    -> BDSCODPopulation    -- ^ The state of the population prior to the disaster
+                    -> GenIO
+                    -> IO (EpidemicEvent,BDSCODPopulation)
 randomDisasterEvent (disastTime, nuProb) (BDSCODPopulation (People currPeople)) gen = do
   nuBernoullis <- G.replicateM (V.length currPeople) (bernoulli nuProb gen)
   let filterZip predicate a b = fst . V.unzip . V.filter predicate $ V.zip a b

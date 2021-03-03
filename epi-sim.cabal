@@ -41,6 +41,7 @@ library
     Epidemic.Model.InhomogeneousBDS
     Epidemic.Model.LogisticBDSD
     Epidemic.Types.Events
+    Epidemic.Types.Newick
     Epidemic.Types.Observations
     Epidemic.Types.Parameter
     Epidemic.Types.Population

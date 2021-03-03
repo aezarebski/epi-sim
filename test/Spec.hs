@@ -11,6 +11,7 @@ import Epidemic
 import qualified Epidemic.Model.BDSCOD as BDSCOD
 import qualified Epidemic.Model.InhomogeneousBDS as InhomBDS
 import Epidemic.Types.Events
+import Epidemic.Types.Newick
 import Epidemic.Types.Parameter
 import Epidemic.Types.Population
 import Epidemic.Utility

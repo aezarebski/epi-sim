@@ -29,7 +29,7 @@ import Epidemic.Types.Time
 import GHC.Generics (Generic)
 import System.Random.MWC
 import System.Random.MWC.Distributions (exponential)
-import Text.Trifecta
+
 
 initialIdentifier :: Identifier
 initialIdentifier = Identifier 1
@@ -87,52 +87,6 @@ data NTree =
 instance Show NTree where
   show (NTree bs) = show (NBranchSet bs) ++ ";"
 
--- Name → empty | string
-newickName :: (Monad f, CharParsing f) => f NName
-newickName = optional (some alphaNum) >>= pure
-
--- Leaf → Name
-newickLeaf :: (Monad f, CharParsing f) => f NSubtree
-newickLeaf = do
-  n <- newickName
-  pure (NLeaf n)
-
--- Length → empty | ":" number
-newickLength :: (TokenParsing f, Monad f, CharParsing f) => f NLength
-newickLength = do
-  maybeLength <- optional ((symbolic ':') >> double)
-  pure maybeLength
-
--- Branch → Subtree Length
-newickBranch :: (TokenParsing f, Monad f, CharParsing f) => f NBranch
-newickBranch = do
-  st <- newickSubtree
-  l <- newickLength
-  pure (NBranch st l)
-
--- BranchSet → Branch | Branch "," BranchSet
-newickBranchSet :: (TokenParsing f, Monad f, CharParsing f) => f NBranchSet
-newickBranchSet = do
-  bs <- sepBy1 newickBranch comma
-  pure (NBranchSet bs)
-
--- Internal → "(" BranchSet ")" Name
-newickInternal :: (TokenParsing f, Monad f, CharParsing f) => f NSubtree
-newickInternal = do
-  bs <- parens newickBranchSet
-  pure (NInternal bs)
-
--- Subtree → Leaf | Internal
-newickSubtree :: (TokenParsing f, Monad f, CharParsing f) => f NSubtree
-newickSubtree = choice [newickInternal, newickLeaf]
-
--- Tree → Subtree ";" | Branch ";"
-newickTree :: (TokenParsing f, Monad f, CharParsing f) => f NTree
-newickTree = do
-  (NBranchSet bs) <- parens newickBranchSet
-  _ <- symbolic ';'
-  pure (NTree bs)
-
 -- | Example run
 --   > (Success foo) = parseString newickTree mempty "((foo:1.1,bar:1.2):1.3,baz:1.4);"
 --   > (Success bar) = parseString newickTree mempty $ show foo
@@ -170,22 +124,13 @@ simulation False SimulationConfiguration {..} allEventsFunc = do
       gen
   return $ sort events
 
--- | Predicate for whether an epidemic event is either an occurrence or a
--- disaaster.
-isNonReconTreeObservation :: EpidemicEvent -> Bool
-isNonReconTreeObservation e =
-  case e of
-    Occurrence {} -> True
-    Disaster {} -> True
-    _ -> False
-
 -- | Predicate for whether an epidemic event will appear as a leaf in the
 -- reconstructed tree.
 isReconTreeLeaf :: EpidemicEvent -> Bool
 isReconTreeLeaf e =
   case e of
-    Sampling {} -> True
-    Catastrophe {} -> True
+    IndividualSample {..} -> indSampSeq
+    PopulationSample {..} -> popSampSeq
     _ -> False
 
 simulation' ::

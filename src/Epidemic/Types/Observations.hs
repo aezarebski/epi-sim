@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 module Epidemic.Types.Observations
@@ -6,6 +7,7 @@ module Epidemic.Types.Observations
   , maybeReconstructedTree
   , PointProcessEvents(..)
   , pointProcessEvents
+  , reconstructedTreeEvents
   , observedEvents
   ) where
 
@@ -16,7 +18,6 @@ import qualified Data.Vector as V
 import Epidemic.Types.Events
   ( EpidemicEvent(..)
   , EpidemicTree(..)
-  , Newick(..)
   , maybeEpidemicTree
   )
 import Epidemic.Types.Time (TimeDelta(..), timeDelta)
@@ -34,19 +35,19 @@ instance Json.FromJSON Observation
 instance Json.ToJSON Observation
 
 -- | A representation of the events that can be observed in an epidemic but
--- which are not included in the reconstructed tree, i.e. the `Occurrence` and
--- 'Disaster' events.
+-- which are not included in the reconstructed tree, ie the unsequenced
+-- observations.
 newtype PointProcessEvents =
   PointProcessEvents [Observation]
 
 -- | Extract the events from an epidemic tree which are observed but not part of
--- the reconstructed tree.
+-- the reconstructed tree, ie the ones that are not sequenced.
 pointProcessEvents :: EpidemicTree -> PointProcessEvents
 pointProcessEvents Shoot {} = PointProcessEvents []
 pointProcessEvents (Leaf e) =
   case e of
-    Occurrence {} -> PointProcessEvents [Observation e]
-    Disaster {} -> PointProcessEvents [Observation e]
+    IndividualSample {..} -> PointProcessEvents $ if not indSampSeq then [Observation e] else []
+    PopulationSample {..} -> PointProcessEvents $ if not popSampSeq then [Observation e] else []
     _ -> PointProcessEvents []
 pointProcessEvents (Branch _ lt rt) =
   let (PointProcessEvents lEs) = pointProcessEvents lt
@@ -55,7 +56,7 @@ pointProcessEvents (Branch _ lt rt) =
    in PointProcessEvents allEs
 
 -- | A representation of the reconstructed tree, ie the tree where the leaves
--- correspond to the 'Sampling' and 'Catastrophe' events.
+-- correspond to sequenced observations.
 data ReconstructedTree
   = RBranch Observation ReconstructedTree ReconstructedTree
   | RLeaf Observation
@@ -64,13 +65,17 @@ data ReconstructedTree
 -- | The reconstructed phylogeny obtained by pruning an 'EpidemicTree' which
 -- contains represents the transmission tree of the epidemic. In the case where
 -- there are no sequenced samples in the epidemic then there is no tree to
--- reconstruct which is why this function is in the maybe monad.
+-- reconstruct which is why this function is in the either monad.
 maybeReconstructedTree :: EpidemicTree -> Either String ReconstructedTree
 maybeReconstructedTree Shoot {} = Left "EpidemicTree is only a Shoot"
 maybeReconstructedTree (Leaf e) =
   case e of
-    Sampling {} -> Right $ RLeaf (Observation e)
-    Catastrophe {} -> Right $ RLeaf (Observation e)
+    IndividualSample {..} -> if indSampSeq
+                             then Right $ RLeaf (Observation e)
+                             else Left "Leaf with non-sequenced event individual sample"
+    PopulationSample {..} -> if popSampSeq
+                             then Right $ RLeaf (Observation e)
+                             else Left "Leaf with non-sequenced event population sample"
     _ -> Left "Bad leaf in the EpidemicTree"
 maybeReconstructedTree (Branch e@Infection {} lt rt)
   | hasSequencedLeaf lt && hasSequencedLeaf rt = do
@@ -88,8 +93,8 @@ hasSequencedLeaf :: EpidemicTree -> Bool
 hasSequencedLeaf Shoot {} = False
 hasSequencedLeaf (Leaf e) =
   case e of
-    Sampling {} -> True
-    Catastrophe {} -> True
+    IndividualSample {..} -> indSampSeq
+    PopulationSample {..} -> popSampSeq
     _ -> False
 hasSequencedLeaf (Branch _ lt rt) = hasSequencedLeaf lt || hasSequencedLeaf rt
 
@@ -110,58 +115,3 @@ reconstructedTreeEvents rt =
       List.sort $
       obs : (reconstructedTreeEvents rtl ++ reconstructedTreeEvents rtr)
     RLeaf obs -> [obs]
-
-instance Newick ReconstructedTree where
-  asNewickString (t, _) (RLeaf (Observation e)) =
-    let branchLength a b = BBuilder.doubleDec td
-          where
-            (TimeDelta td) = timeDelta a b
-     in case e of
-          (Sampling t' p) ->
-            Just
-              ((personByteString p) <> colonBuilder <> branchLength t t', [e])
-          Infection {} -> Nothing
-          Removal {} -> Nothing
-          (Catastrophe t' ps) ->
-            Just
-              ( catastrophePeopleBuilder ps <> colonBuilder <> branchLength t t'
-              , [e])
-          Occurrence {} -> Nothing
-          Disaster {} -> Nothing
-          Extinction {} -> Nothing
-          StoppingTime {} -> Nothing
-  asNewickString (t, _) (RBranch (Observation e) lt rt) =
-    case e of
-      (Infection t' p1 p2) -> do
-        (leftNS, leftEs) <- asNewickString (t', p1) lt
-        (rightNS, rightEs) <- asNewickString (t', p2) rt
-        let branchLength = BBuilder.doubleDec td
-              where
-                (TimeDelta td) = timeDelta t t'
-        return
-          ( leftBraceBuilder <>
-            leftNS <>
-            commaBuilder <>
-            rightNS <> rightBraceBuilder <> colonBuilder <> branchLength
-          , List.sort $ leftEs ++ rightEs)
-      _ -> Nothing
-
-ampersandBuilder :: BBuilder.Builder
-ampersandBuilder = BBuilder.charUtf8 '&'
-
-catastrophePeopleBuilder :: People -> BBuilder.Builder
-catastrophePeopleBuilder (People persons) =
-  mconcat $
-  List.intersperse ampersandBuilder [personByteString p | p <- V.toList persons]
-
-colonBuilder :: BBuilder.Builder
-colonBuilder = BBuilder.charUtf8 ':'
-
-leftBraceBuilder :: BBuilder.Builder
-leftBraceBuilder = BBuilder.charUtf8 '('
-
-rightBraceBuilder :: BBuilder.Builder
-rightBraceBuilder = BBuilder.charUtf8 ')'
-
-commaBuilder :: BBuilder.Builder
-commaBuilder = BBuilder.charUtf8 ','

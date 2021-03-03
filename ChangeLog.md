@@ -1,5 +1,14 @@
 # Changelog for epi-sim
 
+## 0.4.0.0
+
+- Remove CSV export, now there is only JSON export.
+- Move the Newick material into `Epidemic.Types.Newick`.
+- Remvoe the `TransmissionTree` and `SampleTree` data types because there is
+  already the `EpidemicTree` and `ReconstructedTree` in the
+  `Epidemic.Types.Events` which should be used preferentially.
+- Remove dependency on `trifecta` since this functionality is not necessary.
+
 ## 0.3.0.0
 
 - Add an `ARCHITECTURE.md` file to outline the structure of this package.

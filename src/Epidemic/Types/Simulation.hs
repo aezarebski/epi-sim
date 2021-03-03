@@ -39,8 +39,10 @@ data SimulationState b
 data SimulationRandEvent a b where
   SimulationRandEvent
     :: (ModelParameters a b, Population b)
-    => (a -> AbsoluteTime -> b -> Identifier -> GenIO -> IO ( AbsoluteTime
-                                                            , EpidemicEvent
-                                                            , b
-                                                            , Identifier))
+    => (a
+    -> AbsoluteTime
+    -> b
+    -> Identifier
+    -> GenIO
+    -> IO (AbsoluteTime, EpidemicEvent, b, Identifier))
     -> SimulationRandEvent a b

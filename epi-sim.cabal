@@ -1,6 +1,6 @@
 cabal-version:      1.22
 name:               epi-sim
-version:            0.3.0.0
+version:            0.4.0.0
 synopsis:
   A library for simulating epidemics as birth-death processes.
 
@@ -12,10 +12,9 @@ description:
   are implemented already in the `Epidemic.Model` module. Implemented models
   include:
   .
-  1. Birth-Death-Sampling (see `Epidemic.Model.BirthDeathSampling`)
-  2. Birth-Death-Sampling-Catastrophe-Occurrence-Disaster (see `Epidemic.Model.BDSCOD`)
-  3. Inhomogeneous Birth-Death-Sampling (see `Epidemic.Model.InhomogeneousBDS`)
-  4. Logistic Birth-Death-Sampling-Disaster (see `Epidemic.Model.LogisticBDSD`)
+  1. Birth-Death-Sampling-Catastrophe-Occurrence-Disaster (see `Epidemic.Model.BDSCOD`)
+  2. Inhomogeneous Birth-Death-Sampling (see `Epidemic.Model.InhomogeneousBDS`)
+  3. Logistic Birth-Death-Sampling-Disaster (see `Epidemic.Model.LogisticBDSD`)
   .
 
 homepage:           https://github.com/aezarebski/epi-sim#readme
@@ -40,10 +39,10 @@ library
   exposed-modules:
     Epidemic
     Epidemic.Model.BDSCOD
-    Epidemic.Model.BirthDeathSampling
     Epidemic.Model.InhomogeneousBDS
     Epidemic.Model.LogisticBDSD
     Epidemic.Types.Events
+    Epidemic.Types.Newick
     Epidemic.Types.Observations
     Epidemic.Types.Parameter
     Epidemic.Types.Population
@@ -55,14 +54,12 @@ library
   hs-source-dirs:   src
   build-depends:
       aeson       >=1.4.7   && <1.6
-    , base        >=4.13.0  && <4.14
+    , base        >=4.14.1  && <4.15
     , bytestring  >=0.10.10 && <0.11
-    , cassava     >=0.5.2   && <0.6
     , hspec       >=2.7.6   && <2.8
     , mwc-random  >=0.14.0  && <0.16
     , primitive   >=0.7.0   && <0.8
     , statistics  >=0.15.2  && <0.16
-    , trifecta    >=2.1     && <2.2
     , vector      >=0.12.1  && <0.13
 
   default-language: Haskell2010
@@ -78,13 +75,11 @@ test-suite epi-sim-test
       aeson
     , base
     , bytestring
-    , cassava
     , epi-sim
     , hspec
     , mwc-random
     , primitive
     , statistics
-    , trifecta
     , vector
 
   default-language: Haskell2010

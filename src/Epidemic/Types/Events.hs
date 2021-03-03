@@ -9,8 +9,6 @@ module Epidemic.Types.Events
   , isExtinctionOrStopping
   , eventTime
   , derivedFrom
-  , Newick
-  , asNewickString
   ) where
 
 import qualified Data.Aeson as Json
@@ -220,76 +218,3 @@ maybeEpidemicTree (e:es:ess) =
         then maybeEpidemicTree (es : ess)
         else Right (Leaf e)
     _ -> Right (Leaf e)
-
-class Newick t where
-  asNewickString ::
-       (AbsoluteTime, Person) -- ^ The person and time of the start of the tree
-    -> t
-    -> Maybe (BBuilder.Builder, [EpidemicEvent])
-
-colonBuilder :: BBuilder.Builder
-colonBuilder = BBuilder.charUtf8 ':'
-
-leftBraceBuilder :: BBuilder.Builder
-leftBraceBuilder = BBuilder.charUtf8 '('
-
-rightBraceBuilder :: BBuilder.Builder
-rightBraceBuilder = BBuilder.charUtf8 ')'
-
-commaBuilder :: BBuilder.Builder
-commaBuilder = BBuilder.charUtf8 ','
-
-instance Newick EpidemicTree where
-  asNewickString (_, p) (Shoot p') =
-    if p /= p'
-      then Nothing
-      else let identifier = personByteString p
-               branchLength = BBuilder.stringUtf8 "Infinity"
-            in Just (identifier <> colonBuilder <> branchLength, [])
-  asNewickString (t, p) (Leaf e) =
-    let identifier = personByteString p
-        branchLength a b = BBuilder.doubleDec td
-          where
-            (TimeDelta td) = timeDelta a b
-     in case e of
-          Infection {} -> Nothing
-          (Removal t' p') ->
-            if p /= p'
-              then Nothing
-              else Just (identifier <> colonBuilder <> branchLength t t', [e])
-          (Sampling t' p') ->
-            if p /= p'
-              then Nothing
-              else Just (identifier <> colonBuilder <> branchLength t t', [e])
-          (Catastrophe t' ps) ->
-            if ps `includesPerson` p
-              then Just (identifier <> colonBuilder <> branchLength t t', [e])
-              else Nothing
-          (Occurrence t' p') ->
-            if p /= p'
-              then Nothing
-              else Just (identifier <> colonBuilder <> branchLength t t', [e])
-          (Disaster t' ps) ->
-            if ps `includesPerson` p
-              then Just (identifier <> colonBuilder <> branchLength t t', [e])
-              else Nothing
-          Extinction -> Nothing
-          StoppingTime -> Nothing
-  asNewickString (t, p) (Branch e lt rt) =
-    case e of
-      (Infection t' p1 p2) ->
-        if p /= p1
-          then Nothing
-          else do
-            (leftNS, leftEs) <- asNewickString (t', p1) lt
-            (rightNS, rightEs) <- asNewickString (t', p2) rt
-            let branchLength = BBuilder.doubleDec td
-                  where
-                    (TimeDelta td) = timeDelta t t'
-            return
-              ( leftBraceBuilder <>
-                leftNS <>
-                commaBuilder <>
-                rightNS <> rightBraceBuilder <> colonBuilder <> branchLength
-              , List.sort $ leftEs ++ rightEs)
-      _ -> Nothing

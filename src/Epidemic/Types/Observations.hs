@@ -16,7 +16,6 @@ import qualified Data.Vector as V
 import Epidemic.Types.Events
   ( EpidemicEvent(..)
   , EpidemicTree(..)
-  , Newick(..)
   , maybeEpidemicTree
   )
 import Epidemic.Types.Time (TimeDelta(..), timeDelta)
@@ -110,58 +109,3 @@ reconstructedTreeEvents rt =
       List.sort $
       obs : (reconstructedTreeEvents rtl ++ reconstructedTreeEvents rtr)
     RLeaf obs -> [obs]
-
-instance Newick ReconstructedTree where
-  asNewickString (t, _) (RLeaf (Observation e)) =
-    let branchLength a b = BBuilder.doubleDec td
-          where
-            (TimeDelta td) = timeDelta a b
-     in case e of
-          (Sampling t' p) ->
-            Just
-              ((personByteString p) <> colonBuilder <> branchLength t t', [e])
-          Infection {} -> Nothing
-          Removal {} -> Nothing
-          (Catastrophe t' ps) ->
-            Just
-              ( catastrophePeopleBuilder ps <> colonBuilder <> branchLength t t'
-              , [e])
-          Occurrence {} -> Nothing
-          Disaster {} -> Nothing
-          Extinction {} -> Nothing
-          StoppingTime {} -> Nothing
-  asNewickString (t, _) (RBranch (Observation e) lt rt) =
-    case e of
-      (Infection t' p1 p2) -> do
-        (leftNS, leftEs) <- asNewickString (t', p1) lt
-        (rightNS, rightEs) <- asNewickString (t', p2) rt
-        let branchLength = BBuilder.doubleDec td
-              where
-                (TimeDelta td) = timeDelta t t'
-        return
-          ( leftBraceBuilder <>
-            leftNS <>
-            commaBuilder <>
-            rightNS <> rightBraceBuilder <> colonBuilder <> branchLength
-          , List.sort $ leftEs ++ rightEs)
-      _ -> Nothing
-
-ampersandBuilder :: BBuilder.Builder
-ampersandBuilder = BBuilder.charUtf8 '&'
-
-catastrophePeopleBuilder :: People -> BBuilder.Builder
-catastrophePeopleBuilder (People persons) =
-  mconcat $
-  List.intersperse ampersandBuilder [personByteString p | p <- V.toList persons]
-
-colonBuilder :: BBuilder.Builder
-colonBuilder = BBuilder.charUtf8 ':'
-
-leftBraceBuilder :: BBuilder.Builder
-leftBraceBuilder = BBuilder.charUtf8 '('
-
-rightBraceBuilder :: BBuilder.Builder
-rightBraceBuilder = BBuilder.charUtf8 ')'
-
-commaBuilder :: BBuilder.Builder
-commaBuilder = BBuilder.charUtf8 ','

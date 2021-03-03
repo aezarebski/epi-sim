@@ -180,7 +180,11 @@ maybeReconstructedTree Branch {} = Nothing
 
 -- | The events from a 'ReconstructedTree'
 eventsInRTree :: ReconstructedTree -> [EpidemicEvent]
-eventsInRTree = undefined
+eventsInRTree node =
+  case node of
+    RBranch e lt rt ->
+      List.insert e (List.sort $ eventsInRTree lt ++ eventsInRTree rt)
+    RLeaf e -> [e]
 
 -- | Predicate for whether an 'EpidemicTree' has a leaf representing a sequenced
 -- sample. This is used to determine if the tree needs to be included in the

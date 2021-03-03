@@ -21,6 +21,7 @@ import Epidemic.Types.Events
   , maybeEpidemicTree
   , maybeReconstructedTree
   , pointProcessEvents
+  , eventsInRTree
   )
 import Epidemic.Types.Parameter
 import Epidemic.Types.Population
@@ -151,14 +152,6 @@ randomDisasterEvent (disastTime, nuProb) (BDSCODPopulation (People currPeople)) 
         ( PopulationSample disastTime (People sampledPeople) False
         , BDSCODPopulation (People unsampledPeople))
 
--- | The events from the nodes of a reconstructed tree __not__ in time sorted
--- order. TODO Double check if this can be replaced with a function from
--- Epidemic.Types.Events!!!
-reconstructedTreeEvents :: ReconstructedTree -> [EpidemicEvent]
-reconstructedTreeEvents node = case node of
-  (RBranch e lt rt) -> e:(reconstructedTreeEvents lt ++ reconstructedTreeEvents rt)
-  (RLeaf e) -> [e]
-
 -- | Just the observable events from a list of all the events that occurred in a
 -- simulation of the BDSCOD-process. These events are the result of extracting
 -- the events from the reconstructed tree and getting the point process events
@@ -170,5 +163,5 @@ observedEvents eEvents = do
   epiTree <- maybeEpidemicTree eEvents
   reconTree <- maybeReconstructedTree epiTree
   let (PointProcessEvents nonReconTreeEvents) = pointProcessEvents epiTree
-  let reconTreeEvents = reconstructedTreeEvents reconTree
+      reconTreeEvents = eventsInRTree reconTree
   return . sort . nub $ nonReconTreeEvents ++ reconTreeEvents

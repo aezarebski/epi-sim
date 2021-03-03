@@ -147,9 +147,8 @@ maybeEpidemicTree [e] =
       if nullPeople popSampPeople
         then Left "The last event is a PopulationSample with no people sampled"
         else Right (Leaf e)
-    Extinction -> Left "Extinction event encountered"
-    StoppingTime -> Left "Stopping time encountered"
-    _ -> Right (Leaf e)
+    Extinction -> Left "Extinction event encountered. It should have been removed"
+    StoppingTime -> Left "Stopping time encountered. It should have been removed"
 maybeEpidemicTree (e:es) =
   case e of
     Infection _ p1 p2 ->
@@ -170,3 +169,5 @@ maybeEpidemicTree (e:es) =
       if nullPeople popSampPeople
         then maybeEpidemicTree es
         else Right (Leaf e)
+    Extinction -> Left "Extinction event encountered. It should have been removed"
+    StoppingTime -> Left "Stopping time encountered. It should have been removed"

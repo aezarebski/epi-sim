@@ -33,6 +33,7 @@ eventPopDelta e =
     Removal {} -> -1
     IndividualSample {} -> -1
     PopulationSample {..} -> fromIntegral $ numPeople popSampPeople
+    StoppingTime -> 0
 
 -- | The first scheduled event after a given time.
 firstScheduled ::
@@ -66,6 +67,8 @@ personsInEvent e =
       V.toList personVec
       where
         (People personVec) = popSampPeople
+    Extinction -> []
+    StoppingTime -> []
 
 peopleInEvents :: [EpidemicEvent] -> People
 peopleInEvents events =

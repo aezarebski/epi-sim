@@ -4,7 +4,7 @@
 
 module Epidemic.Types.Events
   ( EpidemicEvent(Infection, Removal, IndividualSample,
-              PopulationSample)
+              PopulationSample, StoppingTime, Extinction)
   , popSampPeople
   , popSampSeq
   , popSampTime
@@ -27,6 +27,10 @@ import Epidemic.Types.Parameter
 import Epidemic.Types.Population
 import Epidemic.Types.Time (AbsoluteTime(..), TimeDelta(..), timeDelta)
 import GHC.Generics
+
+type Infector = Person
+
+type Infectee = Person
 
 -- | Events that can occur in an epidemic with their absolute time.
 data EpidemicEvent
@@ -115,6 +119,8 @@ derivedFromPeople people (e:es) =
        in if haveCommonPeople people popSampPeople
             then e : derivedEvents
             else derivedEvents
+    Extinction -> derivedFromPeople people es
+    StoppingTime -> derivedFromPeople people es
 
 -- | The whole transmission tree including the unobserved leaves. Lineages that
 -- are still extant are modelled as /shoots/ and contain a 'Person' as their
@@ -158,84 +164,9 @@ maybeEpidemicTree (e:es) =
                  then Right (Shoot p2)
                  else maybeEpidemicTree infecteeEvents
              return $ Branch e leftTree rightTree
-    Removal {} -> Just (Leaf e)
-    IndividualSample {} -> Just (Leaf e)
+    Removal {} -> Right (Leaf e)
+    IndividualSample {} -> Right (Leaf e)
     PopulationSample {..} ->
       if nullPeople popSampPeople
         then maybeEpidemicTree es
-        else Just (Leaf e)
-
--- | The phylogeny reconstructed from all of the sequenced samples.
-data ReconstructedTree
-  = RBranch EpidemicEvent ReconstructedTree ReconstructedTree
-  | RLeaf EpidemicEvent
-  deriving (Show, Eq)
-
-maybeReconstructedTree :: EpidemicTree -> Maybe ReconstructedTree
-maybeReconstructedTree Shoot {} = Nothing
-maybeReconstructedTree (Leaf e) =
-  case e of
-    IndividualSample {..} ->
-      if indSampSeq
-        then Just (RLeaf e)
-        else Nothing
-    PopulationSample {..} ->
-      if popSampSeq
-        then Just (RLeaf e)
-        else Nothing
-    _ -> Nothing
-maybeReconstructedTree (Branch e@Infection {} lt rt)
-  | hasSequencedLeaf lt && hasSequencedLeaf rt = do
-    rlt <- maybeReconstructedTree lt
-    rrt <- maybeReconstructedTree rt
-    Just $ RBranch e rlt rrt
-  | hasSequencedLeaf lt = maybeReconstructedTree lt
-  | hasSequencedLeaf rt = maybeReconstructedTree rt
-  | otherwise = Nothing
-maybeReconstructedTree Branch {} = Nothing
-
--- | The events from a 'ReconstructedTree'
-eventsInRTree :: ReconstructedTree -> [EpidemicEvent]
-eventsInRTree node =
-  case node of
-    RBranch e lt rt ->
-      List.insert e (List.sort $ eventsInRTree lt ++ eventsInRTree rt)
-    RLeaf e -> [e]
-
--- | Predicate for whether an 'EpidemicTree' has a leaf representing a sequenced
--- sample. This is used to determine if the tree needs to be included in the
--- 'ReconstructedTree'.
-hasSequencedLeaf :: EpidemicTree -> Bool
-hasSequencedLeaf Shoot {} = False
-hasSequencedLeaf (Leaf e) =
-  case e of
-    IndividualSample {..} -> indSampSeq
-    PopulationSample {..} -> popSampSeq
-    _ -> False
-hasSequencedLeaf (Branch _ lt rt) = hasSequencedLeaf lt || hasSequencedLeaf rt
-
--- | The non-sequenced events.
-newtype PointProcessEvents =
-  PointProcessEvents [EpidemicEvent]
-
--- | Extract the non-sequenced events from an epidemic tree.
-pointProcessEvents :: EpidemicTree -> PointProcessEvents
-pointProcessEvents Shoot {} = PointProcessEvents []
-pointProcessEvents (Leaf e) =
-  case e of
-    IndividualSample {..} ->
-      PointProcessEvents $
-      if indSampSeq
-        then []
-        else [e]
-    PopulationSample {..} ->
-      PointProcessEvents $
-      if popSampSeq
-        then []
-        else [e]
-    _ -> PointProcessEvents []
-pointProcessEvents (Branch _ lt rt) =
-  let (PointProcessEvents lEs) = pointProcessEvents lt
-      (PointProcessEvents rEs) = pointProcessEvents rt
-      allEs = List.sort $ lEs ++ rEs
-   in PointProcessEvents allEs
+        else Right (Leaf e)

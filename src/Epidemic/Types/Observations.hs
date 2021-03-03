@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 module Epidemic.Types.Observations
@@ -6,6 +7,7 @@ module Epidemic.Types.Observations
   , maybeReconstructedTree
   , PointProcessEvents(..)
   , pointProcessEvents
+  , reconstructedTreeEvents
   , observedEvents
   ) where
 
@@ -39,13 +41,13 @@ newtype PointProcessEvents =
   PointProcessEvents [Observation]
 
 -- | Extract the events from an epidemic tree which are observed but not part of
--- the reconstructed tree.
+-- the reconstructed tree, ie the ones that are not sequenced.
 pointProcessEvents :: EpidemicTree -> PointProcessEvents
 pointProcessEvents Shoot {} = PointProcessEvents []
 pointProcessEvents (Leaf e) =
   case e of
-    Occurrence {} -> PointProcessEvents [Observation e]
-    Disaster {} -> PointProcessEvents [Observation e]
+    IndividualSample {..} -> PointProcessEvents $ if not indSampSeq then [Observation e] else []
+    PopulationSample {..} -> PointProcessEvents $ if not popSampSeq then [Observation e] else []
     _ -> PointProcessEvents []
 pointProcessEvents (Branch _ lt rt) =
   let (PointProcessEvents lEs) = pointProcessEvents lt
@@ -63,13 +65,17 @@ data ReconstructedTree
 -- | The reconstructed phylogeny obtained by pruning an 'EpidemicTree' which
 -- contains represents the transmission tree of the epidemic. In the case where
 -- there are no sequenced samples in the epidemic then there is no tree to
--- reconstruct which is why this function is in the maybe monad.
+-- reconstruct which is why this function is in the either monad.
 maybeReconstructedTree :: EpidemicTree -> Either String ReconstructedTree
 maybeReconstructedTree Shoot {} = Left "EpidemicTree is only a Shoot"
 maybeReconstructedTree (Leaf e) =
   case e of
-    Sampling {} -> Right $ RLeaf (Observation e)
-    Catastrophe {} -> Right $ RLeaf (Observation e)
+    IndividualSample {..} -> if indSampSeq
+                             then Right $ RLeaf (Observation e)
+                             else Left "Leaf with non-sequenced event individual sample"
+    PopulationSample {..} -> if popSampSeq
+                             then Right $ RLeaf (Observation e)
+                             else Left "Leaf with non-sequenced event population sample"
     _ -> Left "Bad leaf in the EpidemicTree"
 maybeReconstructedTree (Branch e@Infection {} lt rt)
   | hasSequencedLeaf lt && hasSequencedLeaf rt = do
@@ -87,8 +93,8 @@ hasSequencedLeaf :: EpidemicTree -> Bool
 hasSequencedLeaf Shoot {} = False
 hasSequencedLeaf (Leaf e) =
   case e of
-    Sampling {} -> True
-    Catastrophe {} -> True
+    IndividualSample {..} -> indSampSeq
+    PopulationSample {..} -> popSampSeq
     _ -> False
 hasSequencedLeaf (Branch _ lt rt) = hasSequencedLeaf lt || hasSequencedLeaf rt
 

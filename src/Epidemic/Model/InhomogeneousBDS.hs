@@ -3,7 +3,6 @@
 
 module Epidemic.Model.InhomogeneousBDS
   ( configuration
-  , observedEvents
   , randomEvent
   , inhomBDSRates
   , InhomBDSRates(..)
@@ -27,12 +26,11 @@ import qualified Data.Vector as V
 import Epidemic
 import Epidemic.Types.Events
   ( EpidemicEvent(..)
-  , eventsInRTree
   , maybeEpidemicTree
-  , maybeReconstructedTree
   )
 import Epidemic.Types.Parameter
 import Epidemic.Types.Population
+import Epidemic.Types.Observations
 import Epidemic.Types.Simulation
   ( SimulationConfiguration(..)
   , SimulationRandEvent(..)
@@ -146,14 +144,3 @@ randomEvent' inhomRates@(InhomBDSRates brts dr sr) currTime pop@(InhomBDSPop (pe
                , InhomBDSPop unselectedPeople
                , currId)
              _ -> error "no birth-death-sampling event selected."
-
--- | The observed events from the epidemic. Any events will be returned in
--- chronological order.
-observedEvents ::
-     [EpidemicEvent] -- ^ All of the simulation events
-  -> Maybe [EpidemicEvent]
-observedEvents [] = Just []
-observedEvents events = do
-  epiTree <- maybeEpidemicTree events
-  recTree <- maybeReconstructedTree epiTree
-  Just . sort $ eventsInRTree recTree

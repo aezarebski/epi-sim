@@ -11,6 +11,8 @@ import Epidemic
 import qualified Epidemic.Model.BDSCOD as BDSCOD
 import qualified Epidemic.Model.InhomogeneousBDS as InhomBDS
 import Epidemic.Types.Events
+import Epidemic.Types.Observations
+import Epidemic.Types.Time
 import Epidemic.Types.Newick
 import Epidemic.Types.Parameter
 import Epidemic.Types.Population
@@ -18,6 +20,14 @@ import Epidemic.Utility
 import Statistics.Sample
 import qualified System.Random.MWC as MWC
 import Test.Hspec
+
+isRight x = case x of
+  Right _ -> True
+  Left _ -> False
+
+either2Maybe x = case x of
+  Right v -> Just v
+  Left _ -> Nothing
 
 -- | y is within n% of x from x.
 withinNPercent n x y = x - d < y && y < x + d
@@ -143,12 +153,12 @@ eventHandlingTests = do
             , PopulationSample (AbsoluteTime 2.0) (asPeople [p1, p2]) True
             ]
       (length demoEvents == 4) `shouldBe` True
-      ((length <$> BDSCOD.observedEvents (tail demoEvents)) == (Just 2)) `shouldBe`
+      ((length <$> observedEvents (tail demoEvents)) == (Right 2)) `shouldBe`
         True
-      ((length <$> BDSCOD.observedEvents (demoEvents)) == (Just 2)) `shouldBe`
+      ((length <$> observedEvents (demoEvents)) == (Right 2)) `shouldBe`
         True
-      (BDSCOD.observedEvents (demoEvents) ==
-       BDSCOD.observedEvents (tail demoEvents)) `shouldBe`
+      (observedEvents (demoEvents) ==
+       observedEvents (tail demoEvents)) `shouldBe`
         True
       (maybeEpidemicTree (demoEvents) == maybeEpidemicTree (tail demoEvents)) `shouldBe`
         True
@@ -204,7 +214,7 @@ eventHandlingTests = do
         False
   describe "Disaster definitions" $ do
     it "Disasters are handled correctly" $ do
-      (demoSampleEvents04 == fromJust (BDSCOD.observedEvents demoFullEvents04)) `shouldBe`
+      ((Right $ [Observation e | e <- demoSampleEvents04]) == (observedEvents demoFullEvents04)) `shouldBe`
         True
     it "Disasters can be simulated" $ do
       demoSim <-
@@ -361,12 +371,12 @@ illFormedTreeTest =
           , [(simNuTime, simNu)])
         simConfig = BDSCOD.configuration simDuration simParams
      in it "stress testing the observed events function" $ do
-          null (BDSCOD.observedEvents []) `shouldBe` True
+          null (observedEvents []) `shouldBe` True
           simEvents <-
             simulation True (fromJust simConfig) (allEvents BDSCOD.randomEvent)
           any isReconTreeLeaf simEvents `shouldBe` True
-          (length (fromJust $ BDSCOD.observedEvents simEvents) > 1) `shouldBe`
-            True
+          let (Right oes) = observedEvents simEvents
+          (length oes > 1) `shouldBe` True
 
 inhomogeneousBDSTest =
   describe "InhomogeneousBDS module tests" $ do
@@ -382,8 +392,8 @@ inhomogeneousBDSTest =
             , IndividualSample (AbsoluteTime 0.2) p1 True
             , IndividualSample (AbsoluteTime 0.4) p2 True
             ]
-          compObsEvents = InhomBDS.observedEvents demoAllEvents
-       in do (compObsEvents == (Just demoObsEvents)) `shouldBe` True
+          compObsEvents = observedEvents demoAllEvents
+       in do (compObsEvents == (Right [Observation e | e <- demoObsEvents])) `shouldBe` True
 
 helperTypeTests = do
   describe "Helpers for working with the types" $ do
@@ -546,7 +556,7 @@ newickTests =
           foo == bar `shouldBe` True
         it "maybeEpidemicTree works as expected: 1" $ do
           let e1 = Removal (AbsoluteTime 1) (Person (Identifier 1))
-          maybeEpidemicTree [e1] == Just (Leaf e1) `shouldBe` True
+          maybeEpidemicTree [e1] == Right (Leaf e1) `shouldBe` True
           let t1 =
                 maybeEpidemicTree
                   [ Infection
@@ -563,7 +573,7 @@ newickTests =
                       True
                   ]
           let t2 =
-                Just
+                Right
                   (Branch
                      (Infection
                         (AbsoluteTime 0.3)
@@ -586,7 +596,7 @@ newickTests =
                 (Person (Identifier 1))
                 (Person (Identifier 2))
             ] ==
-            Just
+            Right
               (Branch
                  (Infection
                     (AbsoluteTime 0.3)
@@ -602,7 +612,7 @@ newickTests =
                 (Person (Identifier 2))
             , IndividualSample (AbsoluteTime 0.7) (Person (Identifier 1)) True
             ] ==
-            Just
+            Right
               (Branch
                  (Infection
                     (AbsoluteTime 0.3)
@@ -633,7 +643,7 @@ newickTests =
                     (Person (Identifier 1))
                     True
                 ]
-          isJust (maybeEpidemicTree trickyEvents) `shouldBe` True
+          isRight (maybeEpidemicTree trickyEvents) `shouldBe` True
         it "maybeEpidemicTree works as expected: 2" $ do
           let p1 = Person (Identifier 1)
               p2 = Person (Identifier 2)
@@ -664,10 +674,10 @@ newickTests =
             (asNewickString
                (AbsoluteTime 0, Person (Identifier 1))
                (RLeaf
-                  (IndividualSample
+                  (Observation (IndividualSample
                      (AbsoluteTime 1)
                      (Person (Identifier 1))
-                     True))) `shouldBe`
+                     True)))) `shouldBe`
             True
           let trickyEvents =
                 [ Infection
@@ -687,9 +697,9 @@ newickTests =
                     (Person (Identifier 1))
                     True
                 ]
-          let maybeNewickPair =
-                asNewickString (AbsoluteTime 0, Person (Identifier 1)) =<<
-                maybeReconstructedTree =<< maybeEpidemicTree trickyEvents
+          let et = maybeEpidemicTree trickyEvents :: Either String EpidemicTree
+              rt = maybeReconstructedTree =<< et :: Either String ReconstructedTree
+              maybeNewickPair = asNewickString (AbsoluteTime 0, Person (Identifier 1)) =<< (either2Maybe rt)
           let newickTarget =
                 BBuilder.stringUtf8 "(1:0.39999999999999997,3:0.3):0.3"
           isJust maybeNewickPair `shouldBe` True
@@ -700,11 +710,11 @@ newickTests =
                 (asNewickString
                    (AbsoluteTime 0, Person (Identifier 1))
                    (RLeaf
-                      (PopulationSample
+                      (Observation (PopulationSample
                          (AbsoluteTime 1)
                          (asPeople
                             [Person (Identifier 1), Person (Identifier 2)])
-                         True)))
+                         True))))
           let catasTarget = BBuilder.stringUtf8 "1&2:1.0"
           equalBuilders catasTarget (fst $ fromJust catasNewick) `shouldBe` True
 

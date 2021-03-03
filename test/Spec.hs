@@ -5,7 +5,6 @@ import Control.Monad
 import qualified Data.Aeson as Json
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Builder as BBuilder
-import Data.Csv
 import Data.Maybe (fromJust, isJust, isNothing)
 import qualified Data.Vector as V
 import Epidemic
@@ -25,44 +24,38 @@ withinNPercent n x y = x - d < y && y < x + d
     d = n * x / 100
 
 p1 = Person (Identifier 1)
-
 p2 = Person (Identifier 2)
-
 p3 = Person (Identifier 3)
-
 p4 = Person (Identifier 4)
-
 p5 = Person (Identifier 5)
-
 p6 = Person (Identifier 6)
-
 p7 = Person (Identifier 7)
 
 -- | The first set of test data does not have any catastrophe events.
 demoFullEvents01 =
   [ Infection (AbsoluteTime 1) p1 p2
   , Infection (AbsoluteTime 2) p1 p3
-  , Sampling (AbsoluteTime 3) p1
+  , IndividualSample (AbsoluteTime 3) p1 True
   , Infection (AbsoluteTime 4) p2 p4
   , Infection (AbsoluteTime 5) p2 p5
-  , Sampling (AbsoluteTime 6) p4
+  , IndividualSample (AbsoluteTime 6) p4 True
   , Infection (AbsoluteTime 7) p3 p6
-  , Occurrence (AbsoluteTime 8) p2
+  , IndividualSample (AbsoluteTime 8) p2 False
   , Removal (AbsoluteTime 9) p3
   , Infection (AbsoluteTime 10) p5 p7
-  , Occurrence (AbsoluteTime 11) p6
-  , Sampling (AbsoluteTime 12) p5
+  , IndividualSample (AbsoluteTime 11) p6 False
+  , IndividualSample (AbsoluteTime 12) p5 True
   , Removal (AbsoluteTime 13) p7
   ]
 
 demoSampleEvents01 =
   [ Infection (AbsoluteTime 1) p1 p2
-  , Sampling (AbsoluteTime 3) p1
+  , IndividualSample (AbsoluteTime 3) p1 True
   , Infection (AbsoluteTime 4) p2 p4
-  , Sampling (AbsoluteTime 6) p4
-  , Occurrence (AbsoluteTime 8) p2
-  , Occurrence (AbsoluteTime 11) p6
-  , Sampling (AbsoluteTime 12) p5
+  , IndividualSample (AbsoluteTime 6) p4 True
+  , IndividualSample (AbsoluteTime 8) p2 False
+  , IndividualSample (AbsoluteTime 11) p6 False
+  , IndividualSample (AbsoluteTime 12) p5 True
   ]
 
 -- | The second set of test data is the same as the first but includes a
@@ -70,76 +63,76 @@ demoSampleEvents01 =
 demoFullEvents02 =
   [ Infection (AbsoluteTime 1) p1 p2
   , Infection (AbsoluteTime 2) p1 p3
-  , Sampling (AbsoluteTime 3) p1
+  , IndividualSample (AbsoluteTime 3) p1 True
   , Infection (AbsoluteTime 4) p2 p4
   , Infection (AbsoluteTime 5) p2 p5
-  , Sampling (AbsoluteTime 6) p4
+  , IndividualSample (AbsoluteTime 6) p4 True
   , Infection (AbsoluteTime 7) p3 p6
-  , Occurrence (AbsoluteTime 8) p2
+  , IndividualSample (AbsoluteTime 8) p2 False
   , Removal (AbsoluteTime 9) p3
   , Infection (AbsoluteTime 10) p5 p7
-  , Catastrophe (AbsoluteTime 11) (asPeople [p5])
-  , Occurrence (AbsoluteTime 12) p6
+  , PopulationSample (AbsoluteTime 11) (asPeople [p5]) True
+  , IndividualSample (AbsoluteTime 12) p6 False
   , Removal (AbsoluteTime 13) p7
   ]
 
 demoSampleEvents02 =
   [ Infection (AbsoluteTime 1) p1 p2
-  , Sampling (AbsoluteTime 3) p1
+  , IndividualSample (AbsoluteTime 3) p1 True
   , Infection (AbsoluteTime 4) p2 p4
-  , Sampling (AbsoluteTime 6) p4
-  , Occurrence (AbsoluteTime 8) p2
-  , Catastrophe (AbsoluteTime 11) (asPeople [p5])
-  , Occurrence (AbsoluteTime 12) p6
+  , IndividualSample (AbsoluteTime 6) p4 True
+  , IndividualSample (AbsoluteTime 8) p2 False
+  , PopulationSample (AbsoluteTime 11) (asPeople [p5]) True
+  , IndividualSample (AbsoluteTime 12) p6 False
   ]
 
 -- | Another test set to test that catastrophes are handled correctly.
 demoFullEvents03 =
   [ Infection (AbsoluteTime 1) p1 p4
   , Infection (AbsoluteTime 2) p1 p2
-  , Sampling (AbsoluteTime 3) p1
+  , IndividualSample (AbsoluteTime 3) p1 True
   , Infection (AbsoluteTime 4) p2 p3
   , Infection (AbsoluteTime 5) p4 p5
-  , Catastrophe (AbsoluteTime 6) (asPeople [p2, p3, p4])
+  , PopulationSample (AbsoluteTime 6) (asPeople [p2, p3, p4]) True
   ]
 
 demoSampleEvents03 =
   [ Infection (AbsoluteTime 1) p1 p4
   , Infection (AbsoluteTime 2) p1 p2
-  , Sampling (AbsoluteTime 3) p1
+  , IndividualSample (AbsoluteTime 3) p1 True
   , Infection (AbsoluteTime 4) p2 p3
-  , Catastrophe (AbsoluteTime 6) (asPeople [p2, p3, p4])
+  , PopulationSample (AbsoluteTime 6) (asPeople [p2, p3, p4]) True
   ]
 
 -- | Another test to make sure that disasters are handled.
 demoFullEvents04 =
   [ Infection (AbsoluteTime 1) p1 p4
   , Infection (AbsoluteTime 2) p1 p2
-  , Sampling (AbsoluteTime 3) p1
+  , IndividualSample (AbsoluteTime 3) p1 True
   , Infection (AbsoluteTime 4) p2 p3
   , Infection (AbsoluteTime 5) p4 p5
-  , Catastrophe (AbsoluteTime 6) (asPeople [p2, p3, p4])
+  , PopulationSample (AbsoluteTime 6) (asPeople [p2, p3, p4]) True
   , Infection (AbsoluteTime 7) p5 p6
   , Infection (AbsoluteTime 8) p5 p7
-  , Disaster (AbsoluteTime 9) (asPeople [p5, p6])
+  , PopulationSample (AbsoluteTime 9) (asPeople [p5, p6]) False
   ]
 
 demoSampleEvents04 =
   [ Infection (AbsoluteTime 1) p1 p4
   , Infection (AbsoluteTime 2) p1 p2
-  , Sampling (AbsoluteTime 3) p1
+  , IndividualSample (AbsoluteTime 3) p1 True
   , Infection (AbsoluteTime 4) p2 p3
-  , Catastrophe (AbsoluteTime 6) (asPeople [p2, p3, p4])
-  , Disaster (AbsoluteTime 9) (asPeople [p5, p6])
+  , PopulationSample (AbsoluteTime 6) (asPeople [p2, p3, p4]) True
+  , PopulationSample (AbsoluteTime 9) (asPeople [p5, p6]) False
   ]
 
 eventHandlingTests = do
   describe "Post-simulation processing" $ do
     it "Extracting observed events" $ do
-      let demoEvents = [Catastrophe (AbsoluteTime 0.5) (asPeople []) -- Because the first event is a null event it can be ignored!
+      let demoEvents = [PopulationSample (AbsoluteTime 0.5) (asPeople []) True -- Because the first event is a null event it can be ignored!
                        ,Infection (AbsoluteTime 1.0) p1 p2
-                       ,Catastrophe (AbsoluteTime 1.5) (asPeople [])
-                       ,Catastrophe (AbsoluteTime 2.0) (asPeople [p1,p2])]
+                       ,PopulationSample (AbsoluteTime 1.5) (asPeople []) True
+                       ,PopulationSample (AbsoluteTime 2.0) (asPeople [p1,p2]) True]
       (length demoEvents == 4) `shouldBe` True
       ((length <$> BDSCOD.observedEvents (tail demoEvents)) == (Just 2)) `shouldBe` True
       ((length <$> BDSCOD.observedEvents (demoEvents)) == (Just 2)) `shouldBe` True
@@ -233,31 +226,6 @@ helperFuncTests = do
       (isJust $ InhomBDS.inhomBDSRates timedBirthRate 0.5 0.5) `shouldBe` False
 
 
-
-readwriteTests =
-  do
-    describe "Change Event read/write" $ do
-      it "check we can writte an event" $
-        let demoPerson = Person (Identifier 3)
-            demoPersonField = toField demoPerson
-            demoPersonField' = "3"
-            demoEvent = Removal (AbsoluteTime 1.0) demoPerson
-            demoRecord = toRecord demoEvent
-            demoRecord' = V.fromList ["removal", "1.0", "3", "NA"] :: Record
-            (Right demoEvent') =
-              runParser (parseRecord demoRecord) :: Either String EpidemicEvent
-            demoRecord2 =
-              toRecord (Catastrophe (AbsoluteTime 1.0) (asPeople [p2, p3]))
-            (Right demoEvent2@(Catastrophe _ people2)) =
-              runParser (parseRecord demoRecord2) :: Either String EpidemicEvent
-            demoRecord2' = toRecord demoEvent2
-         in do (demoPersonField' == demoPersonField) `shouldBe` True
-               (demoRecord' == demoRecord) `shouldBe` True
-               (demoEvent' == demoEvent) `shouldBe` True
-               (demoRecord2' == demoRecord2) `shouldBe` True
-               (numPeople people2 == 2) `shouldBe` True
-
-
 inhomExpTests =
   describe "Test the inhomogeneous exponential variate generator" $
   let rate1 = 2.0
@@ -319,15 +287,15 @@ inhomogeneousBDSTest =
   describe "InhomogeneousBDS module tests" $ do
     it "Check the observedEvents filters out removals" $
       let demoAllEvents = [Infection (AbsoluteTime 0.1) p1 p2
-                          ,Sampling (AbsoluteTime 0.2) p1
+                          ,IndividualSample (AbsoluteTime 0.2) p1 True
                           ,Removal (AbsoluteTime 0.3) p3
-                          ,Sampling (AbsoluteTime 0.4) p2]
+                          ,IndividualSample (AbsoluteTime 0.4) p2 True]
           demoObsEvents = [Infection (AbsoluteTime 0.1) p1 p2
-                          ,Sampling (AbsoluteTime 0.2) p1
-                          ,Sampling (AbsoluteTime 0.4) p2]
+                          ,IndividualSample (AbsoluteTime 0.2) p1 True
+                          ,IndividualSample (AbsoluteTime 0.4) p2 True]
           compObsEvents = InhomBDS.observedEvents demoAllEvents
        in do
-        (compObsEvents == demoObsEvents) `shouldBe` True
+        (compObsEvents == (Just demoObsEvents)) `shouldBe` True
 
 
 helperTypeTests = do
@@ -405,22 +373,22 @@ newickTests =
         maybeEpidemicTree
           [ Infection (AbsoluteTime 1) p1 p2
           , Infection (AbsoluteTime 2) p2 p3
-          , Catastrophe (AbsoluteTime 3) (asPeople [p1, p3])
+          , PopulationSample (AbsoluteTime 3) (asPeople [p1, p3]) True
           , Removal (AbsoluteTime 4) p2
           ]
       maybeEpiTree' =
         maybeEpidemicTree
           [ Infection (AbsoluteTime 1) p1 p2
           , Infection (AbsoluteTime 2) p2 p3
-          , Catastrophe (AbsoluteTime 3) (asPeople [p1, p3])
-          , Sampling (AbsoluteTime 4) p2
+          , PopulationSample (AbsoluteTime 3) (asPeople [p1, p3]) True
+          , IndividualSample (AbsoluteTime 4) p2 True
           ]
       maybeEpiTree'' =
         maybeEpidemicTree
           [ Infection (AbsoluteTime 1) p1 p2
           , Infection (AbsoluteTime 2) p2 p3
-          , Disaster (AbsoluteTime 3) (asPeople [p1, p3])
-          , Sampling (AbsoluteTime 4) p2
+          , PopulationSample (AbsoluteTime 3) (asPeople [p1, p3]) False
+          , IndividualSample (AbsoluteTime 4) p2 True
           ]
    in describe "Writing to Newick" $ do
     it "equalBuilders works as expected" $ do
@@ -440,13 +408,13 @@ newickTests =
             derivedFrom
             (Person (Identifier 1))
             [ Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2))
-            , Sampling (AbsoluteTime 0.7) (Person (Identifier 1))
+            , IndividualSample (AbsoluteTime 0.7) (Person (Identifier 1)) True
             ]
       let bar =
             derivedFrom
             (Person (Identifier 2))
             [ Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2))
-            , Sampling (AbsoluteTime 0.7) (Person (Identifier 1))
+            , IndividualSample (AbsoluteTime 0.7) (Person (Identifier 1)) True
             ]
       foo == bar `shouldBe` True
     it "maybeEpidemicTree works as expected: 1" $ do
@@ -455,15 +423,15 @@ newickTests =
           let t1 =
                 maybeEpidemicTree
                   [ Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2))
-                  , Sampling (AbsoluteTime 0.6) (Person (Identifier 2))
-                  , Sampling (AbsoluteTime 0.7) (Person (Identifier 1))
+                  , IndividualSample (AbsoluteTime 0.6) (Person (Identifier 2)) True
+                  , IndividualSample (AbsoluteTime 0.7) (Person (Identifier 1)) True
                   ]
           let t2 =
                 Just
                   (Branch
                      (Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2)))
-                     (Leaf (Sampling (AbsoluteTime 0.7) (Person (Identifier 1))))
-                     (Leaf (Sampling (AbsoluteTime 0.6) (Person (Identifier 2)))))
+                     (Leaf (IndividualSample (AbsoluteTime 0.7) (Person (Identifier 1)) True))
+                     (Leaf (IndividualSample (AbsoluteTime 0.6) (Person (Identifier 2)) True)))
           t1 == t2 `shouldBe` True
           maybeEpidemicTree [Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2))] ==
             Just
@@ -474,48 +442,52 @@ newickTests =
             True
           maybeEpidemicTree
             [ Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2))
-            , Sampling (AbsoluteTime 0.7) (Person (Identifier 1))
+            , IndividualSample (AbsoluteTime 0.7) (Person (Identifier 1)) True
             ] ==
             Just
               (Branch
                  (Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2)))
-                 (Leaf (Sampling (AbsoluteTime 0.7) (Person (Identifier 1))))
+                 (Leaf (IndividualSample (AbsoluteTime 0.7) (Person (Identifier 1)) True))
                  (Shoot (Person (Identifier 2)))) `shouldBe`
             True
           let trickyEvents =
                 [ Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2))
                 , Infection (AbsoluteTime 0.4) (Person (Identifier 2)) (Person (Identifier 3))
-                , Sampling (AbsoluteTime 0.6) (Person (Identifier 3))
-                , Sampling (AbsoluteTime 0.7) (Person (Identifier 1))
+                , IndividualSample (AbsoluteTime 0.6) (Person (Identifier 3)) True
+                , IndividualSample (AbsoluteTime 0.7) (Person (Identifier 1)) True
                 ]
           isJust (maybeEpidemicTree trickyEvents) `shouldBe` True
     it "maybeEpidemicTree works as expected: 2" $ do
       let p1 = Person (Identifier 1)
           p2 = Person (Identifier 2)
-          demoEvents = [Catastrophe (AbsoluteTime 0.5) (asPeople []) -- Because the first event is a null event it can be ignored!
+          demoEvents = [PopulationSample (AbsoluteTime 0.5) (asPeople []) True -- Because the first event is a null event it can be ignored!
                        ,Infection (AbsoluteTime 1.0) p1 p2
-                       ,Catastrophe (AbsoluteTime 1.5) (asPeople [])
-                       ,Catastrophe (AbsoluteTime 2.0) (asPeople [p1,p2])]
+                       ,PopulationSample (AbsoluteTime 1.5) (asPeople []) True
+                       ,PopulationSample (AbsoluteTime 2.0) (asPeople [p1,p2]) True]
       (length demoEvents == 4) `shouldBe` True
       (maybeEpidemicTree demoEvents == maybeEpidemicTree (tail demoEvents)) `shouldBe` True
-    it "asNewickString works for EpidemicTree" $ do
-      let trickyEvents = [Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2)),Infection (AbsoluteTime 0.4) (Person (Identifier 2)) (Person (Identifier 3)),Sampling (AbsoluteTime 0.6) (Person (Identifier 3)),Sampling (AbsoluteTime 0.7) (Person (Identifier 1))]
-      let maybeNewickPair = asNewickString (AbsoluteTime 0, Person (Identifier 1)) =<< maybeEpidemicTree trickyEvents
-      let newickTarget = BBuilder.stringUtf8 "(1:0.39999999999999997,(2:Infinity,3:0.19999999999999996):0.10000000000000003):0.3"
-      let maybeReconTree = maybeReconstructedTree =<< maybeEpidemicTree trickyEvents
-      isJust maybeNewickPair `shouldBe` True
-      [Sampling (AbsoluteTime 0.6) (Person (Identifier 3)),Sampling (AbsoluteTime 0.7) (Person (Identifier 1))] == snd (fromJust maybeNewickPair) `shouldBe` True
-      equalBuilders newickTarget (fst $ fromJust maybeNewickPair) `shouldBe` True
-      isJust maybeReconTree `shouldBe` True
+    -- it "asNewickString works for EpidemicTree" $ do
+    --   let trickyEvents = [
+    --         Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2)),
+    --         Infection (AbsoluteTime 0.4) (Person (Identifier 2)) (Person (Identifier 3)),
+    --         IndividualSample (AbsoluteTime 0.6) (Person (Identifier 3)) True,
+    --         IndividualSample (AbsoluteTime 0.7) (Person (Identifier 1)) True]
+    --   let maybeNewickPair = asNewickString (AbsoluteTime 0, Person (Identifier 1)) =<< maybeEpidemicTree trickyEvents
+    --   let newickTarget = BBuilder.stringUtf8 "(1:0.39999999999999997,(2:Infinity,3:0.19999999999999996):0.10000000000000003):0.3"
+    --   let maybeReconTree = maybeReconstructedTree =<< maybeEpidemicTree trickyEvents
+    --   isJust maybeNewickPair `shouldBe` True
+    --   [IndividualSample (AbsoluteTime 0.6) (Person (Identifier 3)) True, IndividualSample (AbsoluteTime 0.7) (Person (Identifier 1)) True] == snd (fromJust maybeNewickPair) `shouldBe` True
+    --   equalBuilders newickTarget (fst $ fromJust maybeNewickPair) `shouldBe` True
+    --   isJust maybeReconTree `shouldBe` True
     it "asNewickString works for ReconstructedTree" $ do
-      isJust (asNewickString (AbsoluteTime 0,Person (Identifier 1)) (RLeaf (Sampling (AbsoluteTime 1) (Person (Identifier 1))))) `shouldBe` True
-      let trickyEvents = [Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2)),Infection (AbsoluteTime 0.4) (Person (Identifier 2)) (Person (Identifier 3)),Sampling (AbsoluteTime 0.6) (Person (Identifier 3)),Sampling (AbsoluteTime 0.7) (Person (Identifier 1))]
+      isJust (asNewickString (AbsoluteTime 0,Person (Identifier 1)) (RLeaf (IndividualSample (AbsoluteTime 1) (Person (Identifier 1)) True))) `shouldBe` True
+      let trickyEvents = [Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2)),Infection (AbsoluteTime 0.4) (Person (Identifier 2)) (Person (Identifier 3)),IndividualSample (AbsoluteTime 0.6) (Person (Identifier 3)) True ,IndividualSample (AbsoluteTime 0.7) (Person (Identifier 1)) True]
       let maybeNewickPair = asNewickString (AbsoluteTime 0, Person (Identifier 1)) =<< maybeReconstructedTree =<< maybeEpidemicTree trickyEvents
       let newickTarget = BBuilder.stringUtf8 "(1:0.39999999999999997,3:0.3):0.3"
       isJust maybeNewickPair `shouldBe` True
-      [Sampling (AbsoluteTime 0.6) (Person (Identifier 3)),Sampling (AbsoluteTime 0.7) (Person (Identifier 1))] == snd (fromJust maybeNewickPair) `shouldBe` True
+      [IndividualSample (AbsoluteTime 0.6) (Person (Identifier 3)) True ,IndividualSample (AbsoluteTime 0.7) (Person (Identifier 1)) True] == snd (fromJust maybeNewickPair) `shouldBe` True
       equalBuilders newickTarget (fst $ fromJust maybeNewickPair) `shouldBe` True
-      let catasNewick = (asNewickString (AbsoluteTime 0,Person (Identifier 1)) (RLeaf (Catastrophe (AbsoluteTime 1) (asPeople [Person (Identifier 1),Person (Identifier 2)]))))
+      let catasNewick = (asNewickString (AbsoluteTime 0,Person (Identifier 1)) (RLeaf (PopulationSample (AbsoluteTime 1) (asPeople [Person (Identifier 1),Person (Identifier 2)]) True)))
       let catasTarget =  BBuilder.stringUtf8 "1&2:1.0"
       equalBuilders catasTarget (fst $ fromJust catasNewick) `shouldBe` True
 
@@ -524,7 +496,6 @@ main =
   hspec $ do
     eventHandlingTests
     helperFuncTests
-    readwriteTests
     inhomExpTests
     illFormedTreeTest
     inhomogeneousBDSTest

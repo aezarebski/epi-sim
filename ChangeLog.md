@@ -2,7 +2,73 @@
 
 ## 0.4.0.0
 
-- Remove CSV export, now there is only JSON export.
+- The following changes to the `EpidemicEvent` type will be the real sticking
+  point in moving from `0.3.0.0` to `0.4.0.0`:
+  
+```
+-- | Events that can occur in an epidemic with their absolute time.
+data EpidemicEvent
+  = Infection AbsoluteTime Person Person -- ^ infection time, infector, infectee
+  | Removal AbsoluteTime Person -- ^ removal without observation
+  | Sampling AbsoluteTime Person -- ^ removal and inclusion in phylogeny
+  | Catastrophe AbsoluteTime People -- ^ scheduled sampling of lineages
+  | Occurrence AbsoluteTime Person -- ^ removal and observed by not in phylogeny
+  | Disaster AbsoluteTime People -- ^ scheduled occurrence of lineages
+  | Extinction -- ^ epidemic went extinct time time can be recovered from the preceeding removal
+  | StoppingTime -- ^ the simulation reached the stopping time
+  deriving (Show, Generic, Eq)
+```
+
+becomes
+
+```
+-- | Events that can occur in an epidemic with their absolute time.
+data EpidemicEvent
+  = Infection AbsoluteTime Infector Infectee
+  | Removal AbsoluteTime Person
+  | IndividualSample
+      { indSampTime :: AbsoluteTime
+      , indSampPerson :: Person
+      , indSampSeq :: Bool
+      }
+  | PopulationSample
+      { popSampTime :: AbsoluteTime
+      , popSampPeople :: People
+      , popSampSeq :: Bool
+      }
+  | Extinction -- ^ epidemic went extinct time time can be recovered from the preceeding removal
+  | StoppingTime -- ^ the simulation reached the stopping time
+  deriving (Show, Generic, Eq)
+```
+ 
+- Remove CSV export, now there is only JSON export. If you want to include an
+  orphan instance for working with `cassava` the following might be useful
+
+```
+instance Csv.ToRecord EpidemicEvent where
+  toRecord e =
+    case e of
+      (Infection time person1 person2) ->
+        Csv.record
+          [ "infection"
+          , Csv.toField time
+          , Csv.toField person1
+          , Csv.toField person2
+          ]
+      (Removal time person) ->
+        Csv.record ["removal", Csv.toField time, Csv.toField person, "NA"]
+      (Sampling time person) ->
+        Csv.record ["sampling", Csv.toField time, Csv.toField person, "NA"]
+      (Catastrophe time people) ->
+        Csv.record ["catastrophe", Csv.toField time, Csv.toField people, "NA"]
+      (Occurrence time person) ->
+        Csv.record ["occurrence", Csv.toField time, Csv.toField person, "NA"]
+      (Disaster time people) ->
+        Csv.record ["disaster", Csv.toField time, Csv.toField people, "NA"]
+      Extinction -> Csv.record ["extinction", "NA", "NA", "NA"]
+      StoppingTime -> Csv.record ["stop", "NA", "NA", "NA"]
+```
+
 - Move the Newick material into `Epidemic.Types.Newick`.
 - Remvoe the `TransmissionTree` and `SampleTree` data types because there is
   already the `EpidemicTree` and `ReconstructedTree` in the

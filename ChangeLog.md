@@ -2,6 +2,9 @@
 
 ## 0.4.0.0
 
+- Add the `allEventsWithSystemRandom` function as an alternative to `allEvents`
+  for when you need this function to run with the system PRNG rather than
+  passing in your own generator.
 - The following changes to the `EpidemicEvent` type will be the real sticking
   point in moving from `0.3.0.0` to `0.4.0.0`:
   

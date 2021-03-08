@@ -133,3 +133,17 @@ allEvents simRandEvent@(SimulationRandEvent randEvent) modelParams maxTime maybe
                 SimulationState
                   (currTime, Extinction : currEvents, currPop, currId)
     else return TerminatedSimulation
+
+-- | Same as the 'allEvents' function but this time using the system random
+-- state to initialise the PRNG.
+allEventsWithSystemRandom ::
+     (ModelParameters a b, Population b)
+  => SimulationRandEvent a b
+  -> a
+  -> AbsoluteTime
+  -> Maybe (b -> Bool) -- ^ predicate for a valid population
+  -> SimulationState b
+  -> IO (SimulationState b)
+allEventsWithSystemRandom _ _ _ _ TerminatedSimulation = return TerminatedSimulation
+allEventsWithSystemRandom simRandEvent modelParams maxTime maybePopPredicate simState =
+  withSystemRandom $ \gen -> allEvents simRandEvent modelParams maxTime maybePopPredicate simState gen

@@ -28,13 +28,9 @@ import Epidemic.Types.Population
 import Epidemic.Types.Time (AbsoluteTime(..), TimeDelta(..), timeDelta)
 import GHC.Generics
 
-type Infector = Person
-
-type Infectee = Person
-
 -- | Events that can occur in an epidemic with their absolute time.
 data EpidemicEvent
-  = Infection AbsoluteTime Infector Infectee
+  = Infection AbsoluteTime Person Person -- ^ absolute time; infector; infectee
   | Removal AbsoluteTime Person
   | IndividualSample
       { indSampTime :: AbsoluteTime

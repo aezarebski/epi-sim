@@ -1,8 +1,11 @@
 # Changelog for epi-sim
 
-## 0.4.0.0
+## 0.4.1
 
 - Update the `simulationWithSystemRandom` function so that this works again.
+
+## 0.4.0.0
+
 - The following changes to the `EpidemicEvent` type will be the real sticking
   point in moving from `0.3.0.0` to `0.4.0.0`:
   

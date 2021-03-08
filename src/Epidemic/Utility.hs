@@ -157,7 +157,7 @@ simulationWithSystemRandom ::
      (ModelParameters a b, Population b)
   => Bool -- ^ Condition upon at least two leaves in the reconstructed tree
   -> SimulationConfiguration a b
-  -> (a -> AbsoluteTime -> SimulationState b -> GenIO -> IO (SimulationState b))
+  -> (a -> AbsoluteTime -> Maybe (b -> Bool) -> SimulationState b -> GenIO -> IO (SimulationState b))
   -> IO [EpidemicEvent]
 simulationWithSystemRandom atLeastCherry config@SimulationConfiguration {..} allEventsFunc = do
   SimulationState (_, events, _, _) <-
@@ -165,6 +165,7 @@ simulationWithSystemRandom atLeastCherry config@SimulationConfiguration {..} all
       allEventsFunc
         scRates
         (timeAfterDelta scStartTime scSimDuration)
+        scValidPopulation
         (SimulationState (AbsoluteTime 0, [], scPopulation, scNewIdentifier))
         g
   if atLeastCherry

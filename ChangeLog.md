@@ -1,5 +1,10 @@
 # Changelog for epi-sim
 
+## 0.4.2
+
+- Documentation.
+- Bug fix in edge case of no sequenced samples.
+
 ## 0.4.1
 
 - Update the `simulationWithSystemRandom` function so that this works again.

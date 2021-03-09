@@ -5,6 +5,7 @@ import Control.Monad
 import qualified Data.Aeson as Json
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Builder as BBuilder
+import Data.Either (isRight)
 import Data.Maybe (fromJust, isJust, isNothing)
 import qualified Data.Vector as V
 import Epidemic
@@ -21,10 +22,7 @@ import Statistics.Sample
 import qualified System.Random.MWC as MWC
 import Test.Hspec
 
-isRight x = case x of
-  Right _ -> True
-  Left _ -> False
-
+-- | Helper function for converting from Either to Maybe monad.
 either2Maybe x = case x of
   Right v -> Just v
   Left _ -> Nothing

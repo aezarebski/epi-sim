@@ -57,6 +57,8 @@ instance ModelParameters InhomBDSRates InhomBDSPop where
   birthProb _ (InhomBDSRates timedBirthRate deathRate sampleRate) time =
     liftM (\br -> br / (br + deathRate + sampleRate)) $
     cadlagValue timedBirthRate time
+  eventWeights _ (InhomBDSRates timedBirthRate deathRate sampleRate) time =
+    Just $ V.fromList [fromJust (cadlagValue timedBirthRate time), deathRate, sampleRate]
 
 instance Population InhomBDSPop where
   susceptiblePeople _ = Nothing
@@ -117,7 +119,8 @@ randomEvent' ::
   -> IO (AbsoluteTime, EpidemicEvent, InhomBDSPop, Identifier)
 randomEvent' inhomRates@(InhomBDSRates brts dr sr) currTime pop@(InhomBDSPop (people@(People peopleVec))) currId gen =
   let popSize = fromIntegral $ numPeople people :: Double
-      eventWeights t = V.fromList [fromJust (cadlagValue brts t), dr, sr]
+      --weightVecFunc :: AbsoluteTime -> Maybe (Vector Double)
+      weightVecFunc t = eventWeights pop inhomRates t
       -- we need a new step function to account for the population size.
       (Just stepFunction) =
         asTimed
@@ -125,7 +128,7 @@ randomEvent' inhomRates@(InhomBDSRates brts dr sr) currTime pop@(InhomBDSPop (pe
           | t <- allTimes brts
           ]
    in do (Just newEventTime) <- inhomExponential stepFunction currTime gen
-         eventIx <- categorical (eventWeights newEventTime) gen
+         eventIx <- categorical (fromJust $ weightVecFunc newEventTime) gen
          (selectedPerson, unselectedPeople) <- randomPerson people gen
          return $
            case eventIx of

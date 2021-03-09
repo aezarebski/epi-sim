@@ -13,3 +13,10 @@ working these these data and writing your own simulations. There are some basic
 simulation models already provided in the `Epidemic.Model` submodules. For the
 most part, writing a new epidemic model revolves around definining the
 `randomEvent` function.
+
+### Time
+
+For absolute times there is the `AbsoluteTime` type and for differences between
+times there is the `TimeDelta` type. For quantities that vary across time the
+`Timed` type is a way to represent piecewise constant functions and there are
+several helper functions to query these objects.

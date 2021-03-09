@@ -1,5 +1,10 @@
 # Changelog for epi-sim
 
+## 0.5.0
+
+- Extend `ModelParameters` class to have an `eventWeights` to provide a vector
+  of event weights for computing which event actually occurred.
+
 ## 0.4.2
 
 - Include `simulationWithGenIO` and add `scRequireCherry` to the

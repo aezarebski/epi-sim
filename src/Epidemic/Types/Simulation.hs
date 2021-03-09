@@ -26,6 +26,8 @@ data SimulationConfiguration r p =
     , scSimDuration :: TimeDelta
       -- | The simulation terminates if this predicate is not satisfied
     , scValidPopulation :: Maybe (p -> Bool)
+      -- | The simulation requires at least two sequenced samples
+    , scRequireCherry :: Bool
     }
 
 -- | Either there is a valid simulation state which contains a sequence of

@@ -3,6 +3,7 @@
 
 module Epidemic.Types.Parameter where
 
+import Data.Vector (Vector)
 import Epidemic.Types.Population (Population(..))
 import Epidemic.Types.Time (AbsoluteTime(..))
 
@@ -12,6 +13,7 @@ class (Population p) => ModelParameters a p where
   rNaught :: p -> a -> AbsoluteTime -> Maybe Double
   eventRate :: p -> a -> AbsoluteTime -> Maybe Rate
   birthProb :: p -> a -> AbsoluteTime -> Maybe Probability
+  eventWeights :: p -> a -> AbsoluteTime -> Maybe (Vector Double)
 
 type Rate = Double
 

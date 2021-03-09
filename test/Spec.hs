@@ -5,6 +5,7 @@ import Control.Monad
 import qualified Data.Aeson as Json
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Builder as BBuilder
+import Data.Either (isRight)
 import Data.Maybe (fromJust, isJust, isNothing)
 import qualified Data.Vector as V
 import Epidemic
@@ -21,10 +22,7 @@ import Statistics.Sample
 import qualified System.Random.MWC as MWC
 import Test.Hspec
 
-isRight x = case x of
-  Right _ -> True
-  Left _ -> False
-
+-- | Helper function for converting from Either to Maybe monad.
 either2Maybe x = case x of
   Right v -> Just v
   Left _ -> Nothing
@@ -155,10 +153,8 @@ eventHandlingTests = do
       (length demoEvents == 4) `shouldBe` True
       ((length <$> observedEvents (tail demoEvents)) == (Right 2)) `shouldBe`
         True
-      ((length <$> observedEvents (demoEvents)) == (Right 2)) `shouldBe`
-        True
-      (observedEvents (demoEvents) ==
-       observedEvents (tail demoEvents)) `shouldBe`
+      ((length <$> observedEvents (demoEvents)) == (Right 2)) `shouldBe` True
+      (observedEvents (demoEvents) == observedEvents (tail demoEvents)) `shouldBe`
         True
       (maybeEpidemicTree (demoEvents) == maybeEpidemicTree (tail demoEvents)) `shouldBe`
         True
@@ -214,15 +210,16 @@ eventHandlingTests = do
         False
   describe "Disaster definitions" $ do
     it "Disasters are handled correctly" $ do
-      ((Right $ [Observation e | e <- demoSampleEvents04]) == (observedEvents demoFullEvents04)) `shouldBe`
+      ((Right $ [Observation e | e <- demoSampleEvents04]) ==
+       (observedEvents demoFullEvents04)) `shouldBe`
         True
     it "Disasters can be simulated" $ do
       demoSim <-
         simulation
-          False
           (fromJust
              (BDSCOD.configuration
                 (TimeDelta 4)
+                False
                 ( 1.3
                 , 0.1
                 , 0.1
@@ -231,6 +228,30 @@ eventHandlingTests = do
                 , [(AbsoluteTime 3.5, 0.5)])))
           (allEvents BDSCOD.randomEvent)
       length demoSim > 1 `shouldBe` True
+  describe "Extracting observed events" $ do
+    it "unseq obs still extracted if no seq obs" $ do
+      let noSequencedEvents =
+            [ Infection (AbsoluteTime 4.1) p1 p2
+            , Infection (AbsoluteTime 4.3) p2 p3
+            , Infection (AbsoluteTime 4.5) p2 p4
+            , IndividualSample
+                { indSampTime = AbsoluteTime 5.3
+                , indSampPerson = p1
+                , indSampSeq = False
+                }
+            , StoppingTime
+            ]
+          expectedObs =
+            [ Observation
+                (IndividualSample
+                   { indSampTime = AbsoluteTime 5.3
+                   , indSampPerson = p1
+                   , indSampSeq = False
+                   })
+            ]
+      isRight (observedEvents noSequencedEvents) `shouldBe` True
+      ((Right expectedObs) == (observedEvents noSequencedEvents)) `shouldBe`
+        True
 
 helperFuncTests = do
   describe "Helpers in Utility" $ do
@@ -369,11 +390,11 @@ illFormedTreeTest =
           , [(simRhoTime, simRho)]
           , simOmega
           , [(simNuTime, simNu)])
-        simConfig = BDSCOD.configuration simDuration simParams
+        simConfig = BDSCOD.configuration simDuration True simParams
      in it "stress testing the observed events function" $ do
           null (observedEvents []) `shouldBe` True
           simEvents <-
-            simulation True (fromJust simConfig) (allEvents BDSCOD.randomEvent)
+            simulation (fromJust simConfig) (allEvents BDSCOD.randomEvent)
           any isReconTreeLeaf simEvents `shouldBe` True
           let (Right oes) = observedEvents simEvents
           (length oes > 1) `shouldBe` True

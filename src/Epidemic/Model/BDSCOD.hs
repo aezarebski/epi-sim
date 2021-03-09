@@ -59,24 +59,39 @@ instance Population BDSCODPopulation where
   removedPeople _ = Nothing
   isInfected (BDSCODPopulation (People people)) = not $ V.null people
 
--- | Configuration of a birth-death-sampling-occurrence simulation
-configuration :: TimeDelta -- ^ Duration of the simulation
-              -> (Rate,Rate,Rate,[(AbsoluteTime,Probability)],Rate,[(AbsoluteTime,Probability)]) -- ^ Birth, Death, Sampling, Catastrophe probability and Occurrence rates
-              -> Maybe (SimulationConfiguration BDSCODParameters BDSCODPopulation)
-configuration maxTime (birthRate, deathRate, samplingRate, catastropheSpec, occurrenceRate, disasterSpec) =
-  do catastropheSpec' <- asTimed catastropheSpec
-     disasterSpec' <- asTimed disasterSpec
-     let bdscodParams =
-           BDSCODParameters
-           birthRate
-           deathRate
-           samplingRate
-           catastropheSpec'
-           occurrenceRate
-           disasterSpec'
-         (seedPerson, newId) = newPerson initialIdentifier
-         bdscodPop = BDSCODPopulation (People $ V.singleton seedPerson)
-       in return $ SimulationConfiguration bdscodParams bdscodPop newId (AbsoluteTime 0) maxTime Nothing
+-- | Configuration of a birth-death-sampling-occurrence-disaster simulation
+configuration ::
+     TimeDelta -- ^ Duration of the simulation
+  -> Bool -- ^ condition upon at least two sequenced samples.
+  -> ( Rate
+     , Rate
+     , Rate
+     , [(AbsoluteTime, Probability)]
+     , Rate
+     , [(AbsoluteTime, Probability)]) -- ^ Birth, Death, Sampling, Catastrophe probability, Occurrence rates and Disaster probabilities
+  -> Maybe (SimulationConfiguration BDSCODParameters BDSCODPopulation)
+configuration maxTime atLeastCherry (birthRate, deathRate, samplingRate, catastropheSpec, occurrenceRate, disasterSpec) = do
+  catastropheSpec' <- asTimed catastropheSpec
+  disasterSpec' <- asTimed disasterSpec
+  let bdscodParams =
+        BDSCODParameters
+          birthRate
+          deathRate
+          samplingRate
+          catastropheSpec'
+          occurrenceRate
+          disasterSpec'
+      (seedPerson, newId) = newPerson initialIdentifier
+      bdscodPop = BDSCODPopulation (People $ V.singleton seedPerson)
+   in return $
+      SimulationConfiguration
+        bdscodParams
+        bdscodPop
+        newId
+        (AbsoluteTime 0)
+        maxTime
+        Nothing
+        atLeastCherry
 
 -- | The way in which random events are generated in this model.
 randomEvent :: SimulationRandEvent BDSCODParameters BDSCODPopulation

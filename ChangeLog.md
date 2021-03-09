@@ -1,5 +1,13 @@
 # Changelog for epi-sim
 
+## 0.4.2
+
+- Include `simulationWithGenIO` and add `scRequireCherry` to the
+  `SimulationConfiguration` record type to make it easier to control how
+  simulations are conditioned upon particular observations.
+- Documentation.
+- Bug fix in edge case of no sequenced samples.
+
 ## 0.4.1
 
 - Update the `simulationWithSystemRandom` function so that this works again.

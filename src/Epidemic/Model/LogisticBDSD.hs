@@ -95,9 +95,10 @@ instance Population LogisticBDSDPopulation where
 -- not possible.
 configuration ::
      TimeDelta
+  -> Bool -- ^ condition upon at least two sequenced samples.
   -> (Rate, Int, Rate, Rate, [(AbsoluteTime, Probability)])
   -> Either String (SimulationConfiguration LogisticBDSDParameters LogisticBDSDPopulation)
-configuration simDuration (birthRate, capacity, deathRate, samplingRate, disasterSpec)
+configuration simDuration atLeastCherry (birthRate, capacity, deathRate, samplingRate, disasterSpec)
   | minimum [birthRate, deathRate, samplingRate] < 0 =
     Left "negative rate provided"
   | capacity < 1 = Left "insufficient population capacity"
@@ -123,6 +124,7 @@ configuration simDuration (birthRate, capacity, deathRate, samplingRate, disaste
           (AbsoluteTime 0)
           simDuration
           Nothing
+          atLeastCherry
 
 -- | Defines how a single random event is simulated in this model.
 randomEvent :: SimulationRandEvent LogisticBDSDParameters LogisticBDSDPopulation

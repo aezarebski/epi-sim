@@ -11,6 +11,7 @@ module Epidemic.Types.Observations
   , observedEvents
   ) where
 
+import Control.Monad (liftM)
 import qualified Data.Aeson as Json
 import qualified Data.ByteString.Builder as BBuilder
 import qualified Data.List as List
@@ -99,15 +100,19 @@ hasSequencedLeaf (Leaf e) =
 hasSequencedLeaf (Branch _ lt rt) = hasSequencedLeaf lt || hasSequencedLeaf rt
 
 -- | The events that were observed during the epidemic, ie those in the
--- reconstructed tree and any unsequenced samples.
+-- reconstructed tree and any unsequenced samples. If this is not possible an
+-- error message will be returned.
 observedEvents :: [EpidemicEvent] -> Either String [Observation]
-observedEvents epiEvents =
-   do epiTree <- maybeEpidemicTree epiEvents
-      reconTree <- maybeReconstructedTree epiTree
-      (PointProcessEvents ppes) <- pure $ pointProcessEvents epiTree
-      rtes <- pure $ reconstructedTreeEvents reconTree
-      return $ List.sort . List.nub $ ppes ++ rtes
+observedEvents epiEvents = do
+  epiTree <- maybeEpidemicTree epiEvents
+  let (PointProcessEvents unseqObss) = pointProcessEvents epiTree
+  reconTreeEvents <-
+    if hasSequencedLeaf epiTree
+      then (liftM reconstructedTreeEvents) $ maybeReconstructedTree epiTree
+      else Right []
+  return $ List.sort . List.nub $ unseqObss ++ reconTreeEvents
 
+-- | A sorted list of all of the observations in the reconstructed tree.
 reconstructedTreeEvents :: ReconstructedTree -> [Observation]
 reconstructedTreeEvents rt =
   case rt of

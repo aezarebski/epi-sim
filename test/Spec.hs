@@ -229,6 +229,15 @@ eventHandlingTests = do
                 , [(AbsoluteTime 3.5, 0.5)])))
           (allEvents BDSCOD.randomEvent)
       length demoSim > 1 `shouldBe` True
+  describe "Extracting observed events" $ do
+    it "unseq obs still extracted if no seq obs" $ do
+      let noSequencedEvents = [ Infection (AbsoluteTime 4.1) p1 p2
+                 , Infection (AbsoluteTime 4.3) p2 p3
+                 , Infection (AbsoluteTime 4.5) p2 p4
+                 , IndividualSample
+                   {indSampTime = AbsoluteTime 5.3, indSampPerson = p1, indSampSeq = False}
+                 , StoppingTime]
+      isRight (observedEvents noSequencedEvents) `shouldBe` True
 
 helperFuncTests = do
   describe "Helpers in Utility" $ do

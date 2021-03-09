@@ -40,6 +40,7 @@ library
     Epidemic
     Epidemic.Model.BDSCOD
     Epidemic.Model.InhomogeneousBDS
+    Epidemic.Model.InhomogeneousBDSCOD
     Epidemic.Model.LogisticBDSD
     Epidemic.Types.Events
     Epidemic.Types.Newick

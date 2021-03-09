@@ -84,9 +84,10 @@ inhomBDSRates timedBirthRate@(Timed tBrPairs) deathRate sampleRate
 -- not it will return @Nothing@ which can lead to cryptic bugs.
 configuration ::
      TimeDelta -- ^ Duration of the simulation after starting at time 0.
+  -> Bool -- ^ condition upon at least two sequenced samples.
   -> ([(AbsoluteTime, Rate)], Rate, Rate) -- ^ Birth, Death and Sampling rates
   -> Maybe (SimulationConfiguration InhomBDSRates InhomBDSPop)
-configuration maxTime (tBrPairs, deathRate, sampleRate) =
+configuration maxTime atLeastCherry (tBrPairs, deathRate, sampleRate) =
   let (seedPerson, newId) = newPerson initialIdentifier
       bdsPop = InhomBDSPop (People $ V.singleton seedPerson)
    in do timedBirthRate <- asTimed tBrPairs
@@ -99,7 +100,8 @@ configuration maxTime (tBrPairs, deathRate, sampleRate) =
                      newId
                      (AbsoluteTime 0)
                      maxTime
-                     Nothing)
+                     Nothing
+                     atLeastCherry)
            else Nothing
 
 randomEvent :: SimulationRandEvent InhomBDSRates InhomBDSPop

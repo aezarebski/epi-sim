@@ -153,10 +153,8 @@ eventHandlingTests = do
       (length demoEvents == 4) `shouldBe` True
       ((length <$> observedEvents (tail demoEvents)) == (Right 2)) `shouldBe`
         True
-      ((length <$> observedEvents (demoEvents)) == (Right 2)) `shouldBe`
-        True
-      (observedEvents (demoEvents) ==
-       observedEvents (tail demoEvents)) `shouldBe`
+      ((length <$> observedEvents (demoEvents)) == (Right 2)) `shouldBe` True
+      (observedEvents (demoEvents) == observedEvents (tail demoEvents)) `shouldBe`
         True
       (maybeEpidemicTree (demoEvents) == maybeEpidemicTree (tail demoEvents)) `shouldBe`
         True
@@ -212,7 +210,8 @@ eventHandlingTests = do
         False
   describe "Disaster definitions" $ do
     it "Disasters are handled correctly" $ do
-      ((Right $ [Observation e | e <- demoSampleEvents04]) == (observedEvents demoFullEvents04)) `shouldBe`
+      ((Right $ [Observation e | e <- demoSampleEvents04]) ==
+       (observedEvents demoFullEvents04)) `shouldBe`
         True
     it "Disasters can be simulated" $ do
       demoSim <-

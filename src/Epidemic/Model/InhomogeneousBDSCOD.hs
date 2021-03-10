@@ -36,7 +36,7 @@ import System.Random.MWC.Distributions (bernoulli, categorical)
 data InhomBDSCODRates =
   InhomBDSCODRates
     { irBirthRate :: Timed Rate
-    , irDeathRate :: Rate
+    , irDeathRate :: Timed Rate
     , irSamplingRate :: Timed Rate
     , irCatastropheSpec :: Timed Probability
     , irOccurrenceRate :: Timed Rate
@@ -52,15 +52,17 @@ instance ModelParameters InhomBDSCODRates InhomBDSCODPop where
   rNaught _ InhomBDSCODRates {..} time =
     do
       birthRate <- cadlagValue irBirthRate time
+      deathRate <- cadlagValue irDeathRate time
       sampleRate <- cadlagValue irSamplingRate time
       occurrenceRate <- cadlagValue irOccurrenceRate time
-      Just $ birthRate / (irDeathRate + sampleRate + occurrenceRate)
+      Just $ birthRate / (deathRate + sampleRate + occurrenceRate)
   eventRate _ InhomBDSCODRates {..} time =
     do
       birthRate <- cadlagValue irBirthRate time
+      deathRate <- cadlagValue irDeathRate time
       sampleRate <- cadlagValue irSamplingRate time
       occurrenceRate <- cadlagValue irOccurrenceRate time
-      Just $ birthRate + irDeathRate + sampleRate + occurrenceRate
+      Just $ birthRate + deathRate + sampleRate + occurrenceRate
   birthProb p inhomRates@InhomBDSCODRates {..} time =
     do
       birthRate <- cadlagValue irBirthRate time
@@ -69,9 +71,10 @@ instance ModelParameters InhomBDSCODRates InhomBDSCODPop where
   eventWeights _ InhomBDSCODRates{..} time =
     do
       birthRate <- cadlagValue irBirthRate time
+      deathRate <- cadlagValue irDeathRate time
       sampleRate <- cadlagValue irSamplingRate time
       occurrenceRate <- cadlagValue irOccurrenceRate time
-      Just $ V.fromList [birthRate, irDeathRate, sampleRate, occurrenceRate]
+      Just $ V.fromList [birthRate, deathRate, sampleRate, occurrenceRate]
 
 instance Population InhomBDSCODPop where
   susceptiblePeople _ = Nothing
@@ -84,16 +87,17 @@ configuration ::
      TimeDelta -- ^ Duration of the simulation after starting at time 0.
   -> Bool -- ^ condition upon at least two sequenced samples.
   -> ( [(AbsoluteTime, Rate)]
-     , Rate
+     , [(AbsoluteTime, Rate)]
      , [(AbsoluteTime, Rate)]
      , [(AbsoluteTime, Probability)]
      , [(AbsoluteTime, Rate)]
      , [(AbsoluteTime, Probability)])
   -> Maybe (SimulationConfiguration InhomBDSCODRates InhomBDSCODPop)
-configuration maxTime atLeastCherry (tBirthRate, deathRate, tSampleRate, cSpec, tOccurrenceRate, dSpec) =
+configuration maxTime atLeastCherry (tBirthRate, tDeathRate, tSampleRate, cSpec, tOccurrenceRate, dSpec) =
   let (seedPerson, newId) = newPerson initialIdentifier
       bdscodPop = InhomBDSCODPop $ asPeople [seedPerson]
    in do timedBirthRate <- asTimed tBirthRate
+         timedDeathRate <- asTimed tDeathRate
          timedSamplingRate <- asTimed tSampleRate
          catastropheSpec <- asTimed cSpec
          timedOccurrenceRate <- asTimed tOccurrenceRate
@@ -101,7 +105,7 @@ configuration maxTime atLeastCherry (tBirthRate, deathRate, tSampleRate, cSpec, 
          let irVal =
                InhomBDSCODRates
                  timedBirthRate
-                 deathRate
+                 timedDeathRate
                  timedSamplingRate
                  catastropheSpec
                  timedOccurrenceRate
@@ -136,7 +140,7 @@ randomEvent' inhomRates@InhomBDSCODRates {..} currTime currPop@(InhomBDSCODPop p
       (Just stepFunction) =
         asTimed
           [ (t, popSize * fromJust (eventRate currPop inhomRates t))
-          | t <- sort $ concatMap allTimes [irBirthRate, irSamplingRate, irOccurrenceRate]
+          | t <- sort $ concatMap allTimes [irBirthRate, irDeathRate, irSamplingRate, irOccurrenceRate]
           ]
    in do (Just newEventTime) <- inhomExponential stepFunction currTime gen
          if noScheduledEvent currTime newEventTime (irCatastropheSpec <> irDisasterSpec)

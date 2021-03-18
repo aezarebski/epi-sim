@@ -1,19 +1,23 @@
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Epidemic.Types.Time
   ( AbsoluteTime(..)
   , TimeDelta(..)
+  , TimeInterval(..)
   , Timed(..)
-  , timeDelta
-  , diracDeltaValue
-  , timeAfterDelta
-  , nextTime
-  , cadlagValue
-  , isAscending
-  , hasTime
   , allTimes
   , asTimed
+  , cadlagValue
+  , diracDeltaValue
+  , hasTime
+  , inInterval
+  , isAscending
+  , nextTime
+  , timeAfterDelta
+  , timeDelta
+  , timeInterval1
+  , timeInterval2
   ) where
 
 import qualified Data.Aeson as Json
@@ -30,10 +34,6 @@ instance Json.FromJSON AbsoluteTime
 
 instance Json.ToJSON AbsoluteTime
 
--- | Predicate for an infinite absolute time
-isInfiniteAbsoluteTime :: AbsoluteTime -> Bool
-isInfiniteAbsoluteTime (AbsoluteTime t) = isInfinite t
-
 -- | Duration of time between two absolute times.
 newtype TimeDelta =
   TimeDelta Double
@@ -42,6 +42,18 @@ newtype TimeDelta =
 instance Json.FromJSON TimeDelta
 
 instance Json.ToJSON TimeDelta
+
+-- | An interval of time
+data TimeInterval =
+  TimeInterval
+    { timeIntEndPoints :: (AbsoluteTime, AbsoluteTime)
+    , timeIntDuration :: TimeDelta
+    }
+  deriving (Generic, Eq, Show)
+
+instance Json.FromJSON TimeInterval
+
+instance Json.ToJSON TimeInterval
 
 -- | The duration of time between two absolute times
 --
@@ -61,6 +73,21 @@ timeDelta (AbsoluteTime t0) (AbsoluteTime t1) = TimeDelta (t1 - t0)
 --
 timeAfterDelta :: AbsoluteTime -> TimeDelta -> AbsoluteTime
 timeAfterDelta (AbsoluteTime t0) (TimeDelta d) = AbsoluteTime (t0 + d)
+
+-- | Construct a 'TimeInterval' from the end points.
+timeInterval1 :: AbsoluteTime -> AbsoluteTime -> TimeInterval
+timeInterval1 start end = TimeInterval (start, end) (timeDelta start end)
+
+-- | Construct a 'TimeInterval' from the start time and the duration.
+timeInterval2 :: AbsoluteTime -> TimeDelta -> TimeInterval
+timeInterval2 start duration =
+  TimeInterval (start, timeAfterDelta start duration) duration
+
+-- | Check if an 'AbsoluteTime' sits within a 'TimeInterval'.
+inInterval :: TimeInterval -> AbsoluteTime -> Bool
+inInterval TimeInterval {..} absTime =
+  let (start, end) = timeIntEndPoints
+   in start <= absTime && absTime <= end
 
 -- | Type containing values at times. The times are increasing as required by
 -- @asTimed@.
@@ -153,3 +180,7 @@ nextTime' txs q =
 --
 allTimes :: Timed a -> [AbsoluteTime]
 allTimes (Timed txs) = [t | (t, _) <- txs, not $ isInfiniteAbsoluteTime t]
+
+-- | Predicate for an infinite absolute time
+isInfiniteAbsoluteTime :: AbsoluteTime -> Bool
+isInfiniteAbsoluteTime (AbsoluteTime t) = isInfinite t

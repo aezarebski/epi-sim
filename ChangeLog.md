@@ -2,6 +2,8 @@
 
 ## 0.5.0
 
+- Add 'TimeInterval' type for working with intervals of time, there are also
+  some helper functions to make it easier to work with intervals.
 - Extend `ModelParameters` class to have an `eventWeights` to provide a vector
   of event weights for computing which event actually occurred.
 

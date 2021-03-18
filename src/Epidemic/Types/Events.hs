@@ -13,7 +13,9 @@ module Epidemic.Types.Events
   , indSampTime
   , EpidemicTree(Branch, Leaf, Shoot)
   , maybeEpidemicTree
+  , occurredInInterval
   , isExtinctionOrStopping
+  , isIndividualSample
   , eventTime
   , derivedFrom
   ) where
@@ -25,7 +27,13 @@ import qualified Data.List as List
 import qualified Data.Vector as V
 import Epidemic.Types.Parameter
 import Epidemic.Types.Population
-import Epidemic.Types.Time (AbsoluteTime(..), TimeDelta(..), timeDelta)
+import Epidemic.Types.Time
+  ( AbsoluteTime(..)
+  , TimeDelta(..)
+  , TimeInterval(..)
+  , timeDelta
+  , inInterval
+  )
 import GHC.Generics
 
 -- | Events that can occur in an epidemic with their absolute time.
@@ -49,6 +57,13 @@ data EpidemicEvent
 instance Json.FromJSON EpidemicEvent
 
 instance Json.ToJSON EpidemicEvent
+
+-- | Predicate for the event being an individual sample event.
+isIndividualSample :: EpidemicEvent -> Bool
+isIndividualSample ee =
+  case ee of
+    IndividualSample {} -> True
+    _ -> False
 
 -- | Predicate for whether an @EpidemicEvent@ is one of the terminal events of
 -- extinction or the stopping time having been reached.
@@ -143,8 +158,10 @@ maybeEpidemicTree [e] =
       if nullPeople popSampPeople
         then Left "The last event is a PopulationSample with no people sampled"
         else Right (Leaf e)
-    Extinction -> Left "Extinction event encountered. It should have been removed"
-    StoppingTime -> Left "Stopping time encountered. It should have been removed"
+    Extinction ->
+      Left "Extinction event encountered. It should have been removed"
+    StoppingTime ->
+      Left "Stopping time encountered. It should have been removed"
 maybeEpidemicTree (e:es) =
   case e of
     Infection _ p1 p2 ->
@@ -165,5 +182,18 @@ maybeEpidemicTree (e:es) =
       if nullPeople popSampPeople
         then maybeEpidemicTree es
         else Right (Leaf e)
-    Extinction -> Left "Extinction event encountered. It should have been removed"
-    StoppingTime -> Left "Stopping time encountered. It should have been removed"
+    Extinction ->
+      Left "Extinction event encountered. It should have been removed"
+    StoppingTime ->
+      Left "Stopping time encountered. It should have been removed"
+
+-- | Predicate for whether an event occurred in a given interval of time.
+occurredInInterval :: TimeInterval -> EpidemicEvent -> Bool
+occurredInInterval interval ee =
+  case ee of
+    Infection absT _ _ -> inInterval interval absT
+    Removal absT _ -> inInterval interval absT
+    IndividualSample {..} -> inInterval interval indSampTime
+    PopulationSample {..} -> inInterval interval popSampTime
+    _ -> error "untimed event in occurredInInterval."
+

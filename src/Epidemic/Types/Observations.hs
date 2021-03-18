@@ -9,6 +9,7 @@ module Epidemic.Types.Observations
   , pointProcessEvents
   , reconstructedTreeEvents
   , observedEvents
+  , aggregated
   ) where
 
 import Control.Monad (liftM)
@@ -19,10 +20,17 @@ import qualified Data.Vector as V
 import Epidemic.Types.Events
   ( EpidemicEvent(..)
   , EpidemicTree(..)
+  , isIndividualSample
   , maybeEpidemicTree
+  , occurredInInterval
   )
-import Epidemic.Types.Time (TimeDelta(..), timeDelta)
-import Epidemic.Types.Population (People(..), personByteString)
+import Epidemic.Types.Population (People(..), asPeople, personByteString)
+import Epidemic.Types.Time
+  ( AbsoluteTime(..)
+  , TimeDelta(..)
+  , TimeInterval(..)
+  , timeDelta
+  )
 import GHC.Generics
 
 -- | A wrapper for an 'EpidemicEvent' to indicate that this is an even that was
@@ -47,8 +55,16 @@ pointProcessEvents :: EpidemicTree -> PointProcessEvents
 pointProcessEvents Shoot {} = PointProcessEvents []
 pointProcessEvents (Leaf e) =
   case e of
-    IndividualSample {..} -> PointProcessEvents $ if not indSampSeq then [Observation e] else []
-    PopulationSample {..} -> PointProcessEvents $ if not popSampSeq then [Observation e] else []
+    IndividualSample {..} ->
+      PointProcessEvents $
+      if not indSampSeq
+        then [Observation e]
+        else []
+    PopulationSample {..} ->
+      PointProcessEvents $
+      if not popSampSeq
+        then [Observation e]
+        else []
     _ -> PointProcessEvents []
 pointProcessEvents (Branch _ lt rt) =
   let (PointProcessEvents lEs) = pointProcessEvents lt
@@ -71,12 +87,14 @@ maybeReconstructedTree :: EpidemicTree -> Either String ReconstructedTree
 maybeReconstructedTree Shoot {} = Left "EpidemicTree is only a Shoot"
 maybeReconstructedTree (Leaf e) =
   case e of
-    IndividualSample {..} -> if indSampSeq
-                             then Right $ RLeaf (Observation e)
-                             else Left "Leaf with non-sequenced event individual sample"
-    PopulationSample {..} -> if popSampSeq
-                             then Right $ RLeaf (Observation e)
-                             else Left "Leaf with non-sequenced event population sample"
+    IndividualSample {..} ->
+      if indSampSeq
+        then Right $ RLeaf (Observation e)
+        else Left "Leaf with non-sequenced event individual sample"
+    PopulationSample {..} ->
+      if popSampSeq
+        then Right $ RLeaf (Observation e)
+        else Left "Leaf with non-sequenced event population sample"
     _ -> Left "Bad leaf in the EpidemicTree"
 maybeReconstructedTree (Branch e@Infection {} lt rt)
   | hasSequencedLeaf lt && hasSequencedLeaf rt = do
@@ -120,3 +138,33 @@ reconstructedTreeEvents rt =
       List.sort $
       obs : (reconstructedTreeEvents rtl ++ reconstructedTreeEvents rtr)
     RLeaf obs -> [obs]
+
+-- | Aggregate the sequenced and unsequenced individual level samples
+aggregated :: [TimeInterval] -> [TimeInterval] -> [Observation] -> [Observation]
+aggregated seqAggInts unseqAggInts =
+  aggregateUnsequenced unseqAggInts . aggregateSequenced seqAggInts
+
+aggregateSequenced :: [TimeInterval] -> [Observation] -> [Observation]
+aggregateSequenced = undefined
+
+_aggregateSequenced :: TimeInterval -> [Observation] -> Observation
+_aggregateSequenced = undefined
+
+aggregateUnsequenced :: [TimeInterval] -> [Observation] -> [Observation]
+aggregateUnsequenced = undefined
+
+_aggregateUnsequenced :: TimeInterval -> [Observation] -> Observation
+_aggregateUnsequenced = undefined
+
+asPopulationSample :: [Observation] -> AbsoluteTime -> Observation
+asPopulationSample obs absTime =
+  let ees = [ee | Observation ee <- obs]
+   in if all isIndividualSample ees
+        then let people = asPeople $ map indSampPerson ees
+              in if all indSampSeq ees
+                   then Observation $ PopulationSample absTime people True
+                   else Observation $ PopulationSample absTime people False
+        else error "bad observation "
+
+_occurredInInterval :: TimeInterval -> Observation -> Bool
+_occurredInInterval interval (Observation ee) = occurredInInterval interval ee

@@ -7,6 +7,7 @@ module Epidemic.Types.Time
   , TimeInterval(..)
   , Timed(..)
   , allTimes
+  , asConsecutiveIntervals1
   , asTimed
   , cadlagValue
   , diracDeltaValue
@@ -88,6 +89,12 @@ inInterval :: TimeInterval -> AbsoluteTime -> Bool
 inInterval TimeInterval {..} absTime =
   let (start, end) = timeIntEndPoints
    in start <= absTime && absTime <= end
+
+-- | Construct a list of consecutive intervals divided by the given absolute
+-- times.
+asConsecutiveIntervals1 :: [AbsoluteTime] -> [TimeInterval]
+asConsecutiveIntervals1 absTimes =
+  zipWith timeInterval1 (init absTimes) (tail absTimes)
 
 -- | Type containing values at times. The times are increasing as required by
 -- @asTimed@.

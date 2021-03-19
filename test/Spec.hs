@@ -399,6 +399,60 @@ illFormedTreeTest =
           let (Right oes) = observedEvents simEvents
           (length oes > 1) `shouldBe` True
 
+
+resultAA = demoSampleEvents01
+
+resultAB =
+  [ Infection (AbsoluteTime 1) p1 p2
+  , IndividualSample (AbsoluteTime 3) p1 True
+  , Infection (AbsoluteTime 4) p2 p4
+  , IndividualSample (AbsoluteTime 6) p4 True
+  , PopulationSample (AbsoluteTime 12) (asPeople [p2, p6]) False
+  , IndividualSample (AbsoluteTime 12) p5 True
+  , PopulationSample (AbsoluteTime 17.0) (asPeople []) False
+  ]
+
+resultBA =
+  [ Infection (AbsoluteTime 1) p1 p2
+  , IndividualSample (AbsoluteTime 3) p1 True
+  , Infection (AbsoluteTime 4) p2 p4
+  , IndividualSample (AbsoluteTime 6) p4 True
+  , IndividualSample (AbsoluteTime 8) p2 False
+  , IndividualSample (AbsoluteTime 11) p6 False
+  , PopulationSample (AbsoluteTime 13) (asPeople [p5]) True
+  ]
+
+resultBB =
+  [ Infection (AbsoluteTime 1.0) p1 p2
+  , IndividualSample (AbsoluteTime 3.0) (Person (Identifier 1)) True
+  , Infection (AbsoluteTime 4.0) p2 p4
+  , IndividualSample (AbsoluteTime 6.0) (Person (Identifier 4)) True
+  , PopulationSample (AbsoluteTime 12) (asPeople [p2, p6]) False
+  , PopulationSample (AbsoluteTime 13) (asPeople [p5]) True
+  , PopulationSample (AbsoluteTime 17) (asPeople []) False
+  ]
+
+aggregationTests =
+  describe "Aggregation functionality tests" $ do
+    it "check it does nothing unless it needs to" $
+      let demoObs1 = [Observation ee | ee <- demoFullEvents01]
+          demoObs2 = [Observation ee | ee <- demoSampleEvents01]
+      in do
+        (aggregated [] [] demoObs1) == demoObs1 `shouldBe` True
+        (aggregated [] [] demoObs2) == demoObs2 `shouldBe` True
+    it "check relevant intervals are processed correctly" $
+      let demoObs = [Observation ee | ee <- demoSampleEvents01]
+          demoSeqInts = asConsecutiveIntervals1 [AbsoluteTime 10, AbsoluteTime 13]
+          demoUnseqInts = asConsecutiveIntervals1 [AbsoluteTime 7, AbsoluteTime 12, AbsoluteTime 17]
+      in do
+        aggregated [] [] demoObs == (map Observation resultAA) `shouldBe` True
+        print ((aggregated [] demoUnseqInts demoObs) !! 6)
+        print ((map Observation resultAB) !! 6)
+        aggregated [] demoUnseqInts demoObs == (map Observation resultAB) `shouldBe` True
+        aggregated demoSeqInts [] demoObs == (map Observation resultBA) `shouldBe` True
+        aggregated demoSeqInts demoUnseqInts demoObs == (map Observation resultBB) `shouldBe` True
+
+
 inhomogeneousBDSTest =
   describe "InhomogeneousBDS module tests" $ do
     it "Check the observedEvents filters out removals" $
@@ -737,3 +791,4 @@ main =
     helperTypeTests
     jsonTests
     newickTests
+    aggregationTests

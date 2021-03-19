@@ -2,9 +2,13 @@
 
 ## 0.5.0
 
-- Add 'TimeStamp' type class to abstract working with types that have an
+- Add absolute times to the extinction and stopping time events to provide a
+  consistent interface.
+- Add the `aggregated` function to help aggregated individual level samples into
+  population level samples.
+- Add `TimeStamp` type class to abstract working with types that have an
   absolute time associated with them.
-- Add 'TimeInterval' type for working with intervals of time, there are also
+- Add `TimeInterval` type for working with intervals of time, there are also
   some helper functions to make it easier to work with intervals.
 - Extend `ModelParameters` class to have an `eventWeights` to provide a vector
   of event weights for computing which event actually occurred.

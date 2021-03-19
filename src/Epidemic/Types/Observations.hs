@@ -29,8 +29,8 @@ import Epidemic.Types.Time
   , TimeDelta(..)
   , TimeInterval(..)
   , TimeStamp(..)
-  , timeDelta
   , inInterval
+  , timeDelta
   )
 import GHC.Generics
 
@@ -145,27 +145,38 @@ reconstructedTreeEvents rt =
 
 -- | Aggregate the sequenced and unsequenced individual level samples
 aggregated :: [TimeInterval] -> [TimeInterval] -> [Observation] -> [Observation]
-aggregated seqAggInts unseqAggInts =
-  aggregateUnsequenced unseqAggInts . aggregateSequenced seqAggInts
+aggregated seqAggInts unseqAggInts = List.sort . aggUnsequenced . aggSequenced
+  where
+    aggUnsequenced = _aggregate unseqAggInts False
+    aggSequenced = _aggregate seqAggInts True
 
-aggregateSequenced :: [TimeInterval] -> [Observation] -> [Observation]
-aggregateSequenced = undefined
+-- | Aggregate observations in each of the intervals given the correct
+-- sequencing status.
+_aggregate :: [TimeInterval] -> Bool -> [Observation] -> [Observation]
+_aggregate intervals onlySequenced obs = List.foldl' f obs intervals
+  where f os i = _aggregateInInterval i onlySequenced os
 
-_aggregateSequenced :: TimeInterval -> [Observation] -> Observation
-_aggregateSequenced = undefined
+-- | Aggregate all the observations that fall in the interval and have the
+-- correct sequencing status.
+_aggregateInInterval :: TimeInterval -> Bool -> [Observation] -> [Observation]
+_aggregateInInterval interval@TimeInterval {..} onlySequenced obs =
+  newPopSample : otherObs
+  where
+    (_, aggTime) = timeIntEndPoints
+    toBeAggregated o = case o of
+      Observation (IndividualSample {..}) ->
+        inInterval interval o && (if onlySequenced then indSampSeq else (not indSampSeq))
+      _ -> False
+    (obs2Agg, otherObs) = List.partition toBeAggregated obs
+    newPopSample = asPopulationSample obs2Agg aggTime
 
-aggregateUnsequenced :: [TimeInterval] -> [Observation] -> [Observation]
-aggregateUnsequenced = undefined
-
-_aggregateUnsequenced :: TimeInterval -> [Observation] -> Observation
-_aggregateUnsequenced = undefined
-
+-- | Combine the individual samples into a population sample at the given time.
 asPopulationSample :: [Observation] -> AbsoluteTime -> Observation
-asPopulationSample obs absTime =
+asPopulationSample obs absT =
   let ees = [ee | Observation ee <- obs]
    in if all isIndividualSample ees
         then let people = asPeople $ map indSampPerson ees
               in if all indSampSeq ees
-                   then Observation $ PopulationSample absTime people True
-                   else Observation $ PopulationSample absTime people False
+                   then Observation $ PopulationSample absT people True
+                   else Observation $ PopulationSample absT people False
         else error "bad observation "

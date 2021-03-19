@@ -20,7 +20,12 @@ import Epidemic.Types.Simulation
   , SimulationRandEvent(..)
   , SimulationState(..)
   )
-import Epidemic.Types.Time (AbsoluteTime(..), Timed(..), diracDeltaValue, nextTime)
+import Epidemic.Types.Time
+  ( AbsoluteTime(..)
+  , Timed(..)
+  , diracDeltaValue
+  , nextTime
+  )
 import GHC.Generics (Generic)
 import System.Random.MWC
 
@@ -32,7 +37,8 @@ eventPopDelta e =
     Removal {} -> -1
     IndividualSample {} -> -1
     PopulationSample {..} -> fromIntegral $ numPeople popSampPeople
-    StoppingTime -> 0
+    StoppingTime {} -> 0
+    Extinction {} -> 0 -- ^ already represented in previous event.
 
 -- | The first scheduled event after a given time.
 firstScheduled ::
@@ -62,12 +68,10 @@ personsInEvent e =
     Infection _ p1 p2 -> [p1, p2]
     Removal _ p -> [p]
     (IndividualSample {..}) -> [indSampPerson]
-    (PopulationSample {..}) ->
-      V.toList personVec
-      where
-        (People personVec) = popSampPeople
-    Extinction -> []
-    StoppingTime -> []
+    (PopulationSample {..}) -> V.toList personVec
+      where (People personVec) = popSampPeople
+    Extinction {} -> []
+    StoppingTime {} -> []
 
 peopleInEvents :: [EpidemicEvent] -> People
 peopleInEvents events =
@@ -128,8 +132,14 @@ allEvents simRandEvent@(SimulationRandEvent randEvent) modelParams maxTime maybe
                       gen
                else return $
                     SimulationState
-                      (maxTime, StoppingTime : currEvents, currPop, currId)
+                      ( maxTime
+                      , (StoppingTime maxTime) : currEvents
+                      , currPop
+                      , currId)
            else return $
                 SimulationState
-                  (currTime, Extinction : currEvents, currPop, currId)
+                  ( currTime
+                  , (Extinction currTime) : currEvents
+                  , currPop
+                  , currId)
     else return TerminatedSimulation

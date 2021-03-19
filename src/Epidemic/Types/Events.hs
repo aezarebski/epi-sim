@@ -64,7 +64,8 @@ instance TimeStamp EpidemicEvent where
       Removal absT _ -> absT
       IndividualSample {..} -> indSampTime
       PopulationSample {..} -> popSampTime
-      _ -> error "missing absolute time"
+      StoppingTime absT -> absT
+      Extinction absT -> absT
 
 -- | Predicate for the event being an individual sample event.
 isIndividualSample :: EpidemicEvent -> Bool

@@ -239,7 +239,7 @@ eventHandlingTests = do
                 , indSampPerson = p1
                 , indSampSeq = False
                 }
-            , StoppingTime
+            , StoppingTime (AbsoluteTime 6.0)
             ]
           expectedObs =
             [ Observation
@@ -677,19 +677,6 @@ newickTests =
           (length demoEvents == 4) `shouldBe` True
           (maybeEpidemicTree demoEvents == maybeEpidemicTree (tail demoEvents)) `shouldBe`
             True
-    -- it "asNewickString works for EpidemicTree" $ do
-    --   let trickyEvents = [
-    --         Infection (AbsoluteTime 0.3) (Person (Identifier 1)) (Person (Identifier 2)),
-    --         Infection (AbsoluteTime 0.4) (Person (Identifier 2)) (Person (Identifier 3)),
-    --         IndividualSample (AbsoluteTime 0.6) (Person (Identifier 3)) True,
-    --         IndividualSample (AbsoluteTime 0.7) (Person (Identifier 1)) True]
-    --   let maybeNewickPair = asNewickString (AbsoluteTime 0, Person (Identifier 1)) =<< maybeEpidemicTree trickyEvents
-    --   let newickTarget = BBuilder.stringUtf8 "(1:0.39999999999999997,(2:Infinity,3:0.19999999999999996):0.10000000000000003):0.3"
-    --   let maybeReconTree = maybeReconstructedTree =<< maybeEpidemicTree trickyEvents
-    --   isJust maybeNewickPair `shouldBe` True
-    --   [IndividualSample (AbsoluteTime 0.6) (Person (Identifier 3)) True, IndividualSample (AbsoluteTime 0.7) (Person (Identifier 1)) True] == snd (fromJust maybeNewickPair) `shouldBe` True
-    --   equalBuilders newickTarget (fst $ fromJust maybeNewickPair) `shouldBe` True
-    --   isJust maybeReconTree `shouldBe` True
         it "asNewickString works for ReconstructedTree" $ do
           isJust
             (asNewickString

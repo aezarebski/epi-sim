@@ -6,6 +6,7 @@ module Epidemic.Types.Time
   , TimeDelta(..)
   , TimeInterval(..)
   , Timed(..)
+  , TimeStamp(..)
   , allTimes
   , asConsecutiveIntervals1
   , asTimed
@@ -34,6 +35,25 @@ newtype AbsoluteTime =
 instance Json.FromJSON AbsoluteTime
 
 instance Json.ToJSON AbsoluteTime
+
+-- | A type that has an absolute time associated with it and can be treated as
+-- having a temporal ordering.
+--
+-- > a = AbsoluteTime 1
+-- > b = AbsoluteTime 2
+-- > a `isBefore` b
+--
+class TimeStamp a where
+  absTime :: a -> AbsoluteTime
+
+  isAfter :: a -> a -> Bool
+  isAfter x y = absTime x > absTime y
+
+  isBefore :: a -> a -> Bool
+  isBefore x y = absTime x < absTime y
+
+instance TimeStamp AbsoluteTime where
+  absTime = id
 
 -- | Duration of time between two absolute times.
 newtype TimeDelta =
@@ -85,10 +105,11 @@ timeInterval2 start duration =
   TimeInterval (start, timeAfterDelta start duration) duration
 
 -- | Check if an 'AbsoluteTime' sits within a 'TimeInterval'.
-inInterval :: TimeInterval -> AbsoluteTime -> Bool
-inInterval TimeInterval {..} absTime =
+inInterval :: TimeStamp a => TimeInterval -> a -> Bool
+inInterval TimeInterval {..} x =
   let (start, end) = timeIntEndPoints
-   in start <= absTime && absTime <= end
+      absT = absTime x
+   in start <= absT && absT <= end
 
 -- | Construct a list of consecutive intervals divided by the given absolute
 -- times.

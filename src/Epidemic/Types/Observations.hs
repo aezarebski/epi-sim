@@ -22,14 +22,15 @@ import Epidemic.Types.Events
   , EpidemicTree(..)
   , isIndividualSample
   , maybeEpidemicTree
-  , occurredInInterval
   )
 import Epidemic.Types.Population (People(..), asPeople, personByteString)
 import Epidemic.Types.Time
   ( AbsoluteTime(..)
   , TimeDelta(..)
   , TimeInterval(..)
+  , TimeStamp(..)
   , timeDelta
+  , inInterval
   )
 import GHC.Generics
 
@@ -42,6 +43,9 @@ newtype Observation =
 instance Json.FromJSON Observation
 
 instance Json.ToJSON Observation
+
+instance TimeStamp Observation where
+  absTime (Observation ee) = absTime ee
 
 -- | A representation of the events that can be observed in an epidemic but
 -- which are not included in the reconstructed tree, ie the unsequenced
@@ -165,6 +169,3 @@ asPopulationSample obs absTime =
                    then Observation $ PopulationSample absTime people True
                    else Observation $ PopulationSample absTime people False
         else error "bad observation "
-
-_occurredInInterval :: TimeInterval -> Observation -> Bool
-_occurredInInterval interval (Observation ee) = occurredInInterval interval ee

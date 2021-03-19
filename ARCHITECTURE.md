@@ -20,3 +20,6 @@ For absolute times there is the `AbsoluteTime` type and for differences between
 times there is the `TimeDelta` type. For quantities that vary across time the
 `Timed` type is a way to represent piecewise constant functions and there are
 several helper functions to query these objects.
+
+There is the 'TimeStamp' type class for things that have an absolute time
+associated with them.

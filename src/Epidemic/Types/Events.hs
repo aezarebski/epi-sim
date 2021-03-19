@@ -13,10 +13,8 @@ module Epidemic.Types.Events
   , indSampTime
   , EpidemicTree(Branch, Leaf, Shoot)
   , maybeEpidemicTree
-  , occurredInInterval
   , isExtinctionOrStopping
   , isIndividualSample
-  , eventTime
   , derivedFrom
   ) where
 
@@ -31,8 +29,9 @@ import Epidemic.Types.Time
   ( AbsoluteTime(..)
   , TimeDelta(..)
   , TimeInterval(..)
-  , timeDelta
+  , TimeStamp(..)
   , inInterval
+  , timeDelta
   )
 import GHC.Generics
 
@@ -58,6 +57,15 @@ instance Json.FromJSON EpidemicEvent
 
 instance Json.ToJSON EpidemicEvent
 
+instance TimeStamp EpidemicEvent where
+  absTime ee =
+    case ee of
+      Infection absT _ _ -> absT
+      Removal absT _ -> absT
+      IndividualSample {..} -> indSampTime
+      PopulationSample {..} -> popSampTime
+      _ -> error "missing absolute time"
+
 -- | Predicate for the event being an individual sample event.
 isIndividualSample :: EpidemicEvent -> Bool
 isIndividualSample ee =
@@ -78,22 +86,7 @@ isExtinctionOrStopping e =
 -- 'Extinction' and 'StoppingTime' events are there as placeholders they are
 -- placed as the end of the order.
 instance Ord EpidemicEvent where
-  Extinction <= Extinction = True
-  Extinction <= StoppingTime = True
-  Extinction <= _ = False
-  StoppingTime <= Extinction = False
-  StoppingTime <= StoppingTime = True
-  StoppingTime <= _ = False
-  e1 <= e2 = eventTime e1 <= eventTime e2
-
--- | The absolute time an event occurred.
-eventTime :: EpidemicEvent -> AbsoluteTime
-eventTime e =
-  case e of
-    Infection time _ _ -> time
-    Removal time _ -> time
-    IndividualSample {..} -> indSampTime
-    PopulationSample {..} -> popSampTime
+  e1 <= e2 = absTime e1 <= absTime e2
 
 -- | The events that occurred as a result of the existance of the given person.
 derivedFrom ::
@@ -186,14 +179,3 @@ maybeEpidemicTree (e:es) =
       Left "Extinction event encountered. It should have been removed"
     StoppingTime ->
       Left "Stopping time encountered. It should have been removed"
-
--- | Predicate for whether an event occurred in a given interval of time.
-occurredInInterval :: TimeInterval -> EpidemicEvent -> Bool
-occurredInInterval interval ee =
-  case ee of
-    Infection absT _ _ -> inInterval interval absT
-    Removal absT _ -> inInterval interval absT
-    IndividualSample {..} -> inInterval interval indSampTime
-    PopulationSample {..} -> inInterval interval popSampTime
-    _ -> error "untimed event in occurredInInterval."
-

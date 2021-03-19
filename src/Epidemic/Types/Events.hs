@@ -49,8 +49,8 @@ data EpidemicEvent
       , popSampPeople :: People
       , popSampSeq :: Bool
       }
-  | Extinction -- ^ epidemic went extinct time time can be recovered from the preceeding removal
-  | StoppingTime -- ^ the simulation reached the stopping time
+  | Extinction AbsoluteTime -- ^ epidemic went extinct
+  | StoppingTime AbsoluteTime -- ^ the simulation reached the stopping time
   deriving (Show, Generic, Eq)
 
 instance Json.FromJSON EpidemicEvent
@@ -78,8 +78,8 @@ isIndividualSample ee =
 isExtinctionOrStopping :: EpidemicEvent -> Bool
 isExtinctionOrStopping e =
   case e of
-    Extinction -> True
-    StoppingTime -> True
+    Extinction {} -> True
+    StoppingTime {} -> True
     _ -> False
 
 -- | Epidemic Events are ordered based on which occurred first. Since
@@ -123,8 +123,8 @@ derivedFromPeople people (e:es) =
        in if haveCommonPeople people popSampPeople
             then e : derivedEvents
             else derivedEvents
-    Extinction -> derivedFromPeople people es
-    StoppingTime -> derivedFromPeople people es
+    Extinction {} -> derivedFromPeople people es
+    StoppingTime {} -> derivedFromPeople people es
 
 -- | The whole transmission tree including the unobserved leaves. Lineages that
 -- are still extant are modelled as /shoots/ and contain a 'Person' as their
@@ -151,9 +151,9 @@ maybeEpidemicTree [e] =
       if nullPeople popSampPeople
         then Left "The last event is a PopulationSample with no people sampled"
         else Right (Leaf e)
-    Extinction ->
+    Extinction {} ->
       Left "Extinction event encountered. It should have been removed"
-    StoppingTime ->
+    StoppingTime {} ->
       Left "Stopping time encountered. It should have been removed"
 maybeEpidemicTree (e:es) =
   case e of
@@ -175,7 +175,7 @@ maybeEpidemicTree (e:es) =
       if nullPeople popSampPeople
         then maybeEpidemicTree es
         else Right (Leaf e)
-    Extinction ->
+    Extinction {} ->
       Left "Extinction event encountered. It should have been removed"
-    StoppingTime ->
+    StoppingTime {} ->
       Left "Stopping time encountered. It should have been removed"

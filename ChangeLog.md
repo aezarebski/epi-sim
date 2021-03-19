@@ -5,7 +5,7 @@
 - Add absolute times to the extinction and stopping time events to provide a
   consistent interface.
 - Add the `aggregated` function to help aggregated individual level samples into
-  population level samples.
+  population level samples. This is tested in `aggregationTests`.
 - Add `TimeStamp` type class to abstract working with types that have an
   absolute time associated with them.
 - Add `TimeInterval` type for working with intervals of time, there are also

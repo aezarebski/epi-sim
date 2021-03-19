@@ -154,29 +154,28 @@ aggregated seqAggInts unseqAggInts = List.sort . aggUnsequenced . aggSequenced
 -- sequencing status.
 _aggregate :: [TimeInterval] -> Bool -> [Observation] -> [Observation]
 _aggregate intervals onlySequenced obs = List.foldl' f obs intervals
-  where f os i = _aggregateInInterval i onlySequenced os
+  where
+    f os i = _aggregateInInterval i onlySequenced os
 
 -- | Aggregate all the observations that fall in the interval and have the
 -- correct sequencing status.
 _aggregateInInterval :: TimeInterval -> Bool -> [Observation] -> [Observation]
 _aggregateInInterval interval@TimeInterval {..} onlySequenced obs =
-  newPopSample : otherObs
-  where
-    (_, aggTime) = timeIntEndPoints
-    toBeAggregated o = case o of
-      Observation (IndividualSample {..}) ->
-        inInterval interval o && (if onlySequenced then indSampSeq else (not indSampSeq))
-      _ -> False
-    (obs2Agg, otherObs) = List.partition toBeAggregated obs
-    newPopSample = asPopulationSample obs2Agg aggTime
-
--- | Combine the individual samples into a population sample at the given time.
-asPopulationSample :: [Observation] -> AbsoluteTime -> Observation
-asPopulationSample obs absT =
-  let ees = [ee | Observation ee <- obs]
-   in if all isIndividualSample ees
-        then let people = asPeople $ map indSampPerson ees
-              in if all indSampSeq ees
-                   then Observation $ PopulationSample absT people True
-                   else Observation $ PopulationSample absT people False
-        else error "bad observation "
+  let asPopulationSample os absT =
+        Observation $
+        PopulationSample
+          absT
+          (asPeople $ [indSampPerson ee | Observation ee <- os])
+          onlySequenced
+      (_, aggTime) = timeIntEndPoints
+      toBeAggregated o =
+        case o of
+          Observation (IndividualSample {..}) ->
+            inInterval interval o &&
+            (if onlySequenced
+               then indSampSeq
+               else (not indSampSeq))
+          _ -> False
+      (obs2Agg, otherObs) = List.partition toBeAggregated obs
+      newPopSample = asPopulationSample obs2Agg aggTime
+   in newPopSample : otherObs

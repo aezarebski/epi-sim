@@ -446,8 +446,6 @@ aggregationTests =
           demoUnseqInts = asConsecutiveIntervals1 [AbsoluteTime 7, AbsoluteTime 12, AbsoluteTime 17]
       in do
         aggregated [] [] demoObs == (map Observation resultAA) `shouldBe` True
-        print ((aggregated [] demoUnseqInts demoObs) !! 6)
-        print ((map Observation resultAB) !! 6)
         aggregated [] demoUnseqInts demoObs == (map Observation resultAB) `shouldBe` True
         aggregated demoSeqInts [] demoObs == (map Observation resultBA) `shouldBe` True
         aggregated demoSeqInts demoUnseqInts demoObs == (map Observation resultBB) `shouldBe` True

@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
@@ -111,79 +112,78 @@ randomEvent' params@(BDSCODParameters br dr sr catastInfo occr disastInfo) currT
    in do delay <-
            exponential (fromIntegral (numPeople currPeople) * netEventRate) gen
          let newEventTime = timeAfterDelta currTime (TimeDelta delay)
-         if noScheduledEvent currTime newEventTime (catastInfo <> disastInfo)
-           then do
-             eventIx <- categorical weightVec gen
-             (selectedPerson, unselectedPeople) <- randomPerson currPeople gen
-             return $
-               case eventIx of
-                 0 ->
-                   let (birthedPerson, newId) = newPerson currId
-                       infEvent =
-                         Infection newEventTime selectedPerson birthedPerson
-                    in ( newEventTime
-                       , infEvent
-                       , BDSCODPopulation (addPerson birthedPerson currPeople)
-                       , newId)
-                 1 ->
-                   ( newEventTime
-                   , Removal newEventTime selectedPerson
-                   , BDSCODPopulation unselectedPeople
-                   , currId)
-                 2 ->
-                   ( newEventTime
-                   , IndividualSample newEventTime selectedPerson True
-                   , BDSCODPopulation unselectedPeople
-                   , currId)
-                 3 ->
-                   ( newEventTime
-                   , IndividualSample newEventTime selectedPerson False
-                   , BDSCODPopulation unselectedPeople
-                   , currId)
-                 _ ->
-                   error "no birth, death, sampling, occurrence event selected."
-           else if noScheduledEvent currTime newEventTime catastInfo
-                  then let (Just (disastTime, disastProb)) =
-                             firstScheduled currTime disastInfo
-                        in do (disastEvent, postDisastPop) <-
-                                randomDisasterEvent
-                                  (disastTime, disastProb)
-                                  currPop
-                                  gen
-                              return
-                                (disastTime, disastEvent, postDisastPop, currId)
-                  else if noScheduledEvent currTime newEventTime disastInfo
-                         then let (Just (catastTime, catastProb)) =
-                                    firstScheduled currTime catastInfo
-                               in do (catastEvent, postCatastPop) <-
-                                       randomCatastropheEvent
-                                         (catastTime, catastProb)
-                                         currPop
-                                         gen
-                                     return
-                                       ( catastTime
-                                       , catastEvent
-                                       , postCatastPop
-                                       , currId)
-                         else let (Just (catastTime, catastProb)) =
-                                    firstScheduled currTime catastInfo
-                                  (Just (disastTime, disastProb)) =
-                                    firstScheduled currTime disastInfo
-                               in do (scheduledEvent, postEventPop) <-
-                                       if catastTime < disastTime
-                                         then randomCatastropheEvent
-                                                (catastTime, catastProb)
-                                                currPop
-                                                gen
-                                         else randomDisasterEvent
-                                                (disastTime, disastProb)
-                                                currPop
-                                                gen
-                                     return
-                                       ( min catastTime disastTime
-                                       , scheduledEvent
-                                       , postEventPop
-                                       , currId)
+         if | noScheduledEvent currTime newEventTime (catastInfo <> disastInfo) ->
+              do
+                eventIx <- categorical weightVec gen
+                (selectedPerson, unselectedPeople) <- randomPerson currPeople gen
+                return $
+                  case eventIx of
+                    0 ->
+                      let (birthedPerson, newId) = newPerson currId
+                          infEvent =
+                            Infection newEventTime selectedPerson birthedPerson
+                      in ( newEventTime
+                         , infEvent
+                         , BDSCODPopulation (addPerson birthedPerson currPeople)
+                         , newId)
+                    1 ->
+                      ( newEventTime
+                      , Removal newEventTime selectedPerson
+                      , BDSCODPopulation unselectedPeople
+                      , currId)
+                    2 ->
+                      ( newEventTime
+                      , IndividualSample newEventTime selectedPerson True
+                      , BDSCODPopulation unselectedPeople
+                      , currId)
+                    3 ->
+                      ( newEventTime
+                      , IndividualSample newEventTime selectedPerson False
+                      , BDSCODPopulation unselectedPeople
+                      , currId)
+                    _ ->
+                      error "no birth, death, sampling, occurrence event selected."
+            | noScheduledEvent currTime newEventTime catastInfo ->
+                let (Just (disastTime, disastProb)) =
+                      firstScheduled currTime disastInfo
+                in do (disastEvent, postDisastPop) <-
+                        randomDisasterEvent
+                        (disastTime, disastProb)
+                        currPop
+                        gen
+                      return (disastTime, disastEvent, postDisastPop, currId)
+            | noScheduledEvent currTime newEventTime disastInfo ->
+                let (Just (catastTime, catastProb)) =
+                      firstScheduled currTime catastInfo
+                in do (catastEvent, postCatastPop) <-
+                        randomCatastropheEvent
+                        (catastTime, catastProb)
+                        currPop
+                        gen
+                      return
+                        ( catastTime
+                        , catastEvent
+                        , postCatastPop
+                        , currId)
+            | otherwise -> let (Just (catastTime, catastProb)) =
+                                 firstScheduled currTime catastInfo
+                               (Just (disastTime, disastProb)) =
+                                 firstScheduled currTime disastInfo
+                           in do (scheduledEvent, postEventPop) <-
+                                   if catastTime < disastTime
+                                   then randomCatastropheEvent
+                                        (catastTime, catastProb)
+                                        currPop
+                                        gen
+                                   else randomDisasterEvent
+                                        (disastTime, disastProb)
+                                        currPop
+                                        gen
+                                 return
+                                   ( min catastTime disastTime
+                                   , scheduledEvent
+                                   , postEventPop
+                                   , currId)
 
 -- | Return a randomly sampled Catastrophe event
 randomCatastropheEvent ::

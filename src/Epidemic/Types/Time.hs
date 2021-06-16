@@ -8,6 +8,7 @@ module Epidemic.Types.Time
   , Timed(..)
   , TimeStamp(..)
   , allTimes
+  , allValues
   , asConsecutiveIntervals1
   , asTimed
   , cadlagValue
@@ -203,6 +204,17 @@ nextTime' txs q =
 --
 allTimes :: Timed a -> [AbsoluteTime]
 allTimes (Timed txs) = [t | (t, _) <- txs, not $ isInfiniteAbsoluteTime t]
+
+-- | The values that the timed variable takes. NOTE that it is safe to use
+-- 'fromJust' here because 'allTimes' only returns times for which there is a
+-- cadlag value anyway.
+--
+-- >>> (Just tx) = asTimed [(AbsoluteTime 1,2),(AbsoluteTime 1.5,1)]
+-- >>> allValues tx
+-- [2,1]
+--
+allValues :: Timed a -> [a]
+allValues timed = Maybe.fromJust . cadlagValue timed <$> allTimes timed
 
 -- | Predicate for an infinite absolute time
 isInfiniteAbsoluteTime :: AbsoluteTime -> Bool

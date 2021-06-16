@@ -50,7 +50,19 @@ firstScheduled time timedProb = do
   prob' <- diracDeltaValue timedProb time'
   return (time', prob')
 
--- | Predicate for whether there is a scheduled event during an interval.
+-- | Predicate for whether there is a scheduled event during an interval. NOTE
+-- that this does not consider events that happen at the start of the interval
+-- as occurring between the times.
+--
+-- >>> tA = AbsoluteTime 1.0
+-- >>> tB = AbsoluteTime 2.0
+-- >>> noScheduledEvent tA tB <$> asTimed [(AbsoluteTime 1.5, 0.5)]
+-- Just False
+-- >>> noScheduledEvent tA tB <$> asTimed [(AbsoluteTime 2.5, 0.5)]
+-- Just True
+-- >>> noScheduledEvent tA tB <$> asTimed [(tA, 0.5)]
+-- Just True
+--
 noScheduledEvent ::
      AbsoluteTime -- ^ Start time for interval
   -> AbsoluteTime -- ^ End time for interval

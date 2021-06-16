@@ -29,6 +29,7 @@ import Epidemic.Types.Time
   , asTimed
   , cadlagValue
   , diracDeltaValue
+  , maybeNextTimed
   , nextTime
   , timeAfterDelta
   )
@@ -107,7 +108,7 @@ randomEvent' ::
   -> GenIO -- ^ The current state of the PRNG
   -> IO (AbsoluteTime, EpidemicEvent, BDSCODPopulation, Identifier)
 randomEvent' params@(BDSCODParameters br dr sr catastInfo occr disastInfo) currTime currPop@(BDSCODPopulation currPeople) currId gen =
-  let netEventRate = fromJust $ eventRate currPop params currTime
+  let (Just netEventRate) = eventRate currPop params currTime
       (Just weightVec) = eventWeights currPop params currTime
    in do delay <-
            exponential (fromIntegral (numPeople currPeople) * netEventRate) gen
@@ -143,47 +144,23 @@ randomEvent' params@(BDSCODParameters br dr sr catastInfo occr disastInfo) currT
                       , currId)
                     _ ->
                       error "no birth, death, sampling, occurrence event selected."
-            | noScheduledEvent currTime newEventTime catastInfo ->
-                let (Just (disastTime, disastProb)) =
-                      firstScheduled currTime disastInfo
-                in do (disastEvent, postDisastPop) <-
-                        randomDisasterEvent
-                        (disastTime, disastProb)
-                        currPop
-                        gen
-                      return (disastTime, disastEvent, postDisastPop, currId)
-            | noScheduledEvent currTime newEventTime disastInfo ->
-                let (Just (catastTime, catastProb)) =
-                      firstScheduled currTime catastInfo
-                in do (catastEvent, postCatastPop) <-
-                        randomCatastropheEvent
-                        (catastTime, catastProb)
-                        currPop
-                        gen
-                      return
-                        ( catastTime
-                        , catastEvent
-                        , postCatastPop
-                        , currId)
-            | otherwise -> let (Just (catastTime, catastProb)) =
-                                 firstScheduled currTime catastInfo
-                               (Just (disastTime, disastProb)) =
-                                 firstScheduled currTime disastInfo
-                           in do (scheduledEvent, postEventPop) <-
-                                   if catastTime < disastTime
-                                   then randomCatastropheEvent
-                                        (catastTime, catastProb)
-                                        currPop
-                                        gen
-                                   else randomDisasterEvent
-                                        (disastTime, disastProb)
-                                        currPop
-                                        gen
-                                 return
-                                   ( min catastTime disastTime
-                                   , scheduledEvent
-                                   , postEventPop
-                                   , currId)
+            | otherwise ->
+              case maybeNextTimed catastInfo disastInfo currTime of
+                Just (disastTime, Right disastProb) ->
+                 do (disastEvent, postDisastPop) <-
+                      randomDisasterEvent
+                      (disastTime, disastProb)
+                      currPop
+                      gen
+                    return (disastTime, disastEvent, postDisastPop, currId)
+                Just (catastTime, Left catastProb) ->
+                 do (catastEvent, postCatastPop) <-
+                      randomCatastropheEvent
+                      (catastTime, catastProb)
+                      currPop
+                      gen
+                    return (catastTime, catastEvent, postCatastPop, currId)
+                Nothing -> error "Missing a next scheduled event when there should be one."
 
 -- | Return a randomly sampled Catastrophe event
 randomCatastropheEvent ::

@@ -15,6 +15,7 @@ module Epidemic.Types.Time
   , hasTime
   , inInterval
   , isAscending
+  , maybeNextTimed
   , nextTime
   , timeAfterDelta
   , timeDelta
@@ -206,3 +207,40 @@ allTimes (Timed txs) = [t | (t, _) <- txs, not $ isInfiniteAbsoluteTime t]
 -- | Predicate for an infinite absolute time
 isInfiniteAbsoluteTime :: AbsoluteTime -> Bool
 isInfiniteAbsoluteTime (AbsoluteTime t) = isInfinite t
+
+-- | Look at both of the timed objects and, if possible, return the time that
+-- the first one changes along with the value it changes to.
+--
+-- >>> (Just tA) = asTimed [(AbsoluteTime 1, (1.1 :: Double)), (AbsoluteTime 3, 2.3)]
+-- >>> (Just tB) = asTimed [(AbsoluteTime 2, (1 :: Int))]
+-- >>> maybeNextTimed tA tB (AbsoluteTime 0.5)
+-- Just (AbsoluteTime 1.0,Left 1.1)
+-- >>> maybeNextTimed tA tB (AbsoluteTime 1.5)
+-- Just (AbsoluteTime 2.0,Right 1)
+-- >>> maybeNextTimed tA tB (AbsoluteTime 3.5)
+-- Nothing
+--
+maybeNextTimed :: Timed a
+               -> Timed b
+               -> AbsoluteTime
+               -> Maybe (AbsoluteTime, Either a b)
+maybeNextTimed timedA timedB absT =
+  let f = flip nextTime absT
+      g1 timed at = do -- two functions are needed for the different types.
+        v <- diracDeltaValue timed at
+        if isInfiniteAbsoluteTime at
+          then Nothing
+          else Just (at, Left v)
+      g2 timed at = do
+        v <- diracDeltaValue timed at
+        if isInfiniteAbsoluteTime at
+          then Nothing
+          else Just (at, Right v)
+   in case (f timedA, f timedB) of
+        (Just tA, Just tB) ->
+          if tA < tB
+            then g1 timedA tA
+            else g2 timedB tB
+        (Just tA, Nothing) -> g1 timedA tA
+        (Nothing, Just tB) -> g2 timedB tB
+        (Nothing, Nothing) -> Nothing

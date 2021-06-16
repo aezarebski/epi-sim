@@ -317,6 +317,14 @@ helperFuncTests = do
              isJust (nextTime demoTimed (AbsoluteTime 2.0)) `shouldBe` True
              isJust (nextTime demoTimed (AbsoluteTime 2.1)) `shouldBe` True
              isJust (nextTime demoTimed (AbsoluteTime 10.0)) `shouldBe` True
+           it "the maybeNextTimed function works as expected" $ do
+             let (Just tA) = asTimed [(AbsoluteTime 1, (1.1 :: Double)), (AbsoluteTime 3, 2.3)]
+                 (Just tB) = asTimed [(AbsoluteTime 2, (1 :: Int))]
+             maybeNextTimed tA tB (AbsoluteTime 0.5) == Just (AbsoluteTime 1.0,Left 1.1) `shouldBe` True
+             maybeNextTimed tA tB (AbsoluteTime 1.5) == Just (AbsoluteTime 2.0,Right 1) `shouldBe` True
+             maybeNextTimed tA tB (AbsoluteTime 2.5) == Just (AbsoluteTime 3.0,Left 2.3) `shouldBe` True
+             isNothing (maybeNextTimed tA tB (AbsoluteTime 3.5)) `shouldBe` True
+
     it "shifted times work" $
       let sf =
             fromJust $

@@ -10,6 +10,8 @@
   absolute time associated with them.
 - Add `TimeInterval` type for working with intervals of time, there are also
   some helper functions to make it easier to work with intervals.
+- Add the `maybeNextTimed` helper function and clean up some code in the `Time`
+  module.
 - Extend `ModelParameters` class to have an `eventWeights` to provide a vector
   of event weights for computing which event actually occurred.
 

@@ -177,13 +177,7 @@ diracDeltaValue' txs q =
 
 -- | Check if there exists a pair with a particular time index.
 hasTime :: Timed a -> AbsoluteTime -> Bool
-hasTime (Timed txs) = hasTime' txs
-
-hasTime' :: [(AbsoluteTime, a)] -> AbsoluteTime -> Bool
-hasTime' txs q =
-  case txs of
-    ((t, _):txs') -> t == q || hasTime' txs' q
-    [] -> False
+hasTime tx absT = elem absT $ allTimes tx
 
 -- | Return the value of the next time if possible or an exact match if it
 -- exists.

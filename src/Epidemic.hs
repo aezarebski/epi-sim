@@ -1,23 +1,15 @@
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE OverloadedStrings #-}
 
 module Epidemic where
 
-import Control.Monad
-import qualified Data.ByteString as B
-import Data.ByteString.Internal (c2w)
 import Data.List (nub)
 import Data.Maybe (fromJust, isJust, isNothing)
 import qualified Data.Vector as V
-import Data.Word
 import Epidemic.Types.Events
 import Epidemic.Types.Parameter
 import Epidemic.Types.Population
 import Epidemic.Types.Simulation
-  ( SimulationConfiguration(..)
-  , SimulationRandEvent(..)
+  ( SimulationRandEvent(..)
   , SimulationState(..)
   )
 import Epidemic.Types.Time
@@ -26,7 +18,6 @@ import Epidemic.Types.Time
   , diracDeltaValue
   , nextTime
   )
-import GHC.Generics (Generic)
 import System.Random.MWC
 
 -- | The number of people added or removed in an event.
@@ -79,8 +70,8 @@ personsInEvent e =
   case e of
     Infection _ p1 p2 -> [p1, p2]
     Removal _ p -> [p]
-    (IndividualSample {..}) -> [indSampPerson]
-    (PopulationSample {..}) -> V.toList personVec
+    IndividualSample {..} -> [indSampPerson]
+    PopulationSample {..} -> V.toList personVec
       where (People personVec) = popSampPeople
     Extinction {} -> []
     StoppingTime {} -> []
@@ -145,13 +136,13 @@ allEvents simRandEvent@(SimulationRandEvent randEvent) modelParams maxTime maybe
                else return $
                     SimulationState
                       ( maxTime
-                      , (StoppingTime maxTime) : currEvents
+                      , StoppingTime maxTime : currEvents
                       , currPop
                       , currId)
            else return $
                 SimulationState
                   ( currTime
-                  , (Extinction currTime) : currEvents
+                  , Extinction currTime : currEvents
                   , currPop
                   , currId)
     else return TerminatedSimulation

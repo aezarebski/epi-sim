@@ -13,13 +13,11 @@ import qualified Data.Vector as V
 import qualified Data.Vector.Generic as G
 import Epidemic
 import Epidemic.Types.Events (EpidemicEvent(..))
-import Epidemic.Types.Observations
 import Epidemic.Types.Parameter
 import Epidemic.Types.Population
 import Epidemic.Types.Simulation
   ( SimulationConfiguration(..)
   , SimulationRandEvent(..)
-  , SimulationState(..)
   )
 import Epidemic.Types.Time
   ( AbsoluteTime(..)
@@ -28,6 +26,7 @@ import Epidemic.Types.Time
   , allTimes
   , asTimed
   , cadlagValue
+  , maybeNextTimed
   )
 import Epidemic.Utility
 import System.Random.MWC
@@ -171,35 +170,22 @@ randomEvent' inhomRates@InhomBDSCODRates {..} currTime currPop@(InhomBDSCODPop p
                    , InhomBDSCODPop unselectedPeople
                    , currId)
                  _ -> error "no birth, death, sampling, or occurrence event selected."
-           else if noScheduledEvent currTime newEventTime irDisasterSpec
-                   then let (Just (catastTime, catastProb)) = firstScheduled currTime irCatastropheSpec
-                         in do (catastEvent, postCatastPop) <-
-                                 randomCatastropheEvent
-                                   (catastTime, catastProb)
-                                   currPop
-                                   gen
-                               return
-                                 ( catastTime
-                                 , catastEvent
-                                 , postCatastPop
-                                 , currId)
-                   else if noScheduledEvent currTime newEventTime irCatastropheSpec
-                        then let (Just (disastTime, disastProb)) = firstScheduled currTime irDisasterSpec
-                             in do (disastEvent, postDisastPop) <- randomDisasterEvent (disastTime, disastProb) currPop gen
-                                   return ( disastTime
-                                          , disastEvent
-                                          , postDisastPop
-                                          , currId)
-                        else let (Just (catastTime, catastProb)) = firstScheduled currTime irCatastropheSpec
-                                 (Just (disastTime, disastProb)) = firstScheduled currTime irDisasterSpec
-                             in do (scheduledEvent, postEventPop) <-
-                                     (if catastTime < disastTime
-                                      then (randomCatastropheEvent (catastTime, catastProb) currPop gen)
-                                      else (randomDisasterEvent (disastTime, disastProb) currPop gen))
-                                   return ( min catastTime disastTime
-                                          , scheduledEvent
-                                          , postEventPop
-                                          , currId)
+           else case maybeNextTimed irCatastropheSpec irDisasterSpec currTime of
+                  Just (disastTime, Right disastProb) ->
+                    do (disastEvent, postDisastPop) <-
+                         randomDisasterEvent
+                         (disastTime, disastProb)
+                         currPop
+                         gen
+                       return (disastTime, disastEvent, postDisastPop, currId)
+                  Just (catastTime, Left catastProb) ->
+                    do (catastEvent, postCatastPop) <-
+                         randomCatastropheEvent
+                         (catastTime, catastProb)
+                         currPop
+                         gen
+                       return (catastTime, catastEvent, postCatastPop, currId)
+                  Nothing -> error "Missing a next scheduled event when there should be one."
 
 -- | Return a randomly sampled Catastrophe event
 -- TODO Move this into the epidemic module to keep things DRY.

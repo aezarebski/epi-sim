@@ -19,19 +19,10 @@ module Epidemic.Types.Events
   ) where
 
 import qualified Data.Aeson as Json
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Builder as BBuilder
-import qualified Data.List as List
-import qualified Data.Vector as V
-import Epidemic.Types.Parameter
 import Epidemic.Types.Population
 import Epidemic.Types.Time
   ( AbsoluteTime(..)
-  , TimeDelta(..)
-  , TimeInterval(..)
   , TimeStamp(..)
-  , inInterval
-  , timeDelta
   )
 import GHC.Generics
 

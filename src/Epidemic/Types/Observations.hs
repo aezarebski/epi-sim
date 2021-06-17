@@ -12,25 +12,18 @@ module Epidemic.Types.Observations
   , aggregated
   ) where
 
-import Control.Monad (liftM)
 import qualified Data.Aeson as Json
-import qualified Data.ByteString.Builder as BBuilder
 import qualified Data.List as List
-import qualified Data.Vector as V
 import Epidemic.Types.Events
   ( EpidemicEvent(..)
   , EpidemicTree(..)
-  , isIndividualSample
   , maybeEpidemicTree
   )
-import Epidemic.Types.Population (People(..), asPeople, personByteString)
+import Epidemic.Types.Population (asPeople)
 import Epidemic.Types.Time
-  ( AbsoluteTime(..)
-  , TimeDelta(..)
-  , TimeInterval(..)
+  ( TimeInterval(..)
   , TimeStamp(..)
   , inInterval
-  , timeDelta
   )
 import GHC.Generics
 
@@ -60,15 +53,9 @@ pointProcessEvents Shoot {} = PointProcessEvents []
 pointProcessEvents (Leaf e) =
   case e of
     IndividualSample {..} ->
-      PointProcessEvents $
-      if not indSampSeq
-        then [Observation e]
-        else []
+      PointProcessEvents [Observation e | not indSampSeq]
     PopulationSample {..} ->
-      PointProcessEvents $
-      if not popSampSeq
-        then [Observation e]
-        else []
+      PointProcessEvents [Observation e | not popSampSeq]
     _ -> PointProcessEvents []
 pointProcessEvents (Branch _ lt rt) =
   let (PointProcessEvents lEs) = pointProcessEvents lt
@@ -130,7 +117,7 @@ observedEvents epiEvents = do
   let (PointProcessEvents unseqObss) = pointProcessEvents epiTree
   reconTreeEvents <-
     if hasSequencedLeaf epiTree
-      then (liftM reconstructedTreeEvents) $ maybeReconstructedTree epiTree
+      then reconstructedTreeEvents <$> maybeReconstructedTree epiTree
       else Right []
   return $ List.sort . List.nub $ unseqObss ++ reconTreeEvents
 
@@ -165,7 +152,7 @@ _aggregateInInterval interval@TimeInterval {..} onlySequenced obs =
         Observation $
         PopulationSample
           absT
-          (asPeople $ [indSampPerson ee | Observation ee <- os])
+          (asPeople [indSampPerson ee | Observation ee <- os])
           onlySequenced
       (_, aggTime) = timeIntEndPoints
       toBeAggregated o =
@@ -174,7 +161,7 @@ _aggregateInInterval interval@TimeInterval {..} onlySequenced obs =
             inInterval interval o &&
             (if onlySequenced
                then indSampSeq
-               else (not indSampSeq))
+               else not indSampSeq)
           _ -> False
       (obs2Agg, otherObs) = List.partition toBeAggregated obs
       newPopSample = asPopulationSample obs2Agg aggTime

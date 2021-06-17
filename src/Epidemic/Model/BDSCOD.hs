@@ -1,4 +1,3 @@
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
@@ -113,8 +112,8 @@ randomEvent' params@(BDSCODParameters br dr sr catastInfo occr disastInfo) currT
    in do delay <-
            exponential (fromIntegral (numPeople currPeople) * netEventRate) gen
          let newEventTime = timeAfterDelta currTime (TimeDelta delay)
-         if | noScheduledEvent currTime newEventTime (catastInfo <> disastInfo) ->
-              do
+         if noScheduledEvent currTime newEventTime (catastInfo <> disastInfo)
+         then do
                 eventIx <- categorical weightVec gen
                 (selectedPerson, unselectedPeople) <- randomPerson currPeople gen
                 return $
@@ -144,8 +143,7 @@ randomEvent' params@(BDSCODParameters br dr sr catastInfo occr disastInfo) currT
                       , currId)
                     _ ->
                       error "no birth, death, sampling, occurrence event selected."
-            | otherwise ->
-              case maybeNextTimed catastInfo disastInfo currTime of
+         else case maybeNextTimed catastInfo disastInfo currTime of
                 Just (disastTime, Right disastProb) ->
                  do (disastEvent, postDisastPop) <-
                       randomDisasterEvent

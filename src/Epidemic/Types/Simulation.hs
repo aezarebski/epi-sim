@@ -9,7 +9,7 @@ module Epidemic.Types.Simulation
 import Epidemic.Types.Events
 import Epidemic.Types.Parameter
 import Epidemic.Types.Population
-import Epidemic.Types.Time (AbsoluteTime(..), TimeDelta(..), timeDelta)
+import Epidemic.Types.Time (AbsoluteTime(..), TimeDelta(..))
 import System.Random.MWC
 
 data SimulationConfiguration r p =

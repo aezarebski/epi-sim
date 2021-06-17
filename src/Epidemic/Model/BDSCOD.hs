@@ -1,4 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module Epidemic.Model.BDSCOD
@@ -8,15 +7,10 @@ module Epidemic.Model.BDSCOD
   , BDSCODPopulation(..)
   ) where
 
-import Data.List (nub)
-import Data.Maybe (fromJust, isJust, isNothing)
 import qualified Data.Vector as V
 import qualified Data.Vector.Generic as G
 import Epidemic
-import Epidemic.Types.Events
-  ( EpidemicEvent(..)
-  , maybeEpidemicTree
-  )
+import Epidemic.Types.Events (EpidemicEvent(..))
 import Epidemic.Types.Parameter
 import Epidemic.Types.Population
 import Epidemic.Types.Simulation
@@ -27,31 +21,31 @@ import Epidemic.Types.Time
   ( AbsoluteTime(..)
   , TimeDelta(..)
   , Timed(..)
-  , cadlagValue
-  , diracDeltaValue
-  , nextTime
-  , timeAfterDelta
-  , allTimes
   , asTimed
+  , maybeNextTimed
+  , timeAfterDelta
   )
 import Epidemic.Utility
 import System.Random.MWC
 import System.Random.MWC.Distributions (bernoulli, categorical, exponential)
 
 -- | birth rate, death rate, sampling rate, catastrophe specification, occurrence rate and disaster specification
-data BDSCODParameters = BDSCODParameters Rate Rate Rate (Timed Probability) Rate (Timed Probability)
+data BDSCODParameters =
+  BDSCODParameters Rate Rate Rate (Timed Probability) Rate (Timed Probability)
 
 data BDSCODPopulation =
   BDSCODPopulation People
   deriving (Show)
 
 instance ModelParameters BDSCODParameters BDSCODPopulation where
-  rNaught _ (BDSCODParameters birthRate deathRate samplingRate _ occurrenceRate _) _ =
-    Just $ birthRate / (deathRate + samplingRate + occurrenceRate)
-  eventRate _ (BDSCODParameters birthRate deathRate samplingRate _ occurrenceRate _) _ =
-    Just $ birthRate + deathRate + samplingRate + occurrenceRate
-  birthProb _ (BDSCODParameters birthRate deathRate samplingRate _ occurrenceRate _) _ =
-    Just $ birthRate / (birthRate + deathRate + samplingRate + occurrenceRate)
+  rNaught _ (BDSCODParameters br dr sRate _ occRate _) _ =
+    Just $ br / (dr + sRate + occRate)
+  eventRate _ (BDSCODParameters br dr sRate _ occRate _) _ =
+    Just $ br + dr + sRate + occRate
+  birthProb _ (BDSCODParameters br dr sRate _ occRate _) _ =
+    Just $ br / (br + dr + sRate + occRate)
+  eventWeights _ (BDSCODParameters br dr sRate _ occRate _) _ =
+    Just $ V.fromList [br, dr, sRate, occRate]
 
 instance Population BDSCODPopulation where
   susceptiblePeople _ = Nothing
@@ -98,53 +92,73 @@ randomEvent :: SimulationRandEvent BDSCODParameters BDSCODPopulation
 randomEvent = SimulationRandEvent randomEvent'
 
 -- | Return a random event from the BDSCOD-process given the current state of the process.
-randomEvent' :: BDSCODParameters  -- ^ Parameters of the process
-            -> AbsoluteTime              -- ^ The current time within the process
-            -> BDSCODPopulation  -- ^ The current state of the populaion
-            -> Identifier        -- ^ The current state of the identifier generator
-            -> GenIO             -- ^ The current state of the PRNG
-            -> IO (AbsoluteTime, EpidemicEvent, BDSCODPopulation, Identifier)
-randomEvent' params@(BDSCODParameters br dr sr catastInfo occr disastInfo) currTime currPop@(BDSCODPopulation currPeople) currId gen =
-  let netEventRate = fromJust $ eventRate currPop params currTime
-      eventWeights = V.fromList [br, dr, sr, occr]
-   in do delay <- exponential (fromIntegral (numPeople currPeople) * netEventRate) gen
+randomEvent' ::
+     BDSCODParameters -- ^ Parameters of the process
+  -> AbsoluteTime -- ^ The current time within the process
+  -> BDSCODPopulation -- ^ The current state of the populaion
+  -> Identifier -- ^ The current state of the identifier generator
+  -> GenIO -- ^ The current state of the PRNG
+  -> IO (AbsoluteTime, EpidemicEvent, BDSCODPopulation, Identifier)
+randomEvent' params@(BDSCODParameters _ _ _ catastInfo _ disastInfo) currTime currPop@(BDSCODPopulation currPeople) currId gen =
+  let (Just netEventRate) = eventRate currPop params currTime
+      (Just weightVec) = eventWeights currPop params currTime
+   in do delay <-
+           exponential (fromIntegral (numPeople currPeople) * netEventRate) gen
          let newEventTime = timeAfterDelta currTime (TimeDelta delay)
          if noScheduledEvent currTime newEventTime (catastInfo <> disastInfo)
-           then do eventIx <- categorical eventWeights gen
-                   (selectedPerson, unselectedPeople) <- randomPerson currPeople gen
-                   return $ case eventIx of
-                     0 -> let (birthedPerson, newId) = newPerson currId
-                              infEvent = Infection newEventTime selectedPerson birthedPerson
-                       in ( newEventTime
-                          , infEvent
-                          , BDSCODPopulation (addPerson birthedPerson currPeople)
-                          , newId)
-                     1 -> (newEventTime, Removal newEventTime selectedPerson, BDSCODPopulation unselectedPeople, currId)
-                     2 -> (newEventTime, IndividualSample newEventTime selectedPerson True, BDSCODPopulation unselectedPeople, currId)
-                     3 -> (newEventTime, IndividualSample newEventTime selectedPerson False, BDSCODPopulation unselectedPeople, currId)
-                     _ -> error "no birth, death, sampling, occurrence event selected."
-
-           else if noScheduledEvent currTime newEventTime catastInfo
-                  then let (Just (disastTime,disastProb)) = firstScheduled currTime disastInfo
-                        in do (disastEvent,postDisastPop) <- randomDisasterEvent (disastTime,disastProb) currPop gen
-                              return (disastTime,disastEvent,postDisastPop,currId)
-                else if noScheduledEvent currTime newEventTime disastInfo
-                        then let (Just (catastTime,catastProb)) = firstScheduled currTime catastInfo
-                              in do (catastEvent,postCatastPop) <- randomCatastropheEvent (catastTime,catastProb) currPop gen
-                                    return (catastTime,catastEvent,postCatastPop,currId)
-                     else let (Just (catastTime,catastProb)) = firstScheduled currTime catastInfo
-                              (Just (disastTime,disastProb)) = firstScheduled currTime disastInfo
-                           in do (scheduledEvent,postEventPop) <- if catastTime < disastTime then
-                                                                    randomCatastropheEvent (catastTime,catastProb) currPop gen else
-                                                                    randomDisasterEvent (disastTime,disastProb) currPop gen
-                                 return (min catastTime disastTime,scheduledEvent,postEventPop,currId)
-
+         then do
+                eventIx <- categorical weightVec gen
+                (selectedPerson, unselectedPeople) <- randomPerson currPeople gen
+                return $
+                  case eventIx of
+                    0 ->
+                      let (birthedPerson, newId) = newPerson currId
+                          infEvent =
+                            Infection newEventTime selectedPerson birthedPerson
+                      in ( newEventTime
+                         , infEvent
+                         , BDSCODPopulation (addPerson birthedPerson currPeople)
+                         , newId)
+                    1 ->
+                      ( newEventTime
+                      , Removal newEventTime selectedPerson
+                      , BDSCODPopulation unselectedPeople
+                      , currId)
+                    2 ->
+                      ( newEventTime
+                      , IndividualSample newEventTime selectedPerson True
+                      , BDSCODPopulation unselectedPeople
+                      , currId)
+                    3 ->
+                      ( newEventTime
+                      , IndividualSample newEventTime selectedPerson False
+                      , BDSCODPopulation unselectedPeople
+                      , currId)
+                    _ ->
+                      error "no birth, death, sampling, occurrence event selected."
+         else case maybeNextTimed catastInfo disastInfo currTime of
+                Just (disastTime, Right disastProb) ->
+                 do (disastEvent, postDisastPop) <-
+                      randomDisasterEvent
+                      (disastTime, disastProb)
+                      currPop
+                      gen
+                    return (disastTime, disastEvent, postDisastPop, currId)
+                Just (catastTime, Left catastProb) ->
+                 do (catastEvent, postCatastPop) <-
+                      randomCatastropheEvent
+                      (catastTime, catastProb)
+                      currPop
+                      gen
+                    return (catastTime, catastEvent, postCatastPop, currId)
+                Nothing -> error "Missing a next scheduled event when there should be one."
 
 -- | Return a randomly sampled Catastrophe event
-randomCatastropheEvent :: (AbsoluteTime,Probability) -- ^ Time and probability of sampling in the catastrophe
-                       -> BDSCODPopulation    -- ^ The state of the population prior to the catastrophe
-                       -> GenIO
-                       -> IO (EpidemicEvent,BDSCODPopulation)
+randomCatastropheEvent ::
+     (AbsoluteTime, Probability) -- ^ Time and probability of sampling in the catastrophe
+  -> BDSCODPopulation -- ^ The state of the population prior to the catastrophe
+  -> GenIO
+  -> IO (EpidemicEvent, BDSCODPopulation)
 randomCatastropheEvent (catastTime, rhoProb) (BDSCODPopulation (People currPeople)) gen = do
   rhoBernoullis <- G.replicateM (V.length currPeople) (bernoulli rhoProb gen)
   let filterZip predicate a b = fst . V.unzip . V.filter predicate $ V.zip a b
@@ -156,10 +170,11 @@ randomCatastropheEvent (catastTime, rhoProb) (BDSCODPopulation (People currPeopl
 
 -- | Return a randomly sampled Disaster event
 -- TODO Move this into the epidemic module to keep things DRY.
-randomDisasterEvent :: (AbsoluteTime,Probability) -- ^ Time and probability of sampling in the disaster
-                    -> BDSCODPopulation    -- ^ The state of the population prior to the disaster
-                    -> GenIO
-                    -> IO (EpidemicEvent,BDSCODPopulation)
+randomDisasterEvent ::
+     (AbsoluteTime, Probability) -- ^ Time and probability of sampling in the disaster
+  -> BDSCODPopulation -- ^ The state of the population prior to the disaster
+  -> GenIO
+  -> IO (EpidemicEvent, BDSCODPopulation)
 randomDisasterEvent (disastTime, nuProb) (BDSCODPopulation (People currPeople)) gen = do
   nuBernoullis <- G.replicateM (V.length currPeople) (bernoulli nuProb gen)
   let filterZip predicate a b = fst . V.unzip . V.filter predicate $ V.zip a b

@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 module Epidemic.Types.Population
@@ -17,9 +16,7 @@ module Epidemic.Types.Population
   ) where
 
 import qualified Data.Aeson as Json
-import qualified Data.ByteString as B
 import qualified Data.ByteString.Builder as BBuilder
-import Data.ByteString.Internal (c2w)
 import qualified Data.Vector as V
 import GHC.Generics
 
@@ -67,7 +64,7 @@ includesPerson (People persons) person = V.elem person persons
 
 -- | Predicate for whether two sets of people have any members in common.
 haveCommonPeople :: People -> People -> Bool
-haveCommonPeople (People ps1) (People ps2) = V.any (\p -> V.elem p ps2) ps1
+haveCommonPeople (People ps1) (People ps2) = V.any (`V.elem` ps2) ps1
 
 -- | Predicate for whether there are any people
 nullPeople :: People -> Bool

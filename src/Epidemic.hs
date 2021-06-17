@@ -1,30 +1,28 @@
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE OverloadedStrings #-}
 
 module Epidemic where
 
-import Control.Monad
-import qualified Data.ByteString as B
-import Data.ByteString.Internal (c2w)
 import Data.List (nub)
 import Data.Maybe (fromJust, isJust, isNothing)
 import qualified Data.Vector as V
-import Data.Word
 import Epidemic.Types.Events
 import Epidemic.Types.Parameter
 import Epidemic.Types.Population
 import Epidemic.Types.Simulation
-  ( SimulationConfiguration(..)
-  , SimulationRandEvent(..)
+  ( SimulationRandEvent(..)
   , SimulationState(..)
   )
-import Epidemic.Types.Time (AbsoluteTime(..), Timed(..), diracDeltaValue, nextTime)
-import GHC.Generics (Generic)
+import Epidemic.Types.Time
+  ( AbsoluteTime(..)
+  , Timed(..)
+  , diracDeltaValue
+  , nextTime
+  )
 import System.Random.MWC
 
--- | The number of people added or removed in an event.
+-- | The number of people added or removed in an event. In the case of an
+-- extinction event the number of people removed is arbitrarily set to zero
+-- because this information is available from the prior event in the sequence.
 eventPopDelta :: EpidemicEvent -> Integer
 eventPopDelta e =
   case e of
@@ -32,7 +30,8 @@ eventPopDelta e =
     Removal {} -> -1
     IndividualSample {} -> -1
     PopulationSample {..} -> fromIntegral $ numPeople popSampPeople
-    StoppingTime -> 0
+    StoppingTime {} -> 0
+    Extinction {} -> 0
 
 -- | The first scheduled event after a given time.
 firstScheduled ::
@@ -44,7 +43,19 @@ firstScheduled time timedProb = do
   prob' <- diracDeltaValue timedProb time'
   return (time', prob')
 
--- | Predicate for whether there is a scheduled event during an interval.
+-- | Predicate for whether there is a scheduled event during an interval. NOTE
+-- that this does not consider events that happen at the start of the interval
+-- as occurring between the times.
+--
+-- >>> tA = AbsoluteTime 1.0
+-- >>> tB = AbsoluteTime 2.0
+-- >>> noScheduledEvent tA tB <$> asTimed [(AbsoluteTime 1.5, 0.5)]
+-- Just False
+-- >>> noScheduledEvent tA tB <$> asTimed [(AbsoluteTime 2.5, 0.5)]
+-- Just True
+-- >>> noScheduledEvent tA tB <$> asTimed [(tA, 0.5)]
+-- Just True
+--
 noScheduledEvent ::
      AbsoluteTime -- ^ Start time for interval
   -> AbsoluteTime -- ^ End time for interval
@@ -61,13 +72,11 @@ personsInEvent e =
   case e of
     Infection _ p1 p2 -> [p1, p2]
     Removal _ p -> [p]
-    (IndividualSample {..}) -> [indSampPerson]
-    (PopulationSample {..}) ->
-      V.toList personVec
-      where
-        (People personVec) = popSampPeople
-    Extinction -> []
-    StoppingTime -> []
+    IndividualSample {..} -> [indSampPerson]
+    PopulationSample {..} -> V.toList personVec
+      where (People personVec) = popSampPeople
+    Extinction {} -> []
+    StoppingTime {} -> []
 
 peopleInEvents :: [EpidemicEvent] -> People
 peopleInEvents events =
@@ -128,8 +137,14 @@ allEvents simRandEvent@(SimulationRandEvent randEvent) modelParams maxTime maybe
                       gen
                else return $
                     SimulationState
-                      (maxTime, StoppingTime : currEvents, currPop, currId)
+                      ( maxTime
+                      , StoppingTime maxTime : currEvents
+                      , currPop
+                      , currId)
            else return $
                 SimulationState
-                  (currTime, Extinction : currEvents, currPop, currId)
+                  ( currTime
+                  , Extinction currTime : currEvents
+                  , currPop
+                  , currId)
     else return TerminatedSimulation

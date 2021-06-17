@@ -14,18 +14,16 @@ module Epidemic.Types.Events
   , EpidemicTree(Branch, Leaf, Shoot)
   , maybeEpidemicTree
   , isExtinctionOrStopping
-  , eventTime
+  , isIndividualSample
   , derivedFrom
   ) where
 
 import qualified Data.Aeson as Json
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Builder as BBuilder
-import qualified Data.List as List
-import qualified Data.Vector as V
-import Epidemic.Types.Parameter
 import Epidemic.Types.Population
-import Epidemic.Types.Time (AbsoluteTime(..), TimeDelta(..), timeDelta)
+import Epidemic.Types.Time
+  ( AbsoluteTime(..)
+  , TimeStamp(..)
+  )
 import GHC.Generics
 
 -- | Events that can occur in an epidemic with their absolute time.
@@ -42,43 +40,45 @@ data EpidemicEvent
       , popSampPeople :: People
       , popSampSeq :: Bool
       }
-  | Extinction -- ^ epidemic went extinct time time can be recovered from the preceeding removal
-  | StoppingTime -- ^ the simulation reached the stopping time
+  | Extinction AbsoluteTime -- ^ epidemic went extinct
+  | StoppingTime AbsoluteTime -- ^ the simulation reached the stopping time
   deriving (Show, Generic, Eq)
 
 instance Json.FromJSON EpidemicEvent
 
 instance Json.ToJSON EpidemicEvent
 
+instance TimeStamp EpidemicEvent where
+  absTime ee =
+    case ee of
+      Infection absT _ _ -> absT
+      Removal absT _ -> absT
+      IndividualSample {..} -> indSampTime
+      PopulationSample {..} -> popSampTime
+      StoppingTime absT -> absT
+      Extinction absT -> absT
+
+-- | Predicate for the event being an individual sample event.
+isIndividualSample :: EpidemicEvent -> Bool
+isIndividualSample ee =
+  case ee of
+    IndividualSample {} -> True
+    _ -> False
+
 -- | Predicate for whether an @EpidemicEvent@ is one of the terminal events of
 -- extinction or the stopping time having been reached.
 isExtinctionOrStopping :: EpidemicEvent -> Bool
 isExtinctionOrStopping e =
   case e of
-    Extinction -> True
-    StoppingTime -> True
+    Extinction {} -> True
+    StoppingTime {} -> True
     _ -> False
 
 -- | Epidemic Events are ordered based on which occurred first. Since
 -- 'Extinction' and 'StoppingTime' events are there as placeholders they are
 -- placed as the end of the order.
 instance Ord EpidemicEvent where
-  Extinction <= Extinction = True
-  Extinction <= StoppingTime = True
-  Extinction <= _ = False
-  StoppingTime <= Extinction = False
-  StoppingTime <= StoppingTime = True
-  StoppingTime <= _ = False
-  e1 <= e2 = eventTime e1 <= eventTime e2
-
--- | The absolute time an event occurred.
-eventTime :: EpidemicEvent -> AbsoluteTime
-eventTime e =
-  case e of
-    Infection time _ _ -> time
-    Removal time _ -> time
-    IndividualSample {..} -> indSampTime
-    PopulationSample {..} -> popSampTime
+  e1 <= e2 = absTime e1 <= absTime e2
 
 -- | The events that occurred as a result of the existance of the given person.
 derivedFrom ::
@@ -115,8 +115,8 @@ derivedFromPeople people (e:es) =
        in if haveCommonPeople people popSampPeople
             then e : derivedEvents
             else derivedEvents
-    Extinction -> derivedFromPeople people es
-    StoppingTime -> derivedFromPeople people es
+    Extinction {} -> derivedFromPeople people es
+    StoppingTime {} -> derivedFromPeople people es
 
 -- | The whole transmission tree including the unobserved leaves. Lineages that
 -- are still extant are modelled as /shoots/ and contain a 'Person' as their
@@ -143,8 +143,10 @@ maybeEpidemicTree [e] =
       if nullPeople popSampPeople
         then Left "The last event is a PopulationSample with no people sampled"
         else Right (Leaf e)
-    Extinction -> Left "Extinction event encountered. It should have been removed"
-    StoppingTime -> Left "Stopping time encountered. It should have been removed"
+    Extinction {} ->
+      Left "Extinction event encountered. It should have been removed"
+    StoppingTime {} ->
+      Left "Stopping time encountered. It should have been removed"
 maybeEpidemicTree (e:es) =
   case e of
     Infection _ p1 p2 ->
@@ -165,5 +167,7 @@ maybeEpidemicTree (e:es) =
       if nullPeople popSampPeople
         then maybeEpidemicTree es
         else Right (Leaf e)
-    Extinction -> Left "Extinction event encountered. It should have been removed"
-    StoppingTime -> Left "Stopping time encountered. It should have been removed"
+    Extinction {} ->
+      Left "Extinction event encountered. It should have been removed"
+    StoppingTime {} ->
+      Left "Stopping time encountered. It should have been removed"

@@ -18,10 +18,6 @@ import Epidemic.Types.Time
   , Timed(..)
   , TimeDelta(..)
   , asTimed
-  , allTimes
-  , diracDeltaValue
-  , nextTime
-  , cadlagValue
   , timeAfterDelta
   )
 import Epidemic.Types.Parameter
@@ -40,7 +36,6 @@ import Epidemic.Types.Population
 import Epidemic.Types.Simulation
   ( SimulationConfiguration(..)
   , SimulationRandEvent(..)
-  , SimulationState(..)
   )
 import Epidemic.Utility
   ( initialIdentifier
@@ -79,11 +74,14 @@ instance ModelParameters LogisticBDSDParameters LogisticBDSDPopulation where
     let propCapcity = fromIntegral (numPeople pop) / fromIntegral paramsCapacity
         br = paramsBirthRate * (1.0 - propCapcity)
      in Just $ br + paramsDeathRate + paramsSamplingRate
-  birthProb lpop lparam@LogisticBDSDParameters {..} absTime = do
+  birthProb lpop lparam absTime = do
     er <- eventRate lpop lparam absTime
     Just $ br / er
     where
       br = logisticBirthRate lparam lpop
+  eventWeights currPop params@LogisticBDSDParameters {..} _ =
+    let logisticBR = logisticBirthRate params currPop
+        in Just $ V.fromList [logisticBR, paramsDeathRate, paramsSamplingRate]
 
 instance Population LogisticBDSDPopulation where
   susceptiblePeople _ = Nothing
@@ -140,14 +138,12 @@ randEvent' ::
 randEvent' params@LogisticBDSDParameters {..} currTime currPop@(LogisticBDSDPopulation currPpl) currId gen =
   let netEventRate = (fromJust $ eventRate currPop params currTime)
       popSizeDouble = fromIntegral $ numPeople currPpl
-      logisticBR = logisticBirthRate params currPop
-      eventWeights =
-        V.fromList [logisticBR, paramsDeathRate, paramsSamplingRate]
+      (Just weightsVec) = eventWeights currPop params currTime
    in do delay <- exponential (netEventRate * popSizeDouble) gen
          let newEventTime = timeAfterDelta currTime (TimeDelta delay)
          if noScheduledEvent currTime newEventTime paramsDisasters
            then do
-             eventIx <- categorical eventWeights gen
+             eventIx <- categorical weightsVec gen
              (randPerson, otherPeople) <- randomPerson currPpl gen
              return $
                case eventIx of

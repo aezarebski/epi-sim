@@ -1,4 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module Epidemic.Model.InhomogeneousBDS
@@ -15,30 +14,22 @@ import Epidemic.Types.Time
   , TimeDelta(..)
   , allTimes
   , asTimed
-  , diracDeltaValue
-  , nextTime
   , cadlagValue
-  , timeAfterDelta
   )
-import Control.Monad (liftM)
-import Data.Maybe (fromJust, isJust, isNothing)
+import Data.Maybe (fromJust)
 import qualified Data.Vector as V
-import Epidemic
 import Epidemic.Types.Events
   ( EpidemicEvent(..)
-  , maybeEpidemicTree
   )
 import Epidemic.Types.Parameter
 import Epidemic.Types.Population
-import Epidemic.Types.Observations
 import Epidemic.Types.Simulation
   ( SimulationConfiguration(..)
   , SimulationRandEvent(..)
-  , SimulationState(..)
   )
 import Epidemic.Utility
 import System.Random.MWC
-import System.Random.MWC.Distributions (categorical, exponential)
+import System.Random.MWC.Distributions (categorical)
 
 data InhomBDSRates =
   InhomBDSRates (Timed Rate) Rate Rate
@@ -50,13 +41,15 @@ data InhomBDSPop =
 instance ModelParameters InhomBDSRates InhomBDSPop where
   rNaught _ (InhomBDSRates timedBirthRate deathRate sampleRate) time =
     let birthRate = cadlagValue timedBirthRate time
-     in liftM (/ (deathRate + sampleRate)) birthRate
+     in (/ (deathRate + sampleRate)) <$> birthRate
   eventRate _ (InhomBDSRates timedBirthRate deathRate sampleRate) time =
     let birthRate = cadlagValue timedBirthRate time
-     in liftM (+ (deathRate + sampleRate)) birthRate
+     in (+ (deathRate + sampleRate)) <$> birthRate
   birthProb _ (InhomBDSRates timedBirthRate deathRate sampleRate) time =
-    liftM (\br -> br / (br + deathRate + sampleRate)) $
+    (\br -> br / (br + deathRate + sampleRate)) <$>
     cadlagValue timedBirthRate time
+  eventWeights _ (InhomBDSRates timedBirthRate deathRate sampleRate) time =
+    Just $ V.fromList [fromJust (cadlagValue timedBirthRate time), deathRate, sampleRate]
 
 instance Population InhomBDSPop where
   susceptiblePeople _ = Nothing
@@ -115,9 +108,10 @@ randomEvent' ::
   -> Identifier -- ^ current identifier
   -> GenIO -- ^ PRNG
   -> IO (AbsoluteTime, EpidemicEvent, InhomBDSPop, Identifier)
-randomEvent' inhomRates@(InhomBDSRates brts dr sr) currTime pop@(InhomBDSPop (people@(People peopleVec))) currId gen =
+randomEvent' inhomRates@(InhomBDSRates brts _ _) currTime pop@(InhomBDSPop people) currId gen =
   let popSize = fromIntegral $ numPeople people :: Double
-      eventWeights t = V.fromList [fromJust (cadlagValue brts t), dr, sr]
+      --weightVecFunc :: AbsoluteTime -> Maybe (Vector Double)
+      weightVecFunc = eventWeights pop inhomRates
       -- we need a new step function to account for the population size.
       (Just stepFunction) =
         asTimed
@@ -125,7 +119,7 @@ randomEvent' inhomRates@(InhomBDSRates brts dr sr) currTime pop@(InhomBDSPop (pe
           | t <- allTimes brts
           ]
    in do (Just newEventTime) <- inhomExponential stepFunction currTime gen
-         eventIx <- categorical (eventWeights newEventTime) gen
+         eventIx <- categorical (fromJust $ weightVecFunc newEventTime) gen
          (selectedPerson, unselectedPeople) <- randomPerson people gen
          return $
            case eventIx of

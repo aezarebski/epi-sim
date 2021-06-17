@@ -1,14 +1,9 @@
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Epidemic.Utility where
 
-import Control.Applicative
-import Control.Monad (liftM)
 import Control.Monad.Primitive (PrimMonad, PrimState)
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Char8 as Char8
 import qualified Data.List as List
 import qualified Data.Maybe as Maybe
 import qualified Data.Vector as V
@@ -21,12 +16,10 @@ import Epidemic.Types.Time
   ( AbsoluteTime(..)
   , Timed(..)
   , TimeDelta(..)
-  , diracDeltaValue
   , nextTime
   , cadlagValue
   , timeAfterDelta
   )
-import GHC.Generics (Generic)
 import System.Random.MWC
 import System.Random.MWC.Distributions (exponential)
 
@@ -113,7 +106,7 @@ simulationWithGenIO ::
   -> IO [EpidemicEvent]
 simulationWithGenIO config@SimulationConfiguration {..} allEventsFunc gen =
   if scRequireCherry
-    then do
+    then
       simulation' config allEventsFunc gen
     else do
       SimulationState (_, events, _, _) <-

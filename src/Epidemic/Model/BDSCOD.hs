@@ -1,4 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module Epidemic.Model.BDSCOD
@@ -8,12 +7,10 @@ module Epidemic.Model.BDSCOD
   , BDSCODPopulation(..)
   ) where
 
-import Data.List (nub)
-import Data.Maybe (fromJust, isJust, isNothing)
 import qualified Data.Vector as V
 import qualified Data.Vector.Generic as G
 import Epidemic
-import Epidemic.Types.Events (EpidemicEvent(..), maybeEpidemicTree)
+import Epidemic.Types.Events (EpidemicEvent(..))
 import Epidemic.Types.Parameter
 import Epidemic.Types.Population
 import Epidemic.Types.Simulation
@@ -24,12 +21,8 @@ import Epidemic.Types.Time
   ( AbsoluteTime(..)
   , TimeDelta(..)
   , Timed(..)
-  , allTimes
   , asTimed
-  , cadlagValue
-  , diracDeltaValue
   , maybeNextTimed
-  , nextTime
   , timeAfterDelta
   )
 import Epidemic.Utility
@@ -106,7 +99,7 @@ randomEvent' ::
   -> Identifier -- ^ The current state of the identifier generator
   -> GenIO -- ^ The current state of the PRNG
   -> IO (AbsoluteTime, EpidemicEvent, BDSCODPopulation, Identifier)
-randomEvent' params@(BDSCODParameters br dr sr catastInfo occr disastInfo) currTime currPop@(BDSCODPopulation currPeople) currId gen =
+randomEvent' params@(BDSCODParameters _ _ _ catastInfo _ disastInfo) currTime currPop@(BDSCODPopulation currPeople) currId gen =
   let (Just netEventRate) = eventRate currPop params currTime
       (Just weightVec) = eventWeights currPop params currTime
    in do delay <-

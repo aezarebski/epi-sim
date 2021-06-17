@@ -18,10 +18,6 @@ import Epidemic.Types.Time
   , Timed(..)
   , TimeDelta(..)
   , asTimed
-  , allTimes
-  , diracDeltaValue
-  , nextTime
-  , cadlagValue
   , timeAfterDelta
   )
 import Epidemic.Types.Parameter
@@ -40,7 +36,6 @@ import Epidemic.Types.Population
 import Epidemic.Types.Simulation
   ( SimulationConfiguration(..)
   , SimulationRandEvent(..)
-  , SimulationState(..)
   )
 import Epidemic.Utility
   ( initialIdentifier

@@ -20,7 +20,9 @@ import Epidemic.Types.Time
   )
 import System.Random.MWC
 
--- | The number of people added or removed in an event.
+-- | The number of people added or removed in an event. In the case of an
+-- extinction event the number of people removed is arbitrarily set to zero
+-- because this information is available from the prior event in the sequence.
 eventPopDelta :: EpidemicEvent -> Integer
 eventPopDelta e =
   case e of
@@ -29,7 +31,7 @@ eventPopDelta e =
     IndividualSample {} -> -1
     PopulationSample {..} -> fromIntegral $ numPeople popSampPeople
     StoppingTime {} -> 0
-    Extinction {} -> 0 -- ^ already represented in previous event.
+    Extinction {} -> 0
 
 -- | The first scheduled event after a given time.
 firstScheduled ::

@@ -130,12 +130,13 @@ simulation config allEventsFunc = do
   simulationWithGenIO config allEventsFunc gen
 
 -- | Predicate for whether an epidemic event will appear as a leaf in the
--- reconstructed tree.
+-- reconstructed tree. For scheduled sequenced samples this will only return
+-- true if there was at least one lineage observed.
 isReconTreeLeaf :: EpidemicEvent -> Bool
 isReconTreeLeaf e =
   case e of
     IndividualSample {..} -> indSampSeq
-    PopulationSample {..} -> popSampSeq
+    PopulationSample {..} -> popSampSeq && not (nullPeople popSampPeople)
     _ -> False
 
 -- | Simulation conditioned upon there being at least two sequenced samples.

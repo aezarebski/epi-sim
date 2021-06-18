@@ -399,13 +399,28 @@ illFormedTreeTest =
           , simOmega
           , [(simNuTime, simNu)])
         simConfig = BDSCOD.configuration simDuration True simParams
-     in it "stress testing the observed events function" $ do
-          null (observedEvents []) `shouldBe` True
-          simEvents <-
-            simulation (fromJust simConfig) (allEvents BDSCOD.randomEvent)
-          any isReconTreeLeaf simEvents `shouldBe` True
-          let (Right oes) = observedEvents simEvents
-          (length oes > 1) `shouldBe` True
+     in do it "stress testing the observed events function" $ do
+             null (observedEvents []) `shouldBe` True
+             simEvents <-
+               simulation (fromJust simConfig) (allEvents BDSCOD.randomEvent)
+             any isReconTreeLeaf simEvents `shouldBe` True
+             let (Right oes) = observedEvents simEvents
+             (length oes > 1) `shouldBe` True
+           it "check leaves are recognised correctly" $ do
+             let (absT, person) = (AbsoluteTime 1.0, Person (Identifier 1))
+                 infEvent = Infection absT person person
+                 remEvent = Removal absT person
+                 sampIndv = IndividualSample absT person
+                 popSampEmpty = PopulationSample absT $ asPeople []
+                 popSampPerson = PopulationSample absT $ asPeople [person]
+             isReconTreeLeaf infEvent `shouldBe` False
+             isReconTreeLeaf remEvent `shouldBe` False
+             isReconTreeLeaf (sampIndv True) `shouldBe` True
+             isReconTreeLeaf (sampIndv False) `shouldBe` False
+             isReconTreeLeaf (popSampEmpty True) `shouldBe` False
+             isReconTreeLeaf (popSampEmpty False) `shouldBe` False
+             isReconTreeLeaf (popSampPerson True) `shouldBe` True
+             isReconTreeLeaf (popSampPerson False) `shouldBe` False
 
 
 resultAA = demoSampleEvents01

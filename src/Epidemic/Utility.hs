@@ -80,21 +80,9 @@ data NTree =
 instance Show NTree where
   show (NTree bs) = show (NBranchSet bs) ++ ";"
 
--- | Example run
---   > (Success foo) = parseString newickTree mempty "((foo:1.1,bar:1.2):1.3,baz:1.4);"
---   > (Success bar) = parseString newickTree mempty $ show foo
---   > foo == bar
---   True
-sort :: Ord a => [a] -> [a]
-sort = List.sort
-
+-- | The number of elements of the list that map to @True@ under the predicate.
 count' :: (a -> Bool) -> [a] -> Int
-count' p = go 0
-  where
-    go n [] = n
-    go n (x:xs)
-      | p x = go (n + 1) xs
-      | otherwise = go n xs
+count' p xs = sum [if p x then 1 else 0 | x <- xs]
 
 -- | Run a simulation described by a configuration object with the provided
 -- PRNG.
@@ -116,7 +104,7 @@ simulationWithGenIO config@SimulationConfiguration {..} allEventsFunc gen =
           scValidPopulation
           (SimulationState (AbsoluteTime 0, [], scPopulation, scNewIdentifier))
           gen
-      return $ sort events
+      return $ List.sort events
 
 -- | Run a simulation described by a configuration object using the fixed PRNG
 -- that is hardcoded in the @mwc-random@ package.
@@ -130,12 +118,13 @@ simulation config allEventsFunc = do
   simulationWithGenIO config allEventsFunc gen
 
 -- | Predicate for whether an epidemic event will appear as a leaf in the
--- reconstructed tree.
+-- reconstructed tree. For scheduled sequenced samples this will only return
+-- true if there was at least one lineage observed.
 isReconTreeLeaf :: EpidemicEvent -> Bool
 isReconTreeLeaf e =
   case e of
     IndividualSample {..} -> indSampSeq
-    PopulationSample {..} -> popSampSeq
+    PopulationSample {..} -> popSampSeq && not (nullPeople popSampPeople)
     _ -> False
 
 -- | Simulation conditioned upon there being at least two sequenced samples.
@@ -155,7 +144,7 @@ simulation' config@SimulationConfiguration {..} allEventsFunc gen = do
       (SimulationState (AbsoluteTime 0, [], scPopulation, scNewIdentifier))
       gen
   if count' isReconTreeLeaf events >= 2
-    then return $ sort events
+    then return $ List.sort events
     else simulation' config allEventsFunc gen
 
 -- | Run a simulation described by a configuration object but using a random
@@ -176,9 +165,9 @@ simulationWithSystemRandom config@SimulationConfiguration {..} allEventsFunc = d
         g
   if scRequireCherry
     then (if count' isReconTreeLeaf events >= 2
-            then return $ sort events
+            then return $ List.sort events
             else simulationWithSystemRandom config allEventsFunc)
-    else return $ sort events
+    else return $ List.sort events
 
 -- | The number of lineages at the end of a simulation.
 finalSize ::

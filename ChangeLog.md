@@ -1,5 +1,9 @@
 # Changelog for epi-sim
 
+## 0.5.1
+
+- Bug fix and tidy up some code.
+
 ## 0.5.0
 
 - Add absolute times to the extinction and stopping time events to provide a

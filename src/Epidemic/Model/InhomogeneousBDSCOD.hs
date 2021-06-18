@@ -58,6 +58,7 @@ module Epidemic.Model.InhomogeneousBDSCOD
   , InhomBDSCODPop(..)
   ) where
 
+import Data.List as List
 import Data.Maybe (fromJust)
 import qualified Data.Vector as V
 import qualified Data.Vector.Generic as G
@@ -189,7 +190,7 @@ randomEvent' inhomRates@InhomBDSCODRates {..} currTime currPop@(InhomBDSCODPop p
       (Just stepFunction) =
         asTimed
           [ (t, popSize * fromJust (eventRate currPop inhomRates t))
-          | t <- sort $ concatMap allTimes [irBirthRate, irDeathRate, irSamplingRate, irOccurrenceRate]
+          | t <- List.sort $ concatMap allTimes [irBirthRate, irDeathRate, irSamplingRate, irOccurrenceRate]
           ]
    in do (Just newEventTime) <- inhomExponential stepFunction currTime gen
          if noScheduledEvent currTime newEventTime (irCatastropheSpec <> irDisasterSpec)

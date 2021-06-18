@@ -16,6 +16,8 @@ description:
   2. Inhomogeneous Birth-Death-Sampling (see `Epidemic.Model.InhomogeneousBDS`)
   3. Logistic Birth-Death-Sampling-Disaster (see `Epidemic.Model.LogisticBDSD`)
   .
+  There are more details in the documentation of the "Epidemic" module.
+  .
 
 homepage:           https://github.com/aezarebski/epi-sim#readme
 bug-reports:        https://github.com/aezarebski/epi-sim/issues

@@ -1,5 +1,30 @@
 {-# LANGUAGE RecordWildCards #-}
 
+-- |
+-- Module: Epidemic
+-- Copyright: (c) 2021 Alexander E. Zarebski
+-- License: MIT
+--
+-- Maintainer: Alexander E. Zarebski <aezarebski@gmail.com>
+-- Stability: unstable
+-- Portability: ghc
+--
+-- This package provides functionality for simulating stochastic epidemic
+-- models, in particular those that are of interest in phylodynamics. There are
+-- several models provided by the package, eg @Epidemic.Model.BDSCOD@, however
+-- there should be the basic functionality to implement a wide range of models
+-- available. Each of the models included in the package provide a
+-- @configuration@ function which can be used to get a 'SimulationConfiguration'
+-- and a @randomEvent@ function which returns a 'SimulationRandEvent'. With
+-- these you can then use 'allEvents' to get all of the events in a simulation.
+--
+-- This package also provides some functionality for working with observation
+-- models, both epidemiological and phylogenetic. 'Observation' values are used
+-- to describe the possible observation of an 'EpidemicEvent'.
+--
+-- There is an example of how to use this package in the documentation for
+-- "Epidemic.Model.InhomogeneousBDSCOD".
+
 module Epidemic where
 
 import Data.List (nub)

@@ -1,6 +1,56 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
+-- |
+-- Module: Epidemic.Model.InhomogeneousBDSCOD
+-- Copyright: (c) 2021 Alexander E. Zarebski
+-- License: MIT
+--
+-- Maintainer: Alexander E. Zarebski <aezarebski@gmail.com>
+-- Stability: unstable
+-- Portability: ghc
+--
+-- This module defines a birth-death model with continuous time sampling and
+-- scheduled sampling and rates that are piece-wise constant in time.
+--
+-- __Example:__ we will run a simulation for one unit of time and require that
+-- there be at least two sequenced samples.
+--
+-- >>> simDuration = TimeDelta 1.0
+-- >>> atLeastTwoSequences = True
+--
+-- The rates can change through time so we need to specify the times at which
+-- they change. In this example the birth rate starts at 1.0 and then drops down
+-- to 0.5. The other rates stay at their initial values.
+--
+-- >>> birthRateSpec = [(AbsoluteTime 0.0, 1.0), (AbsoluteTime 0.5, 0.5)]
+-- >>> deathRateSpec = [(AbsoluteTime 0.0, 0.2)]
+-- >>> sampRateSpec = [(AbsoluteTime 0.0, 0.1)]
+-- >>> occRateSpec = [(AbsoluteTime 0.0, 0.1)]
+--
+-- There are a couple of scheduled samples with probabilities specified for
+-- them, ie there will be a scheduled sample at time 0.9 where each lineage is
+-- removed and sequenced individually with probability 0.1 and at times 0.5 and
+-- 0.75 there is a scheduled sample where individuals are removed but /not/
+-- sequenced with probabilities 0.4 and 0.5 respectively.
+--
+-- >>> seqSched = [(AbsoluteTime 0.9, 0.1)]
+-- >>> unseqSched = [(AbsoluteTime 0.5, 0.4), (AbsoluteTime 0.75, 0.5)]
+--
+-- This is enough to define a 'SimulationConfiguration'.
+--
+-- >>> ratesAndProbs = (birthRateSpec,deathRateSpec,sampRateSpec,seqSched,occRateSpec,unseqSched)
+-- >>> (Just simConfig) = configuration simDuration atLeastTwoSequences ratesAndProbs
+--
+-- Then we can use this to generated a list of epidemic events in the simulation
+--
+-- >>> myEpidemicEvents = simulation simConfig (allEvents randomEvent)
+--
+-- and from this we can extract the observations
+--
+-- >>> myObservedEvents = observedEvents <$> myEpidemicEvents
+--
+
 module Epidemic.Model.InhomogeneousBDSCOD
   ( configuration
   , randomEvent

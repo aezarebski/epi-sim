@@ -28,7 +28,11 @@
 -- >>> sampRateSpec = [(AbsoluteTime 0.0, 0.1)]
 -- >>> occRateSpec = [(AbsoluteTime 0.0, 0.1)]
 --
--- There are a couple of scheduled samples with probabilities specified for them
+-- There are a couple of scheduled samples with probabilities specified for
+-- them, ie there will be a scheduled sample at time 0.9 where each lineage is
+-- removed and sequenced individually with probability 0.1 and at times 0.5 and
+-- 0.75 there is a scheduled sample where individuals are removed but /not/
+-- sequenced with probabilities 0.4 and 0.5 respectively.
 --
 -- >>> seqSched = [(AbsoluteTime 0.9, 0.1)]
 -- >>> unseqSched = [(AbsoluteTime 0.5, 0.4), (AbsoluteTime 0.75, 0.5)]

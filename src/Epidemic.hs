@@ -21,6 +21,9 @@
 -- This package also provides some functionality for working with observation
 -- models, both epidemiological and phylogenetic. 'Observation' values are used
 -- to describe the possible observation of an 'EpidemicEvent'.
+--
+-- There is an example of how to use this package in the documentation for
+-- "Epidemic.Model.InhomogeneousBDSCOD".
 
 module Epidemic where
 

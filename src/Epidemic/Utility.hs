@@ -89,12 +89,7 @@ sort :: Ord a => [a] -> [a]
 sort = List.sort
 
 count' :: (a -> Bool) -> [a] -> Int
-count' p = go 0
-  where
-    go n [] = n
-    go n (x:xs)
-      | p x = go (n + 1) xs
-      | otherwise = go n xs
+count' p xs = sum [if p x then 1 else 0 | x <- xs]
 
 -- | Run a simulation described by a configuration object with the provided
 -- PRNG.

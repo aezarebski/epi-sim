@@ -88,6 +88,7 @@ instance Show NTree where
 sort :: Ord a => [a] -> [a]
 sort = List.sort
 
+-- | The number of elements of the list that map to @True@ under the predicate.
 count' :: (a -> Bool) -> [a] -> Int
 count' p xs = sum [if p x then 1 else 0 | x <- xs]
 

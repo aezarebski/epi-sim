@@ -112,7 +112,7 @@ simulationWithGenIO config@SimulationConfiguration {..} allEventsFunc gen =
           scRates
           (timeAfterDelta scStartTime scSimDuration)
           scValidPopulation
-          (SimulationState (AbsoluteTime 0, [], scPopulation, scNewIdentifier))
+          (SimulationState (scStartTime, [], scPopulation, scNewIdentifier))
           gen
       return $ List.sort events
 
@@ -139,7 +139,7 @@ simulationAtLeastCherry config@SimulationConfiguration {..} allEventsFunc gen = 
       scRates
       (timeAfterDelta scStartTime scSimDuration)
       scValidPopulation
-      (SimulationState (AbsoluteTime 0, [], scPopulation, scNewIdentifier))
+      (SimulationState (scStartTime, [], scPopulation, scNewIdentifier))
       gen
   if count' isReconTreeLeaf events >= 2
     then return $ List.sort events
@@ -159,7 +159,7 @@ simulationWithSystem config@SimulationConfiguration {..} allEventsFunc = do
         scRates
         (timeAfterDelta scStartTime scSimDuration)
         scValidPopulation
-        (SimulationState (AbsoluteTime 0, [], scPopulation, scNewIdentifier))
+        (SimulationState (scStartTime, [], scPopulation, scNewIdentifier))
         g
   if scRequireCherry
     then (if count' isReconTreeLeaf events >= 2

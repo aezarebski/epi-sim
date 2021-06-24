@@ -1,5 +1,10 @@
 # Changelog for epi-sim
 
+## 0.5.2
+
+- Include helper functions in `Epidemic.Types.Simulation` to make it easier to
+  create PRNG with or without a fixed seed.
+
 ## 0.5.1
 
 - Bug fix and tidy up some code.

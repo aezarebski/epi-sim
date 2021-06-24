@@ -132,15 +132,15 @@ infectedBy person events =
         else infectedBy person es
     (_:es) -> infectedBy person es
 
--- | Run the simulation and return a @SimulationState@ which holds the history
--- of the simulation.
+-- | Run the simulation until the specified stopping time and return a
+-- @SimulationState@ which holds the history of the simulation.
 allEvents ::
      (ModelParameters a b, Population b)
   => SimulationRandEvent a b
   -> a
-  -> AbsoluteTime
+  -> AbsoluteTime -- ^ time at which to stop the simulation
   -> Maybe (b -> Bool) -- ^ predicate for a valid population
-  -> SimulationState b
+  -> SimulationState b -- ^ the initial/current state of the simulation
   -> GenIO
   -> IO (SimulationState b)
 allEvents _ _ _ _ TerminatedSimulation _ = return TerminatedSimulation

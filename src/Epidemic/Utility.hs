@@ -1,35 +1,42 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards   #-}
 
-module Epidemic.Utility where
+module Epidemic.Utility ( initialIdentifier
+                        , inhomExponential
+                        , randomPerson
+                        , maybeToRight
+                        , newPerson
+                        , isReconTreeLeaf
+                        , simulationWithSystem
+                        , simulationWithFixedSeed
+                        , simulationWithGenIO
+                        ) where
 
-import Control.Monad.Primitive (PrimMonad, PrimState)
-import qualified Data.List as List
-import qualified Data.Maybe as Maybe
-import qualified Data.Vector as V
-import Epidemic
-import Epidemic.Types.Events
-import Epidemic.Types.Parameter
-import Epidemic.Types.Population
-import Epidemic.Types.Simulation
-import Epidemic.Types.Time
-  ( AbsoluteTime(..)
-  , Timed(..)
-  , TimeDelta(..)
-  , nextTime
-  , cadlagValue
-  , timeAfterDelta
-  )
-import System.Random.MWC
-import System.Random.MWC.Distributions (exponential)
+import           Control.Monad.Primitive         (PrimMonad, PrimState)
+import qualified Data.List                       as List
+import qualified Data.Maybe                      as Maybe
+import qualified Data.Vector                     as V
+import           Epidemic
+import           Epidemic.Types.Events
+import           Epidemic.Types.Parameter
+import           Epidemic.Types.Population
+import           Epidemic.Types.Simulation
+import           Epidemic.Types.Time             (AbsoluteTime (..),
+                                                  TimeDelta (..), Timed (..),
+                                                  cadlagValue, nextTime,
+                                                  timeAfterDelta)
+import           System.Random.MWC
+import           System.Random.MWC.Distributions (exponential)
 
 
 initialIdentifier :: Identifier
 initialIdentifier = Identifier 1
 
+-- | A new person constructed from the given identifier and a new identifier.
 newPerson :: Identifier -> (Person, Identifier)
 newPerson idntty@(Identifier idInt) = (Person idntty, Identifier (idInt + 1))
 
+-- | An element of a vector and the vector with that element removed.
 selectElem :: V.Vector a -> Int -> (a, V.Vector a)
 selectElem v n
   | n == 0 = (V.head v, V.tail v)
@@ -37,6 +44,8 @@ selectElem v n
     let (foo, bar) = V.splitAt n v
      in (V.head bar, foo V.++ (V.tail bar))
 
+-- | A random person and the remaining group of people after they have been
+-- sampled with removal.
 randomPerson :: People -> GenIO -> IO (Person, People)
 randomPerson people@(People persons) gen = do
   u <- uniform gen
@@ -54,7 +63,7 @@ data NBranch =
 
 instance Show NBranch where
   show (NBranch st (Just l)) = show st ++ ":" ++ show l
-  show (NBranch st Nothing) = show st
+  show (NBranch st Nothing)  = show st
 
 data NBranchSet =
   NBranchSet [NBranch]
@@ -70,8 +79,8 @@ data NSubtree
 
 instance Show NSubtree where
   show (NLeaf (Just n)) = n
-  show (NLeaf Nothing) = ""
-  show (NInternal bs) = show bs
+  show (NLeaf Nothing)  = ""
+  show (NInternal bs)   = show bs
 
 data NTree =
   NTree [NBranch]
@@ -84,8 +93,9 @@ instance Show NTree where
 count' :: (a -> Bool) -> [a] -> Int
 count' p xs = sum [if p x then 1 else 0 | x <- xs]
 
--- | Run a simulation described by a configuration object with the provided
--- PRNG.
+-- | Run a simulation described by a configuration object and the model's
+-- @allEvents@ style function (see the example in
+-- "Epidemic.Model.InhomogeneousBDSCOD") using the provided PRNG.
 simulationWithGenIO ::
      (ModelParameters a b, Population b)
   => SimulationConfiguration a b
@@ -95,7 +105,7 @@ simulationWithGenIO ::
 simulationWithGenIO config@SimulationConfiguration {..} allEventsFunc gen =
   if scRequireCherry
     then
-      simulation' config allEventsFunc gen
+      simulationAtLeastCherry config allEventsFunc gen
     else do
       SimulationState (_, events, _, _) <-
         allEventsFunc
@@ -106,36 +116,24 @@ simulationWithGenIO config@SimulationConfiguration {..} allEventsFunc gen =
           gen
       return $ List.sort events
 
--- | Run a simulation described by a configuration object using the fixed PRNG
--- that is hardcoded in the @mwc-random@ package.
-simulation ::
+-- | Run a simulation using a fixed PRNG random seed.
+simulationWithFixedSeed ::
      (ModelParameters a b, Population b)
   => SimulationConfiguration a b
   -> (a -> AbsoluteTime -> Maybe (b -> Bool) -> SimulationState b -> GenIO -> IO (SimulationState b))
   -> IO [EpidemicEvent]
-simulation config allEventsFunc = do
-  gen <- System.Random.MWC.create :: IO GenIO
+simulationWithFixedSeed config allEventsFunc = do
+  gen <- genIOFromFixed
   simulationWithGenIO config allEventsFunc gen
 
--- | Predicate for whether an epidemic event will appear as a leaf in the
--- reconstructed tree. For scheduled sequenced samples this will only return
--- true if there was at least one lineage observed.
-isReconTreeLeaf :: EpidemicEvent -> Bool
-isReconTreeLeaf e =
-  case e of
-    IndividualSample {..} -> indSampSeq
-    PopulationSample {..} -> popSampSeq && not (nullPeople popSampPeople)
-    _ -> False
-
 -- | Simulation conditioned upon there being at least two sequenced samples.
--- NOTE This function is deprecated and will be removed in future versions.
-simulation' ::
+simulationAtLeastCherry ::
      (ModelParameters a b, Population b)
   => SimulationConfiguration a b
   -> (a -> AbsoluteTime -> Maybe (b -> Bool) -> SimulationState b -> GenIO -> IO (SimulationState b))
   -> GenIO
   -> IO [EpidemicEvent]
-simulation' config@SimulationConfiguration {..} allEventsFunc gen = do
+simulationAtLeastCherry config@SimulationConfiguration {..} allEventsFunc gen = do
   SimulationState (_, events, _, _) <-
     allEventsFunc
       scRates
@@ -145,16 +143,16 @@ simulation' config@SimulationConfiguration {..} allEventsFunc gen = do
       gen
   if count' isReconTreeLeaf events >= 2
     then return $ List.sort events
-    else simulation' config allEventsFunc gen
+    else simulationAtLeastCherry config allEventsFunc gen
 
 -- | Run a simulation described by a configuration object but using a random
 -- seed generated by the system rather than a seed
-simulationWithSystemRandom ::
+simulationWithSystem ::
      (ModelParameters a b, Population b)
   => SimulationConfiguration a b
   -> (a -> AbsoluteTime -> Maybe (b -> Bool) -> SimulationState b -> GenIO -> IO (SimulationState b))
   -> IO [EpidemicEvent]
-simulationWithSystemRandom config@SimulationConfiguration {..} allEventsFunc = do
+simulationWithSystem config@SimulationConfiguration {..} allEventsFunc = do
   SimulationState (_, events, _, _) <-
     withSystemRandom $ \g ->
       allEventsFunc
@@ -166,8 +164,18 @@ simulationWithSystemRandom config@SimulationConfiguration {..} allEventsFunc = d
   if scRequireCherry
     then (if count' isReconTreeLeaf events >= 2
             then return $ List.sort events
-            else simulationWithSystemRandom config allEventsFunc)
+            else simulationWithSystem config allEventsFunc)
     else return $ List.sort events
+
+-- | Predicate for whether an epidemic event will appear as a leaf in the
+-- reconstructed tree. For scheduled sequenced samples this will only return
+-- true if there was at least one lineage observed.
+isReconTreeLeaf :: EpidemicEvent -> Bool
+isReconTreeLeaf e =
+  case e of
+    IndividualSample {..} -> indSampSeq
+    PopulationSample {..} -> popSampSeq && not (nullPeople popSampPeople)
+    _                     -> False
 
 -- | The number of lineages at the end of a simulation.
 finalSize ::
@@ -217,4 +225,4 @@ maybeToRight :: a -> Maybe b -> Either a b
 maybeToRight a maybeB =
   case maybeB of
     (Just b) -> Right b
-    Nothing -> Left a
+    Nothing  -> Left a

@@ -21,6 +21,7 @@ import Epidemic.Utility
 import Statistics.Sample
 import qualified System.Random.MWC as MWC
 import Test.Hspec
+import Epidemic.Types.Simulation (genIOFromSystem, genIOFromFixed, genIOFromWord32)
 
 -- | Helper function for converting from Either to Maybe monad.
 either2Maybe x = case x of
@@ -345,6 +346,61 @@ helperFuncTests = do
             asTimed [(AbsoluteTime 0.0, 1.0), (AbsoluteTime 1.0, -1.0)]
       (isJust $ InhomBDS.inhomBDSRates timedBirthRate 0.5 0.5) `shouldBe` False
 
+simTypeTests =
+  describe "Test Types.Simulation PRNG helpers" $
+  do it "check genIOFromFixed always gives same result" $
+       do g1 <- genIOFromFixed
+          u11 <- MWC.uniform g1 :: IO Double
+          u12 <- MWC.uniform g1 :: IO Double
+
+          g2 <- genIOFromFixed
+          u21 <- MWC.uniform g2 :: IO Double
+          u22 <- MWC.uniform g2 :: IO Double
+
+          u11 == u21 `shouldBe` True
+          u11 /= u22 `shouldBe` True
+          u12 == u22 `shouldBe` True
+
+     it "check genIOFromSystem always gives different results" $
+       do g1 <- genIOFromSystem
+          u11 <- MWC.uniform g1 :: IO Double
+          u12 <- MWC.uniform g1 :: IO Double
+
+          g2 <- genIOFromSystem
+          u21 <- MWC.uniform g2 :: IO Double
+          u22 <- MWC.uniform g2 :: IO Double
+
+          u11 /= u12 `shouldBe` True
+          u11 /= u21 `shouldBe` True
+          u11 /= u22 `shouldBe` True
+          u12 /= u21 `shouldBe` True
+          u12 /= u22 `shouldBe` True
+          u21 /= u22 `shouldBe` True
+
+     it "check genIOFromWord32 works as expected" $
+       do g1 <- genIOFromWord32 1
+          u11 <- MWC.uniform g1 :: IO Double
+          u12 <- MWC.uniform g1 :: IO Double
+
+          g2 <- genIOFromWord32 1
+          u21 <- MWC.uniform g2 :: IO Double
+          u22 <- MWC.uniform g2 :: IO Double
+
+          g3 <- genIOFromWord32 2
+          u31 <- MWC.uniform g3 :: IO Double
+          u32 <- MWC.uniform g3 :: IO Double
+
+          u11 == u21 `shouldBe` True
+          u11 /= u22 `shouldBe` True
+          u12 == u22 `shouldBe` True
+
+          u11 /= u12 `shouldBe` True
+          u11 /= u31 `shouldBe` True
+          u11 /= u32 `shouldBe` True
+          u12 /= u31 `shouldBe` True
+          u12 /= u32 `shouldBe` True
+          u31 /= u32 `shouldBe` True
+
 inhomExpTests =
   describe "Test the inhomogeneous exponential variate generator" $
   let rate1 = 2.0
@@ -355,9 +411,8 @@ inhomExpTests =
         fromJust $ asTimed [(AbsoluteTime 0, 1e-10), (AbsoluteTime 1, rate1)]
       mean2 = 1 / rate1 + 1
       var2 = var1
-      genAction = MWC.createSystemRandom
    in do it "check we can get a positive variate out" $ do
-           gen <- genAction
+           gen <- genIOFromSystem
            u1 <- MWC.uniform gen :: IO Double
            (u1 > 0) `shouldBe` True
            (Just x1) <- inhomExponential sF1 (AbsoluteTime 0) gen
@@ -365,14 +420,14 @@ inhomExpTests =
            (x1 < AbsoluteTime 100) `shouldBe` True
            True `shouldBe` True
          it "check the mean and variance look sensible" $ do
-           gen <- genAction
+           gen <- genIOFromSystem
            xBoxed <-
              V.replicateM 20000 (inhomExponential sF1 (AbsoluteTime 0) gen)
            let x = fmap (\(Just (AbsoluteTime t)) -> t) xBoxed
            withinNPercent 5 (mean x) mean1 `shouldBe` True
            withinNPercent 5 (variance x) var1 `shouldBe` True
          it "check the mean and variance look sensible with delay" $ do
-           gen <- genAction
+           gen <- genIOFromSystem
            xBoxed <-
              V.replicateM 20000 (inhomExponential sF2 (AbsoluteTime 0) gen)
            let x = fmap (\(Just (AbsoluteTime t)) -> t) xBoxed
@@ -813,3 +868,4 @@ main =
     jsonTests
     newickTests
     aggregationTests
+    simTypeTests

@@ -216,7 +216,7 @@ eventHandlingTests = do
         True
     it "Disasters can be simulated" $ do
       demoSim <-
-        simulation
+        simulationWithFixedSeed
           (fromJust
              (BDSCOD.configuration
                 (TimeDelta 4)
@@ -457,7 +457,7 @@ illFormedTreeTest =
      in do it "stress testing the observed events function" $ do
              null (observedEvents []) `shouldBe` True
              simEvents <-
-               simulation (fromJust simConfig) (allEvents BDSCOD.randomEvent)
+               simulationWithFixedSeed (fromJust simConfig) (allEvents BDSCOD.randomEvent)
              any isReconTreeLeaf simEvents `shouldBe` True
              let (Right oes) = observedEvents simEvents
              (length oes > 1) `shouldBe` True

@@ -1,5 +1,23 @@
 {-# LANGUAGE DeriveGeneric #-}
 
+-- |
+-- Module: Epidemic.Types.Population
+-- Copyright: (c) 2021 Alexander E. Zarebski
+-- License: MIT
+--
+-- Maintainer: Alexander E. Zarebski <aezarebski@gmail.com>
+-- Stability: unstable
+-- Portability: ghc
+--
+-- This module defines some types and functions for working with identifiers,
+-- persons, people, and populations.
+--
+--   * An 'Identifier' is used as a unique label for a 'Person',
+--   * a 'Person' is a single individual,
+--   * a group of 'People' is a collection of persons,
+--   * and 'Population' is a typeclass for working with people that have some structure.
+--
+
 module Epidemic.Types.Population
   ( Person(Person)
   , People(People)

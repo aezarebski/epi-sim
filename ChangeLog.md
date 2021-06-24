@@ -1,5 +1,12 @@
 # Changelog for epi-sim
 
+## 0.6.0
+
+- Improve documentation.
+- Allow a flexible start time of the simulation so it does not assume a start
+  time of zero.
+- Rename a bunch of the simulation functions so their use case is clearer.
+
 ## 0.5.2
 
 - Include helper functions in `Epidemic.Types.Simulation` to make it easier to

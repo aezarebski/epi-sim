@@ -1,5 +1,17 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 
+-- |
+-- Module: Epidemic.Types.Parameter
+-- Copyright: (c) 2021 Alexander E. Zarebski
+-- License: MIT
+--
+-- Maintainer: Alexander E. Zarebski <aezarebski@gmail.com>
+-- Stability: unstable
+-- Portability: ghc
+--
+-- This module defines some types and functions for working with parameters of models.
+--
+
 module Epidemic.Types.Parameter where
 
 import Data.Vector (Vector)
@@ -26,6 +38,8 @@ class (Population p) => ModelParameters a p where
   -- | The __unnormalised__ distribution across the possible events.
   eventWeights :: p -> a -> AbsoluteTime -> Maybe (Vector Double)
 
+-- | The rate at which an event occurs
 type Rate = Double
 
+-- | A probability
 type Probability = Double

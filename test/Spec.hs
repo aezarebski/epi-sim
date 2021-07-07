@@ -221,6 +221,7 @@ eventHandlingTests = do
              (BDSCOD.configuration
                 (TimeDelta 4)
                 False
+                Nothing
                 ( 1.3
                 , 0.1
                 , 0.1
@@ -453,7 +454,7 @@ illFormedTreeTest =
           , [(simRhoTime, simRho)]
           , simOmega
           , [(simNuTime, simNu)])
-        simConfig = BDSCOD.configuration simDuration True simParams
+        simConfig = BDSCOD.configuration simDuration True Nothing simParams
      in do it "stress testing the observed events function" $ do
              null (observedEvents []) `shouldBe` True
              simEvents <-

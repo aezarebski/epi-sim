@@ -68,7 +68,7 @@ import Epidemic.Types.Parameter
 import Epidemic.Types.Population
 import Epidemic.Types.Simulation
   ( SimulationConfiguration(..)
-  , SimulationRandEvent(..)
+  , SimulationRandEvent(..), TerminationHandler(..)
   )
 import Epidemic.Types.Time
   ( AbsoluteTime(..)
@@ -132,18 +132,19 @@ instance Population InhomBDSCODPop where
   removedPeople _ = Nothing
   isInfected (InhomBDSCODPop people) = not $ nullPeople people
 
--- | Configuration of a inhomogeneous rates simulation.
+-- | Configuration of a inhomogeneous rates BDSCOD simulation.
 configuration ::
      TimeDelta -- ^ Duration of the simulation after starting at time 0.
   -> Bool -- ^ condition upon at least two sequenced samples.
+  -> Maybe ((InhomBDSCODPop, [EpidemicEvent]) -> Bool, [EpidemicEvent] -> s) -- ^ values for termination handling.
   -> ( [(AbsoluteTime, Rate)]
      , [(AbsoluteTime, Rate)]
      , [(AbsoluteTime, Rate)]
      , [(AbsoluteTime, Probability)]
      , [(AbsoluteTime, Rate)]
      , [(AbsoluteTime, Probability)])
-  -> Maybe (SimulationConfiguration InhomBDSCODRates InhomBDSCODPop)
-configuration maxTime atLeastCherry (tBirthRate, tDeathRate, tSampleRate, cSpec, tOccurrenceRate, dSpec) =
+  -> Maybe (SimulationConfiguration InhomBDSCODRates InhomBDSCODPop s)
+configuration maxTime atLeastCherry maybeTHFuncs (tBirthRate, tDeathRate, tSampleRate, cSpec, tOccurrenceRate, dSpec) =
   let (seedPerson, newId) = newPerson initialIdentifier
       bdscodPop = InhomBDSCODPop $ asPeople [seedPerson]
    in do timedBirthRate <- asTimed tBirthRate
@@ -160,6 +161,8 @@ configuration maxTime atLeastCherry (tBirthRate, tDeathRate, tSampleRate, cSpec,
                  catastropheSpec
                  timedOccurrenceRate
                  disasterSpec
+             termHandler = do (f1, f2) <- maybeTHFuncs
+                              return $ TerminationHandler f1 f2
          if maxTime > TimeDelta 0
            then Just
                   (SimulationConfiguration
@@ -168,7 +171,7 @@ configuration maxTime atLeastCherry (tBirthRate, tDeathRate, tSampleRate, cSpec,
                      newId
                      (AbsoluteTime 0)
                      maxTime
-                     Nothing
+                     termHandler
                      atLeastCherry)
            else Nothing
 

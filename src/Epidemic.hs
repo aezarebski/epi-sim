@@ -35,7 +35,7 @@ import Epidemic.Types.Parameter
 import Epidemic.Types.Population
 import Epidemic.Types.Simulation
   ( SimulationRandEvent(..)
-  , SimulationState(..)
+  , SimulationState(..), TerminationHandler(..)
   )
 import Epidemic.Types.Time
   ( AbsoluteTime(..)
@@ -139,24 +139,26 @@ allEvents ::
   => SimulationRandEvent a b
   -> a
   -> AbsoluteTime -- ^ time at which to stop the simulation
-  -> Maybe (b -> Bool) -- ^ predicate for a valid population
-  -> SimulationState b -- ^ the initial/current state of the simulation
+  -> Maybe (TerminationHandler b c)
+  -> SimulationState b c -- ^ the initial/current state of the simulation
   -> GenIO
-  -> IO (SimulationState b)
-allEvents _ _ _ _ TerminatedSimulation _ = return TerminatedSimulation
-allEvents simRandEvent@(SimulationRandEvent randEvent) modelParams maxTime maybePopPredicate (SimulationState (currTime, currEvents, currPop, currId)) gen =
-  if isNothing maybePopPredicate ||
-     (isJust maybePopPredicate && fromJust maybePopPredicate currPop)
-    then if isInfected currPop
+  -> IO (SimulationState b c)
+allEvents _ _ _ _ ts@(TerminatedSimulation _) _ = return ts
+allEvents (SimulationRandEvent randEvent) modelParams maxTime maybeTermHandler (SimulationState (currTime, currEvents, currPop, currId)) gen =
+  let isNotTerminated = case maybeTermHandler of
+        Nothing -> const True
+        Just (TerminationHandler hasTerminated _) -> not . hasTerminated
+  in if isNotTerminated (currPop, currEvents)
+     then if isInfected currPop
            then do
              (newTime, event, newPop, newId) <-
                randEvent modelParams currTime currPop currId gen
              if newTime < maxTime
                then allEvents
-                      simRandEvent
+                      (SimulationRandEvent randEvent)
                       modelParams
                       maxTime
-                      maybePopPredicate
+                      maybeTermHandler
                       (SimulationState
                          (newTime, event : currEvents, newPop, newId))
                       gen
@@ -172,4 +174,5 @@ allEvents simRandEvent@(SimulationRandEvent randEvent) modelParams maxTime maybe
                   , Extinction currTime : currEvents
                   , currPop
                   , currId)
-    else return TerminatedSimulation
+     else return . TerminatedSimulation $ do TerminationHandler _ termSummary <- maybeTermHandler
+                                             return $ termSummary currEvents

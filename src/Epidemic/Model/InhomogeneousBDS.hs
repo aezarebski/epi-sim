@@ -25,7 +25,7 @@ import Epidemic.Types.Parameter
 import Epidemic.Types.Population
 import Epidemic.Types.Simulation
   ( SimulationConfiguration(..)
-  , SimulationRandEvent(..)
+  , SimulationRandEvent(..), TerminationHandler(..)
   )
 import Epidemic.Utility
 import System.Random.MWC
@@ -78,11 +78,14 @@ inhomBDSRates timedBirthRate@(Timed tBrPairs) deathRate sampleRate
 configuration ::
      TimeDelta -- ^ Duration of the simulation after starting at time 0.
   -> Bool -- ^ condition upon at least two sequenced samples.
+  -> Maybe ((InhomBDSPop, [EpidemicEvent]) -> Bool, [EpidemicEvent] -> s) -- ^ values for termination handling.
   -> ([(AbsoluteTime, Rate)], Rate, Rate) -- ^ Birth, Death and Sampling rates
-  -> Maybe (SimulationConfiguration InhomBDSRates InhomBDSPop)
-configuration maxTime atLeastCherry (tBrPairs, deathRate, sampleRate) =
+  -> Maybe (SimulationConfiguration InhomBDSRates InhomBDSPop s)
+configuration maxTime atLeastCherry maybeTHFuncs (tBrPairs, deathRate, sampleRate) =
   let (seedPerson, newId) = newPerson initialIdentifier
       bdsPop = InhomBDSPop (People $ V.singleton seedPerson)
+      termHandler = do (f1, f2) <- maybeTHFuncs
+                       return $ TerminationHandler f1 f2
    in do timedBirthRate <- asTimed tBrPairs
          maybeIBDSRates <- inhomBDSRates timedBirthRate deathRate sampleRate
          if maxTime > TimeDelta 0
@@ -93,7 +96,7 @@ configuration maxTime atLeastCherry (tBrPairs, deathRate, sampleRate) =
                      newId
                      (AbsoluteTime 0)
                      maxTime
-                     Nothing
+                     termHandler
                      atLeastCherry)
            else Nothing
 

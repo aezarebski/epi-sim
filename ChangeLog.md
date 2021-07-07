@@ -1,5 +1,14 @@
 # Changelog for epi-sim
 
+## 0.7.0
+
+- Add `TerminationHandler` to provide better control over early termination of
+  simulations. For example, this makes it possible to terminate the simulation
+  early if certain stopping conditions are met and to call a function that
+  summarises why the simulation is being terminated. This will break old code in
+  that the `configuration` functions provided by the example models all now have
+  an additional parameter of type `Maybe TerminationHandler`.
+
 ## 0.6.0
 
 - Improve documentation.

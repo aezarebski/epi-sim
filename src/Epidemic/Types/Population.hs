@@ -33,10 +33,10 @@ module Epidemic.Types.Population
   , personByteString
   ) where
 
-import qualified Data.Aeson as Json
+import qualified Data.Aeson              as Json
 import qualified Data.ByteString.Builder as BBuilder
-import qualified Data.Vector as V
-import GHC.Generics
+import qualified Data.Vector             as V
+import           GHC.Generics
 
 -- | Class of types that can represent populations in an epidemic simulation.
 class Population a where

@@ -35,7 +35,7 @@ import Epidemic.Types.Population
   )
 import Epidemic.Types.Simulation
   ( SimulationConfiguration(..)
-  , SimulationRandEvent(..)
+  , SimulationRandEvent(..), TerminationHandler(..)
   )
 import Epidemic.Utility
   ( initialIdentifier
@@ -94,9 +94,10 @@ instance Population LogisticBDSDPopulation where
 configuration ::
      TimeDelta
   -> Bool -- ^ condition upon at least two sequenced samples.
+  -> Maybe (LogisticBDSDPopulation -> Bool, [EpidemicEvent] -> s) -- ^ values for termination handling.
   -> (Rate, Int, Rate, Rate, [(AbsoluteTime, Probability)])
-  -> Either String (SimulationConfiguration LogisticBDSDParameters LogisticBDSDPopulation)
-configuration simDuration atLeastCherry (birthRate, capacity, deathRate, samplingRate, disasterSpec)
+  -> Either String (SimulationConfiguration LogisticBDSDParameters LogisticBDSDPopulation s)
+configuration simDuration atLeastCherry maybeTHFuncs (birthRate, capacity, deathRate, samplingRate, disasterSpec)
   | minimum [birthRate, deathRate, samplingRate] < 0 =
     Left "negative rate provided"
   | capacity < 1 = Left "insufficient population capacity"
@@ -114,6 +115,8 @@ configuration simDuration atLeastCherry (birthRate, capacity, deathRate, samplin
             disasterTP
         (seedPerson, newId) = newPerson initialIdentifier
         logBDSDPop = LogisticBDSDPopulation (People $ V.singleton seedPerson)
+        termHandler = do (f1, f2) <- maybeTHFuncs
+                         return $ TerminationHandler f1 f2
      in return $
         SimulationConfiguration
           logBDSDParams
@@ -121,7 +124,7 @@ configuration simDuration atLeastCherry (birthRate, capacity, deathRate, samplin
           newId
           (AbsoluteTime 0)
           simDuration
-          Nothing
+          termHandler
           atLeastCherry
 
 -- | Defines how a single random event is simulated in this model.

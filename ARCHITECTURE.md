@@ -21,5 +21,14 @@ times there is the `TimeDelta` type. For quantities that vary across time the
 `Timed` type is a way to represent piecewise constant functions and there are
 several helper functions to query these objects.
 
-There is the 'TimeStamp' type class for things that have an absolute time
+There is the `TimeStamp` type class for things that have an absolute time
 associated with them.
+
+### Simulation
+
+The `TerminationHandler` type is used to control early termination of a
+simulation. The use case of this is that you can terminate a simulation once it
+reaches a state specified by a predicate. If this occurs then the simulation is
+terminated and a summary function is applied to the simulation and this value is
+returned. This is particularly useful if you want to terminate simulations that
+have exploded and threaten to eat up all the memory on your machine.

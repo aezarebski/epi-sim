@@ -27,23 +27,18 @@
 
 module Epidemic where
 
-import Data.List (nub)
-import Data.Maybe (fromJust, isJust, isNothing)
-import qualified Data.Vector as V
-import Epidemic.Types.Events
-import Epidemic.Types.Parameter
-import Epidemic.Types.Population
-import Epidemic.Types.Simulation
-  ( SimulationRandEvent(..)
-  , SimulationState(..)
-  )
-import Epidemic.Types.Time
-  ( AbsoluteTime(..)
-  , Timed(..)
-  , diracDeltaValue
-  , nextTime
-  )
-import System.Random.MWC
+import           Data.List                 (nub)
+import           Data.Maybe                (fromJust, isJust, isNothing)
+import qualified Data.Vector               as V
+import           Epidemic.Types.Events
+import           Epidemic.Types.Parameter
+import           Epidemic.Types.Population
+import           Epidemic.Types.Simulation (SimulationRandEvent (..),
+                                            SimulationState (..),
+                                            TerminationHandler (..))
+import           Epidemic.Types.Time       (AbsoluteTime (..), Timed (..),
+                                            diracDeltaValue, nextTime)
+import           System.Random.MWC
 
 -- | The number of people added or removed in an event. In the case of an
 -- extinction event the number of people removed is arbitrarily set to zero
@@ -51,12 +46,12 @@ import System.Random.MWC
 eventPopDelta :: EpidemicEvent -> Integer
 eventPopDelta e =
   case e of
-    Infection {} -> 1
-    Removal {} -> -1
-    IndividualSample {} -> -1
+    Infection {}          -> 1
+    Removal {}            -> -1
+    IndividualSample {}   -> -1
     PopulationSample {..} -> fromIntegral $ numPeople popSampPeople
-    StoppingTime {} -> 0
-    Extinction {} -> 0
+    StoppingTime {}       -> 0
+    Extinction {}         -> 0
 
 -- | The first scheduled event after a given time.
 firstScheduled ::
@@ -116,7 +111,7 @@ infected ::
 infected p1 p2 e =
   case e of
     (Infection _ infector infectee) -> infector == p1 && infectee == p2
-    _ -> False
+    _                               -> False
 
 -- | The people infected by a particular person in a list of events.
 infectedBy ::
@@ -139,24 +134,26 @@ allEvents ::
   => SimulationRandEvent a b
   -> a
   -> AbsoluteTime -- ^ time at which to stop the simulation
-  -> Maybe (b -> Bool) -- ^ predicate for a valid population
-  -> SimulationState b -- ^ the initial/current state of the simulation
+  -> Maybe (TerminationHandler b c)
+  -> SimulationState b c -- ^ the initial/current state of the simulation
   -> GenIO
-  -> IO (SimulationState b)
-allEvents _ _ _ _ TerminatedSimulation _ = return TerminatedSimulation
-allEvents simRandEvent@(SimulationRandEvent randEvent) modelParams maxTime maybePopPredicate (SimulationState (currTime, currEvents, currPop, currId)) gen =
-  if isNothing maybePopPredicate ||
-     (isJust maybePopPredicate && fromJust maybePopPredicate currPop)
-    then if isInfected currPop
+  -> IO (SimulationState b c)
+allEvents _ _ _ _ ts@(TerminatedSimulation _) _ = return ts
+allEvents (SimulationRandEvent randEvent) modelParams maxTime maybeTermHandler (SimulationState (currTime, currEvents, currPop, currId)) gen =
+  let isNotTerminated = case maybeTermHandler of
+        Nothing                                   -> const True
+        Just (TerminationHandler hasTerminated _) -> not . hasTerminated
+  in if isNotTerminated currPop
+     then if isInfected currPop
            then do
              (newTime, event, newPop, newId) <-
                randEvent modelParams currTime currPop currId gen
              if newTime < maxTime
                then allEvents
-                      simRandEvent
+                      (SimulationRandEvent randEvent)
                       modelParams
                       maxTime
-                      maybePopPredicate
+                      maybeTermHandler
                       (SimulationState
                          (newTime, event : currEvents, newPop, newId))
                       gen
@@ -172,4 +169,5 @@ allEvents simRandEvent@(SimulationRandEvent randEvent) modelParams maxTime maybe
                   , Extinction currTime : currEvents
                   , currPop
                   , currId)
-    else return TerminatedSimulation
+     else return . TerminatedSimulation $ do TerminationHandler _ termSummary <- maybeTermHandler
+                                             return $ termSummary currEvents

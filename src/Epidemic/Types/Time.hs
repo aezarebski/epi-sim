@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric   #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Epidemic.Types.Time
@@ -24,10 +24,10 @@ module Epidemic.Types.Time
   , timeInterval2
   ) where
 
-import qualified Data.Aeson as Json
-import qualified Data.List as List
-import qualified Data.Maybe as Maybe
-import GHC.Generics
+import qualified Data.Aeson   as Json
+import qualified Data.List    as List
+import qualified Data.Maybe   as Maybe
+import           GHC.Generics
 
 -- | Absolute time.
 newtype AbsoluteTime =
@@ -70,7 +70,7 @@ instance Json.ToJSON TimeDelta
 data TimeInterval =
   TimeInterval
     { timeIntEndPoints :: (AbsoluteTime, AbsoluteTime)
-    , timeIntDuration :: TimeDelta
+    , timeIntDuration  :: TimeDelta
     }
   deriving (Generic, Eq, Show)
 
@@ -146,8 +146,8 @@ asTimed tas =
 isAscending :: Ord a => [a] -> Bool
 isAscending xs =
   case xs of
-    [] -> True
-    [_] -> True
+    []        -> True
+    [_]       -> True
     (x:y:xs') -> x <= y && isAscending (y : xs')
 
 -- | Evaluate the timed object treating it as a cadlag function

@@ -1,32 +1,38 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-import Control.Exception (evaluate)
-import Control.Monad
-import qualified Data.Aeson as Json
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Builder as BBuilder
-import Data.Either (isRight)
-import Data.Maybe (fromJust, isJust, isNothing)
-import qualified Data.Vector as V
-import Epidemic
-import qualified Epidemic.Model.BDSCOD as BDSCOD
-import qualified Epidemic.Model.InhomogeneousBDS as InhomBDS
-import Epidemic.Types.Events
-import Epidemic.Types.Observations
-import Epidemic.Types.Time
-import Epidemic.Types.Newick
-import Epidemic.Types.Parameter
-import Epidemic.Types.Population
-import Epidemic.Utility
-import Statistics.Sample
-import qualified System.Random.MWC as MWC
-import Test.Hspec
-import Epidemic.Types.Simulation (genIOFromSystem, genIOFromFixed, genIOFromWord32)
+import           Control.Exception                  (evaluate)
+import           Control.Monad
+import qualified Data.Aeson                         as Json
+import qualified Data.ByteString                    as B
+import qualified Data.ByteString.Builder            as BBuilder
+import           Data.Either                        (isRight)
+import           Data.Maybe                         (fromJust, isJust,
+                                                     isNothing)
+import qualified Data.Vector                        as V
+import           Epidemic
+import qualified Epidemic.Model.BDSCOD              as BDSCOD
+import qualified Epidemic.Model.InhomogeneousBDS    as InhomBDS
+import qualified Epidemic.Model.InhomogeneousBDSCOD as InhomBDSCOD
+import           Epidemic.Types.Events
+import           Epidemic.Types.Newick
+import           Epidemic.Types.Observations
+import           Epidemic.Types.Parameter
+import           Epidemic.Types.Population
+import           Epidemic.Types.Simulation          (SimulationState (..),
+                                                     TerminationHandler (..),
+                                                     genIOFromFixed,
+                                                     genIOFromSystem,
+                                                     genIOFromWord32)
+import           Epidemic.Types.Time
+import           Epidemic.Utility
+import           Statistics.Sample
+import qualified System.Random.MWC                  as MWC
+import           Test.Hspec
 
 -- | Helper function for converting from Either to Maybe monad.
 either2Maybe x = case x of
   Right v -> Just v
-  Left _ -> Nothing
+  Left _  -> Nothing
 
 -- | y is within n% of x from x.
 withinNPercent n x y = x - d < y && y < x + d
@@ -215,12 +221,13 @@ eventHandlingTests = do
        (observedEvents demoFullEvents04)) `shouldBe`
         True
     it "Disasters can be simulated" $ do
-      demoSim <-
+      (Right demoSim) <-
         simulationWithFixedSeed
           (fromJust
              (BDSCOD.configuration
                 (TimeDelta 4)
                 False
+                Nothing
                 ( 1.3
                 , 0.1
                 , 0.1
@@ -453,10 +460,10 @@ illFormedTreeTest =
           , [(simRhoTime, simRho)]
           , simOmega
           , [(simNuTime, simNu)])
-        simConfig = BDSCOD.configuration simDuration True simParams
+        simConfig = BDSCOD.configuration simDuration True Nothing simParams
      in do it "stress testing the observed events function" $ do
              null (observedEvents []) `shouldBe` True
-             simEvents <-
+             (Right simEvents) <-
                simulationWithFixedSeed (fromJust simConfig) (allEvents BDSCOD.randomEvent)
              any isReconTreeLeaf simEvents `shouldBe` True
              let (Right oes) = observedEvents simEvents
@@ -869,3 +876,60 @@ main =
     newickTests
     aggregationTests
     simTypeTests
+    terminationTests1
+
+terminationTests1 =
+  describe "Termination handling tests: InhomogeneousBDSCOD" $ do
+    let duration = TimeDelta 2.0
+        birthRateSpec = [(AbsoluteTime 0.0, 1.5), (AbsoluteTime 0.5, 0.5)]
+        deathRateSpec = [(AbsoluteTime 0.0, 0.4)]
+        sampRateSpec = [(AbsoluteTime 0.0, 0.1)]
+        occRateSpec = [(AbsoluteTime 0.0, 0.1)]
+        seqSched = [(AbsoluteTime 0.9, 0.1)]
+        unseqSched = [(AbsoluteTime 0.5, 0.4), (AbsoluteTime 0.75, 0.5)]
+        ratesAndProbs = (birthRateSpec,deathRateSpec,sampRateSpec,seqSched,occRateSpec,unseqSched)
+        conf maybeTH = fromJust $ InhomBDSCOD.configuration duration True maybeTH ratesAndProbs
+        -- We need one simulation configuration for each of the termination
+        -- handlers that we want to test.
+        simConfigNothing  = conf Nothing
+        simConfigNever = conf (Just (const False, const ()))
+        simConfigAlways = conf (Just (const True, const ()))
+        numDeadThreshold = 3
+        simConfigSometimes = conf (Just ((>numDeadThreshold) . InhomBDSCOD.getNumRemovedByDeath,
+                                         \es -> length [() | Removal _ _ <- es]))
+        allEventsFunc = allEvents InhomBDSCOD.randomEvent
+    it "test simulation works without hander" $
+      do
+        (Right esNothing) <- simulationWithFixedSeed simConfigNothing allEventsFunc
+        -- There should always be at least one event in the simulation.
+        (length esNothing > 0) `shouldBe` True
+    it "test simulation works with handler that does not trigger" $
+      do
+        (Right esNothing) <- simulationWithFixedSeed simConfigNothing allEventsFunc
+        (Right esNever) <- simulationWithFixedSeed simConfigNever allEventsFunc
+        -- If the handler never triggers this should look the same as not having
+        -- the event handler.
+        (all id $ zipWith (==) esNothing esNever) `shouldBe` True
+    it "test simulation works with handler that always triggers" $
+      do
+        -- If the handler always triggers this should always return the summary.
+        replicateM_ 30
+          (do esAlways <- simulationWithSystem simConfigAlways allEventsFunc
+              esAlways == Left (Just ()) `shouldBe` True
+           )
+    it "test simulation works with handler that sometimes triggers" $
+      do
+        -- If the handler only sometimes triggers then we need to test both
+        -- branches.
+        replicateM_ 30
+          (do esSometimes <- simulationWithSystem simConfigSometimes allEventsFunc
+              case esSometimes of
+                -- If the termination handler did not trigger the number of
+                -- removals should not exceed the threshold allowed by the
+                -- termination handler
+                (Right es) -> do length [() | Removal _ _ <- es] <= numDeadThreshold `shouldBe` True
+                -- If the termination handler did trigger then we should know
+                -- exactly how many removals there was.
+                (Left (Just n)) -> do n == numDeadThreshold + 1 `shouldBe` True
+                (Left Nothing) -> True `shouldBe` False -- this branch should not be reached.
+                )

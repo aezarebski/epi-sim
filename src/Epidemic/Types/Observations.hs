@@ -1,5 +1,5 @@
+{-# LANGUAGE DeriveGeneric   #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE DeriveGeneric #-}
 
 module Epidemic.Types.Observations
   ( Observation(..)
@@ -12,20 +12,15 @@ module Epidemic.Types.Observations
   , aggregated
   ) where
 
-import qualified Data.Aeson as Json
-import qualified Data.List as List
-import Epidemic.Types.Events
-  ( EpidemicEvent(..)
-  , EpidemicTree(..)
-  , maybeEpidemicTree
-  )
-import Epidemic.Types.Population (asPeople)
-import Epidemic.Types.Time
-  ( TimeInterval(..)
-  , TimeStamp(..)
-  , inInterval
-  )
-import GHC.Generics
+import qualified Data.Aeson                as Json
+import qualified Data.List                 as List
+import           Epidemic.Types.Events     (EpidemicEvent (..),
+                                            EpidemicTree (..),
+                                            maybeEpidemicTree)
+import           Epidemic.Types.Population (asPeople)
+import           Epidemic.Types.Time       (TimeInterval (..), TimeStamp (..),
+                                            inInterval)
+import           GHC.Generics
 
 -- | A wrapper for an 'EpidemicEvent' to indicate that this is an even that was
 -- observed rather than just an event of the epidemic process.
@@ -105,7 +100,7 @@ hasSequencedLeaf (Leaf e) =
   case e of
     IndividualSample {..} -> indSampSeq
     PopulationSample {..} -> popSampSeq
-    _ -> False
+    _                     -> False
 hasSequencedLeaf (Branch _ lt rt) = hasSequencedLeaf lt || hasSequencedLeaf rt
 
 -- | The events that were observed during the epidemic, ie those in the

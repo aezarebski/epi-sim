@@ -4,6 +4,7 @@ module Epidemic.Types.Simulation
   ( SimulationConfiguration(..)
   , SimulationState(..)
   , SimulationRandEvent(..)
+  , TerminationHandler(..)
   , genIOFromFixed
   , genIOFromWord32
   , genIOFromSystem
@@ -18,7 +19,7 @@ import           GHC.Word                  (Word32)
 import           System.Random.MWC         (GenIO, create, createSystemRandom,
                                             initialize)
 
-data SimulationConfiguration r p =
+data SimulationConfiguration r p s =
   SimulationConfiguration
     { -- | The event rates
       scRates           :: r
@@ -31,17 +32,18 @@ data SimulationConfiguration r p =
       -- | The duration of the simulation until it stops
     , scSimDuration     :: TimeDelta
       -- | The simulation terminates if this predicate is not satisfied
-    , scValidPopulation :: Maybe (p -> Bool)
+    , scTerminationHandler :: Maybe (TerminationHandler p s)
       -- | The simulation requires at least two sequenced samples
     , scRequireCherry   :: Bool
     }
 
 -- | Either there is a valid simulation state which contains a sequence of
--- epidemic events of there is a terminated simulation which indicates that
--- the simulation has been rejected.
-data SimulationState b
+-- epidemic events along with the time and population or, if the simulation has
+-- terminated early there is another value to indicate that along with a value
+-- which can be used to indicate why the simulation was terminated early.
+data SimulationState b c
   = SimulationState (AbsoluteTime, [EpidemicEvent], b, Identifier)
-  | TerminatedSimulation
+  | TerminatedSimulation (Maybe c)
   deriving (Eq, Show)
 
 data SimulationRandEvent a b where
@@ -55,6 +57,17 @@ data SimulationRandEvent a b where
     -> IO (AbsoluteTime, EpidemicEvent, b, Identifier))
     -> SimulationRandEvent a b
 
+-- | Check if a simulation should be terminated and if it should be terminated,
+-- then compute a summary explaining why. The first function is used to
+-- determine whether the population has entered a state which requires the
+-- simulation to terminate early and the second can be use to write a summary of
+-- the events that led to the termination.
+data TerminationHandler b c where
+  TerminationHandler
+    :: Population b
+    => (b -> Bool)
+    -> ([EpidemicEvent] -> c)
+    -> TerminationHandler b c
 
 -- | A PRNG seed based on the given number. This is the best choice for
 -- reproducible simulations.

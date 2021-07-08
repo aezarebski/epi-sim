@@ -15,7 +15,7 @@ import Epidemic.Types.Parameter
 import Epidemic.Types.Population
 import Epidemic.Types.Simulation
   ( SimulationConfiguration(..)
-  , SimulationRandEvent(..)
+  , SimulationRandEvent(..), TerminationHandler(..)
   )
 import Epidemic.Types.Time
   ( AbsoluteTime(..)
@@ -57,14 +57,15 @@ instance Population BDSCODPopulation where
 configuration ::
      TimeDelta -- ^ Duration of the simulation
   -> Bool -- ^ condition upon at least two sequenced samples.
+  -> Maybe (BDSCODPopulation -> Bool, [EpidemicEvent] -> s) -- ^ values for termination handling.
   -> ( Rate
      , Rate
      , Rate
      , [(AbsoluteTime, Probability)]
      , Rate
      , [(AbsoluteTime, Probability)]) -- ^ Birth, Death, Sampling, Catastrophe probability, Occurrence rates and Disaster probabilities
-  -> Maybe (SimulationConfiguration BDSCODParameters BDSCODPopulation)
-configuration maxTime atLeastCherry (birthRate, deathRate, samplingRate, catastropheSpec, occurrenceRate, disasterSpec) = do
+  -> Maybe (SimulationConfiguration BDSCODParameters BDSCODPopulation s)
+configuration maxTime atLeastCherry maybeTHFuncs (birthRate, deathRate, samplingRate, catastropheSpec, occurrenceRate, disasterSpec) = do
   catastropheSpec' <- asTimed catastropheSpec
   disasterSpec' <- asTimed disasterSpec
   let bdscodParams =
@@ -77,6 +78,8 @@ configuration maxTime atLeastCherry (birthRate, deathRate, samplingRate, catastr
           disasterSpec'
       (seedPerson, newId) = newPerson initialIdentifier
       bdscodPop = BDSCODPopulation (People $ V.singleton seedPerson)
+      termHandler = do (f1, f2) <- maybeTHFuncs
+                       return $ TerminationHandler f1 f2
    in return $
       SimulationConfiguration
         bdscodParams
@@ -84,7 +87,7 @@ configuration maxTime atLeastCherry (birthRate, deathRate, samplingRate, catastr
         newId
         (AbsoluteTime 0)
         maxTime
-        Nothing
+        termHandler
         atLeastCherry
 
 -- | The way in which random events are generated in this model.

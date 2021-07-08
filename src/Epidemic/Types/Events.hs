@@ -1,6 +1,6 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE RecordWildCards   #-}
 
 module Epidemic.Types.Events
   ( EpidemicEvent(Infection, Removal, IndividualSample,
@@ -18,27 +18,24 @@ module Epidemic.Types.Events
   , derivedFrom
   ) where
 
-import qualified Data.Aeson as Json
-import Epidemic.Types.Population
-import Epidemic.Types.Time
-  ( AbsoluteTime(..)
-  , TimeStamp(..)
-  )
-import GHC.Generics
+import qualified Data.Aeson                as Json
+import           Epidemic.Types.Population
+import           Epidemic.Types.Time       (AbsoluteTime (..), TimeStamp (..))
+import           GHC.Generics
 
 -- | Events that can occur in an epidemic with their absolute time.
 data EpidemicEvent
   = Infection AbsoluteTime Person Person -- ^ absolute time; infector; infectee
   | Removal AbsoluteTime Person
   | IndividualSample
-      { indSampTime :: AbsoluteTime
+      { indSampTime   :: AbsoluteTime
       , indSampPerson :: Person
-      , indSampSeq :: Bool
+      , indSampSeq    :: Bool
       }
   | PopulationSample
-      { popSampTime :: AbsoluteTime
+      { popSampTime   :: AbsoluteTime
       , popSampPeople :: People
-      , popSampSeq :: Bool
+      , popSampSeq    :: Bool
       }
   | Extinction AbsoluteTime -- ^ epidemic went extinct
   | StoppingTime AbsoluteTime -- ^ the simulation reached the stopping time
@@ -51,28 +48,28 @@ instance Json.ToJSON EpidemicEvent
 instance TimeStamp EpidemicEvent where
   absTime ee =
     case ee of
-      Infection absT _ _ -> absT
-      Removal absT _ -> absT
+      Infection absT _ _    -> absT
+      Removal absT _        -> absT
       IndividualSample {..} -> indSampTime
       PopulationSample {..} -> popSampTime
-      StoppingTime absT -> absT
-      Extinction absT -> absT
+      StoppingTime absT     -> absT
+      Extinction absT       -> absT
 
 -- | Predicate for the event being an individual sample event.
 isIndividualSample :: EpidemicEvent -> Bool
 isIndividualSample ee =
   case ee of
     IndividualSample {} -> True
-    _ -> False
+    _                   -> False
 
 -- | Predicate for whether an @EpidemicEvent@ is one of the terminal events of
 -- extinction or the stopping time having been reached.
 isExtinctionOrStopping :: EpidemicEvent -> Bool
 isExtinctionOrStopping e =
   case e of
-    Extinction {} -> True
+    Extinction {}   -> True
     StoppingTime {} -> True
-    _ -> False
+    _               -> False
 
 -- | Epidemic Events are ordered based on which occurred first. Since
 -- 'Extinction' and 'StoppingTime' events are there as placeholders they are

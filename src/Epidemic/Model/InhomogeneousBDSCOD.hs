@@ -56,6 +56,11 @@ module Epidemic.Model.InhomogeneousBDSCOD
   , randomEvent
   , InhomBDSCODRates(..)
   , InhomBDSCODPop(..)
+  , getNumRemovedByDeath
+  , getNumRemovedBySampling
+  , getNumRemovedByCatastrophe
+  , getNumRemovedByOccurrence
+  , getNumRemovedByDisaster
   ) where
 
 import           Data.List                       as List
@@ -100,6 +105,21 @@ data InhomBDSCODPop =
   , ipNumRemovedByOccurrence  :: Int
   , ipNumRemovedByDisaster    :: Int
   } deriving (Show)
+
+getNumRemovedByDeath :: InhomBDSCODPop -> Int
+getNumRemovedByDeath = ipNumRemovedByDeath
+
+getNumRemovedBySampling :: InhomBDSCODPop -> Int
+getNumRemovedBySampling = ipNumRemovedBySampling
+
+getNumRemovedByCatastrophe :: InhomBDSCODPop -> Int
+getNumRemovedByCatastrophe = ipNumRemovedByCatastrophe
+
+getNumRemovedByOccurrence :: InhomBDSCODPop -> Int
+getNumRemovedByOccurrence = ipNumRemovedByOccurrence
+
+getNumRemovedByDisaster :: InhomBDSCODPop -> Int
+getNumRemovedByDisaster = ipNumRemovedByDisaster
 
 instance ModelParameters InhomBDSCODRates InhomBDSCODPop where
   rNaught _ InhomBDSCODRates {..} time =

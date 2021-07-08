@@ -2,6 +2,11 @@
 
 ## 0.7.0
 
+- Simulation functions (eg `simulationWithGenIO`) return either the simulated
+  events of the summary produced by the termination handler if the simulation
+  terminated early.
+- The `InhomBDSCODPop` now records the number of individuals that have been
+  removed and there are getter functions exported to access this information.
 - Add `TerminationHandler` to provide better control over early termination of
   simulations. For example, this makes it possible to terminate the simulation
   early if certain stopping conditions are met and to call a function that

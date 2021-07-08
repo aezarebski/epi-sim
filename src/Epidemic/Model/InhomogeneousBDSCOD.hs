@@ -37,18 +37,23 @@
 -- >>> seqSched = [(AbsoluteTime 0.9, 0.1)]
 -- >>> unseqSched = [(AbsoluteTime 0.5, 0.4), (AbsoluteTime 0.75, 0.5)]
 --
--- This is enough to define a 'SimulationConfiguration'.
+-- This is enough to define a 'SimulationConfiguration'. We will ignore the
+-- possibility of using a termination handler for this example.
 --
 -- >>> ratesAndProbs = (birthRateSpec,deathRateSpec,sampRateSpec,seqSched,occRateSpec,unseqSched)
--- >>> (Just simConfig) = configuration simDuration atLeastTwoSequences ratesAndProbs
+-- >>> (Just simConfig) = configuration simDuration atLeastTwoSequences Nothing ratesAndProbs
 --
 -- Then we can use this to generated a list of epidemic events in the simulation
 --
--- >>> myEpidemicEvents = simulation simConfig (allEvents randomEvent)
+-- >>> myEpidemicEvents = simulationWithSystem simConfig (allEvents randomEvent)
 --
 -- and from this we can extract the observations
 --
--- >>> myObservedEvents = observedEvents <$> myEpidemicEvents
+-- >>> myObservedEvents = do
+-- >>>   simState <- myEpidemicEvents
+-- >>>   case simState of
+-- >>>     Right es -> return $ observedEvents es
+-- >>>     Left _ -> return $ Left "simulation terminated early"
 --
 
 module Epidemic.Model.InhomogeneousBDSCOD

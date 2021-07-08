@@ -27,23 +27,18 @@
 
 module Epidemic where
 
-import Data.List (nub)
-import Data.Maybe (fromJust, isJust, isNothing)
-import qualified Data.Vector as V
-import Epidemic.Types.Events
-import Epidemic.Types.Parameter
-import Epidemic.Types.Population
-import Epidemic.Types.Simulation
-  ( SimulationRandEvent(..)
-  , SimulationState(..), TerminationHandler(..)
-  )
-import Epidemic.Types.Time
-  ( AbsoluteTime(..)
-  , Timed(..)
-  , diracDeltaValue
-  , nextTime
-  )
-import System.Random.MWC
+import           Data.List                 (nub)
+import           Data.Maybe                (fromJust, isJust, isNothing)
+import qualified Data.Vector               as V
+import           Epidemic.Types.Events
+import           Epidemic.Types.Parameter
+import           Epidemic.Types.Population
+import           Epidemic.Types.Simulation (SimulationRandEvent (..),
+                                            SimulationState (..),
+                                            TerminationHandler (..))
+import           Epidemic.Types.Time       (AbsoluteTime (..), Timed (..),
+                                            diracDeltaValue, nextTime)
+import           System.Random.MWC
 
 -- | The number of people added or removed in an event. In the case of an
 -- extinction event the number of people removed is arbitrarily set to zero
@@ -51,12 +46,12 @@ import System.Random.MWC
 eventPopDelta :: EpidemicEvent -> Integer
 eventPopDelta e =
   case e of
-    Infection {} -> 1
-    Removal {} -> -1
-    IndividualSample {} -> -1
+    Infection {}          -> 1
+    Removal {}            -> -1
+    IndividualSample {}   -> -1
     PopulationSample {..} -> fromIntegral $ numPeople popSampPeople
-    StoppingTime {} -> 0
-    Extinction {} -> 0
+    StoppingTime {}       -> 0
+    Extinction {}         -> 0
 
 -- | The first scheduled event after a given time.
 firstScheduled ::
@@ -116,7 +111,7 @@ infected ::
 infected p1 p2 e =
   case e of
     (Infection _ infector infectee) -> infector == p1 && infectee == p2
-    _ -> False
+    _                               -> False
 
 -- | The people infected by a particular person in a list of events.
 infectedBy ::
@@ -146,7 +141,7 @@ allEvents ::
 allEvents _ _ _ _ ts@(TerminatedSimulation _) _ = return ts
 allEvents (SimulationRandEvent randEvent) modelParams maxTime maybeTermHandler (SimulationState (currTime, currEvents, currPop, currId)) gen =
   let isNotTerminated = case maybeTermHandler of
-        Nothing -> const True
+        Nothing                                   -> const True
         Just (TerminationHandler hasTerminated _) -> not . hasTerminated
   in if isNotTerminated currPop
      then if isInfected currPop

@@ -58,11 +58,14 @@ data SimulationRandEvent a b where
     -> SimulationRandEvent a b
 
 -- | Check if a simulation should be terminated and if it should be terminated,
--- then compute a summary explaining why.
+-- then compute a summary explaining why. The first function is used to
+-- determine whether the population has entered a state which requires the
+-- simulation to terminate early and the second can be use to write a summary of
+-- the events that led to the termination.
 data TerminationHandler b c where
   TerminationHandler
     :: Population b
-    => ((b, [EpidemicEvent]) -> Bool)
+    => (b -> Bool)
     -> ([EpidemicEvent] -> c)
     -> TerminationHandler b c
 

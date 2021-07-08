@@ -136,7 +136,7 @@ instance Population InhomBDSCODPop where
 configuration ::
      TimeDelta -- ^ Duration of the simulation after starting at time 0.
   -> Bool -- ^ condition upon at least two sequenced samples.
-  -> Maybe ((InhomBDSCODPop, [EpidemicEvent]) -> Bool, [EpidemicEvent] -> s) -- ^ values for termination handling.
+  -> Maybe (InhomBDSCODPop -> Bool, [EpidemicEvent] -> s) -- ^ values for termination handling.
   -> ( [(AbsoluteTime, Rate)]
      , [(AbsoluteTime, Rate)]
      , [(AbsoluteTime, Rate)]

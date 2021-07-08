@@ -57,7 +57,7 @@ instance Population BDSCODPopulation where
 configuration ::
      TimeDelta -- ^ Duration of the simulation
   -> Bool -- ^ condition upon at least two sequenced samples.
-  -> Maybe ((BDSCODPopulation, [EpidemicEvent]) -> Bool, [EpidemicEvent] -> s) -- ^ values for termination handling.
+  -> Maybe (BDSCODPopulation -> Bool, [EpidemicEvent] -> s) -- ^ values for termination handling.
   -> ( Rate
      , Rate
      , Rate

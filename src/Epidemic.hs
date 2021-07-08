@@ -148,7 +148,7 @@ allEvents (SimulationRandEvent randEvent) modelParams maxTime maybeTermHandler (
   let isNotTerminated = case maybeTermHandler of
         Nothing -> const True
         Just (TerminationHandler hasTerminated _) -> not . hasTerminated
-  in if isNotTerminated (currPop, currEvents)
+  in if isNotTerminated currPop
      then if isInfected currPop
            then do
              (newTime, event, newPop, newId) <-

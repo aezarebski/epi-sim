@@ -94,7 +94,7 @@ instance Population LogisticBDSDPopulation where
 configuration ::
      TimeDelta
   -> Bool -- ^ condition upon at least two sequenced samples.
-  -> Maybe ((LogisticBDSDPopulation, [EpidemicEvent]) -> Bool, [EpidemicEvent] -> s) -- ^ values for termination handling.
+  -> Maybe (LogisticBDSDPopulation -> Bool, [EpidemicEvent] -> s) -- ^ values for termination handling.
   -> (Rate, Int, Rate, Rate, [(AbsoluteTime, Probability)])
   -> Either String (SimulationConfiguration LogisticBDSDParameters LogisticBDSDPopulation s)
 configuration simDuration atLeastCherry maybeTHFuncs (birthRate, capacity, deathRate, samplingRate, disasterSpec)

@@ -78,7 +78,7 @@ inhomBDSRates timedBirthRate@(Timed tBrPairs) deathRate sampleRate
 configuration ::
      TimeDelta -- ^ Duration of the simulation after starting at time 0.
   -> Bool -- ^ condition upon at least two sequenced samples.
-  -> Maybe ((InhomBDSPop, [EpidemicEvent]) -> Bool, [EpidemicEvent] -> s) -- ^ values for termination handling.
+  -> Maybe (InhomBDSPop -> Bool, [EpidemicEvent] -> s) -- ^ values for termination handling.
   -> ([(AbsoluteTime, Rate)], Rate, Rate) -- ^ Birth, Death and Sampling rates
   -> Maybe (SimulationConfiguration InhomBDSRates InhomBDSPop s)
 configuration maxTime atLeastCherry maybeTHFuncs (tBrPairs, deathRate, sampleRate) =

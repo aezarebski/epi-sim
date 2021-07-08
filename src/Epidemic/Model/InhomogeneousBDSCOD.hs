@@ -1,5 +1,5 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RecordWildCards       #-}
 
 -- |
 -- Module: Epidemic.Model.InhomogeneousBDSCOD
@@ -58,39 +58,33 @@ module Epidemic.Model.InhomogeneousBDSCOD
   , InhomBDSCODPop(..)
   ) where
 
-import Data.List as List
-import Data.Maybe (fromJust)
-import qualified Data.Vector as V
-import qualified Data.Vector.Generic as G
-import Epidemic
-import Epidemic.Types.Events (EpidemicEvent(..))
-import Epidemic.Types.Parameter
-import Epidemic.Types.Population
-import Epidemic.Types.Simulation
-  ( SimulationConfiguration(..)
-  , SimulationRandEvent(..), TerminationHandler(..)
-  )
-import Epidemic.Types.Time
-  ( AbsoluteTime(..)
-  , TimeDelta(..)
-  , Timed(..)
-  , allTimes
-  , asTimed
-  , cadlagValue
-  , maybeNextTimed
-  )
-import Epidemic.Utility
-import System.Random.MWC
-import System.Random.MWC.Distributions (bernoulli, categorical)
+import           Data.List                       as List
+import           Data.Maybe                      (fromJust)
+import qualified Data.Vector                     as V
+import qualified Data.Vector.Generic             as G
+import           Epidemic
+import           Epidemic.Types.Events           (EpidemicEvent (..))
+import           Epidemic.Types.Parameter
+import           Epidemic.Types.Population
+import           Epidemic.Types.Simulation       (SimulationConfiguration (..),
+                                                  SimulationRandEvent (..),
+                                                  TerminationHandler (..))
+import           Epidemic.Types.Time             (AbsoluteTime (..),
+                                                  TimeDelta (..), Timed (..),
+                                                  allTimes, asTimed,
+                                                  cadlagValue, maybeNextTimed)
+import           Epidemic.Utility
+import           System.Random.MWC
+import           System.Random.MWC.Distributions (bernoulli, categorical)
 
 data InhomBDSCODRates =
   InhomBDSCODRates
-    { irBirthRate :: Timed Rate
-    , irDeathRate :: Timed Rate
-    , irSamplingRate :: Timed Rate
+    { irBirthRate       :: Timed Rate
+    , irDeathRate       :: Timed Rate
+    , irSamplingRate    :: Timed Rate
     , irCatastropheSpec :: Timed Probability
-    , irOccurrenceRate :: Timed Rate
-    , irDisasterSpec :: Timed Probability
+    , irOccurrenceRate  :: Timed Rate
+    , irDisasterSpec    :: Timed Probability
     }
   deriving (Show, Eq)
 

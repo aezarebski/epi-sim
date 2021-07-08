@@ -88,9 +88,18 @@ data InhomBDSCODRates =
     }
   deriving (Show, Eq)
 
+-- | The population in which the epidemic occurs. This includes information
+-- about the number of people that have previously been infected and
+-- subsequently removed.
 data InhomBDSCODPop =
-  InhomBDSCODPop People
-  deriving (Show)
+  InhomBDSCODPop
+  { ipInfectedPeople          :: People
+  , ipNumRemovedByDeath       :: Int
+  , ipNumRemovedBySampling    :: Int
+  , ipNumRemovedByCatastrophe :: Int
+  , ipNumRemovedByOccurrence  :: Int
+  , ipNumRemovedByDisaster    :: Int
+  } deriving (Show)
 
 instance ModelParameters InhomBDSCODRates InhomBDSCODPop where
   rNaught _ InhomBDSCODRates {..} time =
@@ -122,11 +131,11 @@ instance ModelParameters InhomBDSCODRates InhomBDSCODPop where
 
 instance Population InhomBDSCODPop where
   susceptiblePeople _ = Nothing
-  infectiousPeople (InhomBDSCODPop people) = Just people
+  infectiousPeople = pure . ipInfectedPeople
   removedPeople _ = Nothing
-  isInfected (InhomBDSCODPop people) = not $ nullPeople people
+  isInfected = not . nullPeople . ipInfectedPeople
 
--- | Configuration of a inhomogeneous rates BDSCOD simulation.
+-- | Configuration for the simulation of the inhomogeneous rates BDSCOD process.
 configuration ::
      TimeDelta -- ^ Duration of the simulation after starting at time 0.
   -> Bool -- ^ condition upon at least two sequenced samples.
@@ -140,7 +149,12 @@ configuration ::
   -> Maybe (SimulationConfiguration InhomBDSCODRates InhomBDSCODPop s)
 configuration maxTime atLeastCherry maybeTHFuncs (tBirthRate, tDeathRate, tSampleRate, cSpec, tOccurrenceRate, dSpec) =
   let (seedPerson, newId) = newPerson initialIdentifier
-      bdscodPop = InhomBDSCODPop $ asPeople [seedPerson]
+      bdscodPop = InhomBDSCODPop { ipInfectedPeople = asPeople [seedPerson]
+                                 , ipNumRemovedByDeath = 0
+                                 , ipNumRemovedBySampling = 0
+                                 , ipNumRemovedByCatastrophe = 0
+                                 , ipNumRemovedByOccurrence = 0
+                                 , ipNumRemovedByDisaster = 0 }
    in do timedBirthRate <- asTimed tBirthRate
          timedDeathRate <- asTimed tDeathRate
          timedSamplingRate <- asTimed tSampleRate
@@ -180,8 +194,9 @@ randomEvent' ::
   -> Identifier -- ^ current identifier
   -> GenIO -- ^ PRNG
   -> IO (AbsoluteTime, EpidemicEvent, InhomBDSCODPop, Identifier)
-randomEvent' inhomRates@InhomBDSCODRates {..} currTime currPop@(InhomBDSCODPop people) currId gen =
-  let popSize = fromIntegral $ numPeople people :: Double
+randomEvent' inhomRates@InhomBDSCODRates {..} currTime currPop currId gen =
+  let (Just people) = infectiousPeople currPop
+      popSize = fromIntegral $ numPeople people :: Double
       weightVecFunc = eventWeights currPop inhomRates
       -- we need a new step function to account for the population size.
       (Just stepFunction) =
@@ -192,31 +207,34 @@ randomEvent' inhomRates@InhomBDSCODRates {..} currTime currPop@(InhomBDSCODPop p
    in do (Just newEventTime) <- inhomExponential stepFunction currTime gen
          if noScheduledEvent currTime newEventTime (irCatastropheSpec <> irDisasterSpec)
            then do
-             eventIx <- categorical (fromJust $ weightVecFunc newEventTime) gen -- select from the continuous time samples
+             eventIx <- categorical (fromJust $ weightVecFunc newEventTime) gen
              (selectedPerson, unselectedPeople) <- randomPerson people gen
              return $
                case eventIx of
                  0 ->
                    ( newEventTime
                    , Infection newEventTime selectedPerson birthedPerson
-                   , InhomBDSCODPop (addPerson birthedPerson people)
+                   , currPop { ipInfectedPeople = addPerson birthedPerson people}
                    , newId)
                    where (birthedPerson, newId) = newPerson currId
-                 1 ->
-                   ( newEventTime
-                   , Removal newEventTime selectedPerson
-                   , InhomBDSCODPop unselectedPeople
-                   , currId)
-                 2 ->
-                   ( newEventTime
-                   , IndividualSample newEventTime selectedPerson True
-                   , InhomBDSCODPop unselectedPeople
-                   , currId)
-                 3 ->
-                   ( newEventTime
-                   , IndividualSample newEventTime selectedPerson False
-                   , InhomBDSCODPop unselectedPeople
-                   , currId)
+                 1 -> let currNumDeaths = ipNumRemovedByDeath currPop
+                      in ( newEventTime
+                         , Removal newEventTime selectedPerson
+                         , currPop { ipInfectedPeople = unselectedPeople
+                                   , ipNumRemovedByDeath = currNumDeaths + 1 }
+                         , currId )
+                 2 -> let currNumSampled = ipNumRemovedBySampling currPop
+                      in ( newEventTime
+                         , IndividualSample newEventTime selectedPerson True
+                         , currPop { ipInfectedPeople = unselectedPeople
+                                   , ipNumRemovedBySampling = currNumSampled + 1 }
+                         , currId)
+                 3 -> let currNumOccurrence = ipNumRemovedByOccurrence currPop
+                      in ( newEventTime
+                         , IndividualSample newEventTime selectedPerson False
+                         , currPop { ipInfectedPeople = unselectedPeople
+                                   , ipNumRemovedByOccurrence = currNumOccurrence + 1}
+                         , currId)
                  _ -> error "no birth, death, sampling, or occurrence event selected."
            else case maybeNextTimed irCatastropheSpec irDisasterSpec currTime of
                   Just (disastTime, Right disastProb) ->
@@ -235,34 +253,38 @@ randomEvent' inhomRates@InhomBDSCODRates {..} currTime currPop@(InhomBDSCODPop p
                        return (catastTime, catastEvent, postCatastPop, currId)
                   Nothing -> error "Missing a next scheduled event when there should be one."
 
--- | Return a randomly sampled Catastrophe event
--- TODO Move this into the epidemic module to keep things DRY.
+-- | Return a randomly sampled Catastrophe event and the population after that
+-- event has occurred.
 randomCatastropheEvent ::
      (AbsoluteTime, Probability) -- ^ Time and probability of sampling in the catastrophe
   -> InhomBDSCODPop -- ^ The state of the population prior to the catastrophe
   -> GenIO
   -> IO (EpidemicEvent, InhomBDSCODPop)
-randomCatastropheEvent (catastTime, rhoProb) (InhomBDSCODPop (People currPeople)) gen = do
-  rhoBernoullis <- G.replicateM (V.length currPeople) (bernoulli rhoProb gen)
-  let filterZip predicate a b = fst . V.unzip . V.filter predicate $ V.zip a b
-      sampledPeople = filterZip snd currPeople rhoBernoullis
-      unsampledPeople = filterZip (not . snd) currPeople rhoBernoullis
-   in return
-        ( PopulationSample catastTime (People sampledPeople) True
-        , InhomBDSCODPop (People unsampledPeople))
+randomCatastropheEvent (catastTime, rhoProb) currPop gen =
+  let (Just (People currPeople)) = infectiousPeople currPop
+  in do rhoBernoullis <- G.replicateM (V.length currPeople) (bernoulli rhoProb gen)
+        let filterZip predicate a b = fst . V.unzip . V.filter predicate $ V.zip a b
+            sampledPeople = People $ filterZip snd currPeople rhoBernoullis
+            unsampledPeople = People $ filterZip (not . snd) currPeople rhoBernoullis
+            currNumCatastrophe = ipNumRemovedByCatastrophe currPop
+         in return ( PopulationSample catastTime sampledPeople True
+                   , currPop { ipInfectedPeople = unsampledPeople
+                             , ipNumRemovedByCatastrophe = currNumCatastrophe + numPeople sampledPeople })
 
--- | Return a randomly sampled Disaster event
--- TODO Move this into the epidemic module to keep things DRY.
+-- | Return a randomly sampled Disaster event and the population after that
+-- event has occurred.
 randomDisasterEvent ::
      (AbsoluteTime, Probability) -- ^ Time and probability of sampling in the disaster
   -> InhomBDSCODPop -- ^ The state of the population prior to the disaster
   -> GenIO
   -> IO (EpidemicEvent, InhomBDSCODPop)
-randomDisasterEvent (disastTime, nuProb) (InhomBDSCODPop (People currPeople)) gen = do
+randomDisasterEvent (disastTime, nuProb) currPop gen = do
+  let (Just (People currPeople)) = infectiousPeople currPop
   nuBernoullis <- G.replicateM (V.length currPeople) (bernoulli nuProb gen)
   let filterZip predicate a b = fst . V.unzip . V.filter predicate $ V.zip a b
-      sampledPeople = filterZip snd currPeople nuBernoullis
-      unsampledPeople = filterZip (not . snd) currPeople nuBernoullis
-   in return
-        ( PopulationSample disastTime (People sampledPeople) False
-        , InhomBDSCODPop (People unsampledPeople))
+      sampledPeople = People $ filterZip snd currPeople nuBernoullis
+      unsampledPeople = People $ filterZip (not . snd) currPeople nuBernoullis
+      currNumDisaster = ipNumRemovedByDisaster currPop
+   in return ( PopulationSample disastTime sampledPeople False
+             , currPop { ipInfectedPeople = unsampledPeople
+                       , ipNumRemovedByDisaster = currNumDisaster + numPeople sampledPeople })

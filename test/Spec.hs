@@ -1,33 +1,38 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-import Control.Exception (evaluate)
-import Control.Monad
-import qualified Data.Aeson as Json
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Builder as BBuilder
-import Data.Either (isRight)
-import Data.Maybe (fromJust, isJust, isNothing)
-import qualified Data.Vector as V
-import Epidemic
-import qualified Epidemic.Model.BDSCOD as BDSCOD
-import qualified Epidemic.Model.InhomogeneousBDS as InhomBDS
-import Epidemic.Types.Events
-import Epidemic.Types.Observations
-import Epidemic.Types.Time
-import Epidemic.Types.Newick
-import Epidemic.Types.Parameter
-import Epidemic.Types.Population
-import Epidemic.Utility
-import Statistics.Sample
-import qualified System.Random.MWC as MWC
-import Test.Hspec
-import Epidemic.Types.Simulation (genIOFromSystem, genIOFromFixed, genIOFromWord32, TerminationHandler(..), SimulationState(..))
+import           Control.Exception                  (evaluate)
+import           Control.Monad
+import qualified Data.Aeson                         as Json
+import qualified Data.ByteString                    as B
+import qualified Data.ByteString.Builder            as BBuilder
+import           Data.Either                        (isRight)
+import           Data.Maybe                         (fromJust, isJust,
+                                                     isNothing)
+import qualified Data.Vector                        as V
+import           Epidemic
+import qualified Epidemic.Model.BDSCOD              as BDSCOD
+import qualified Epidemic.Model.InhomogeneousBDS    as InhomBDS
 import qualified Epidemic.Model.InhomogeneousBDSCOD as InhomBDSCOD
+import           Epidemic.Types.Events
+import           Epidemic.Types.Newick
+import           Epidemic.Types.Observations
+import           Epidemic.Types.Parameter
+import           Epidemic.Types.Population
+import           Epidemic.Types.Simulation          (SimulationState (..),
+                                                     TerminationHandler (..),
+                                                     genIOFromFixed,
+                                                     genIOFromSystem,
+                                                     genIOFromWord32)
+import           Epidemic.Types.Time
+import           Epidemic.Utility
+import           Statistics.Sample
+import qualified System.Random.MWC                  as MWC
+import           Test.Hspec
 
 -- | Helper function for converting from Either to Maybe monad.
 either2Maybe x = case x of
   Right v -> Just v
-  Left _ -> Nothing
+  Left _  -> Nothing
 
 -- | y is within n% of x from x.
 withinNPercent n x y = x - d < y && y < x + d

@@ -1,5 +1,12 @@
 # Changelog for epi-sim
 
+## 0.8.0
+
+- Random functions scattered throughout the modules have been put into more
+  appropriate data modules and some redundant functions have been removed.
+- The `Epidemic.Types` modules have been renamed to `Epidemic.Data` because they
+  are not limited to type definitions.
+
 ## 0.7.0
 
 - Simulation functions (eg `simulationWithGenIO`) return either the simulated

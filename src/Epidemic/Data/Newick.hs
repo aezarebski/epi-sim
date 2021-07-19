@@ -1,14 +1,14 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module Epidemic.Types.Newick where
+module Epidemic.Data.Newick where
 
 import qualified Data.ByteString.Builder as BBuilder
 import qualified Data.List as List
 import qualified Data.Vector as V
-import Epidemic.Types.Observations
-import Epidemic.Types.Events
-import Epidemic.Types.Population
-import Epidemic.Types.Time
+import Epidemic.Data.Observations
+import Epidemic.Data.Events
+import Epidemic.Data.Population
+import Epidemic.Data.Time
 
 -- | Class of types that can be expressed in Newick format.
 class Newick t

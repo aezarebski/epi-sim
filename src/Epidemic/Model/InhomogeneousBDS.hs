@@ -8,7 +8,7 @@ module Epidemic.Model.InhomogeneousBDS
   , InhomBDSPop(..)
   ) where
 
-import Epidemic.Types.Time
+import Epidemic.Data.Time
   ( AbsoluteTime(..)
   , Timed(..)
   , TimeDelta(..)
@@ -18,12 +18,12 @@ import Epidemic.Types.Time
   )
 import Data.Maybe (fromJust)
 import qualified Data.Vector as V
-import Epidemic.Types.Events
+import Epidemic.Data.Events
   ( EpidemicEvent(..)
   )
-import Epidemic.Types.Parameter
-import Epidemic.Types.Population
-import Epidemic.Types.Simulation
+import Epidemic.Data.Parameter
+import Epidemic.Data.Population
+import Epidemic.Data.Simulation
   ( SimulationConfiguration(..)
   , SimulationRandEvent(..), TerminationHandler(..)
   )

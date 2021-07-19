@@ -1,11 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 
-module Epidemic.Utility ( initialIdentifier
+module Epidemic.Utility ( allEvents
                         , inhomExponential
                         , randomPerson
                         , maybeToRight
-                        , newPerson
+                        , infected
+                        , infectedBy
                         , isReconTreeLeaf
                         , simulationWithSystem
                         , simulationWithFixedSeed
@@ -16,25 +17,16 @@ import           Control.Monad.Primitive         (PrimMonad, PrimState)
 import qualified Data.List                       as List
 import qualified Data.Maybe                      as Maybe
 import qualified Data.Vector                     as V
-import           Epidemic
-import           Epidemic.Types.Events
-import           Epidemic.Types.Parameter
-import           Epidemic.Types.Population
-import           Epidemic.Types.Simulation
-import           Epidemic.Types.Time             (AbsoluteTime (..),
+import           Epidemic.Data.Events
+import           Epidemic.Data.Parameter
+import           Epidemic.Data.Population
+import           Epidemic.Data.Simulation
+import           Epidemic.Data.Time             (AbsoluteTime (..),
                                                   TimeDelta (..), Timed (..),
                                                   cadlagValue, nextTime,
                                                   timeAfterDelta)
 import           System.Random.MWC
 import           System.Random.MWC.Distributions (exponential)
-
-
-initialIdentifier :: Identifier
-initialIdentifier = Identifier 1
-
--- | A new person constructed from the given identifier and a new identifier.
-newPerson :: Identifier -> (Person, Identifier)
-newPerson idntty@(Identifier idInt) = (Person idntty, Identifier (idInt + 1))
 
 -- | An element of a vector and the vector with that element removed.
 selectElem :: V.Vector a -> Int -> (a, V.Vector a)
@@ -185,12 +177,6 @@ isReconTreeLeaf e =
     PopulationSample {..} -> popSampSeq && not (nullPeople popSampPeople)
     _                     -> False
 
--- | The number of lineages at the end of a simulation.
-finalSize ::
-     [EpidemicEvent] -- ^ The events from the simulation
-  -> Integer
-finalSize = foldl (\x y -> x + eventPopDelta y) 1
-
 -- | Generate exponentially distributed random variates with inhomogeneous rate
 -- starting from a particular point in time.
 --
@@ -234,3 +220,74 @@ maybeToRight a maybeB =
   case maybeB of
     (Just b) -> Right b
     Nothing  -> Left a
+
+-- | Predicate for whether the first person infected the second in the given event
+infected ::
+     Person -- ^ Potential infector
+  -> Person -- ^ Potential infectee
+  -> EpidemicEvent -- ^ Given event
+  -> Bool
+infected p1 p2 e =
+  case e of
+    (Infection _ infector infectee) -> infector == p1 && infectee == p2
+    _                               -> False
+
+-- | The people infected by a particular person in a list of events.
+infectedBy ::
+     Person -- ^ Potential infector
+  -> [EpidemicEvent] -- ^ Events
+  -> People
+infectedBy person events =
+  case events of
+    [] -> People V.empty
+    (Infection _ infector infectee:es) ->
+      if infector == person
+        then addPerson infectee $ infectedBy person es
+        else infectedBy person es
+    (_:es) -> infectedBy person es
+
+
+-- | Run the simulation until the specified stopping time and return a
+-- @SimulationState@ which holds the history of the simulation.
+allEvents ::
+     (ModelParameters a b, Population b)
+  => SimulationRandEvent a b
+  -> a
+  -> AbsoluteTime -- ^ time at which to stop the simulation
+  -> Maybe (TerminationHandler b c)
+  -> SimulationState b c -- ^ the initial/current state of the simulation
+  -> GenIO
+  -> IO (SimulationState b c)
+allEvents _ _ _ _ ts@(TerminatedSimulation _) _ = return ts
+allEvents (SimulationRandEvent randEvent) modelParams maxTime maybeTermHandler (SimulationState (currTime, currEvents, currPop, currId)) gen =
+  let isNotTerminated = case maybeTermHandler of
+        Nothing                                   -> const True
+        Just (TerminationHandler hasTerminated _) -> not . hasTerminated
+  in if isNotTerminated currPop
+     then if isInfected currPop
+           then do
+             (newTime, event, newPop, newId) <-
+               randEvent modelParams currTime currPop currId gen
+             if newTime < maxTime
+               then allEvents
+                      (SimulationRandEvent randEvent)
+                      modelParams
+                      maxTime
+                      maybeTermHandler
+                      (SimulationState
+                         (newTime, event : currEvents, newPop, newId))
+                      gen
+               else return $
+                    SimulationState
+                      ( maxTime
+                      , StoppingTime maxTime : currEvents
+                      , currPop
+                      , currId)
+           else return $
+                SimulationState
+                  ( currTime
+                  , Extinction currTime : currEvents
+                  , currPop
+                  , currId)
+     else return . TerminatedSimulation $ do TerminationHandler _ termSummary <- maybeTermHandler
+                                             return $ termSummary currEvents

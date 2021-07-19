@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs #-}
 
-module Epidemic.Types.Simulation
+module Epidemic.Data.Simulation
   ( SimulationConfiguration(..)
   , SimulationState(..)
   , SimulationRandEvent(..)
@@ -11,10 +11,10 @@ module Epidemic.Types.Simulation
   ) where
 
 import qualified Data.Vector.Unboxed       as Unboxed
-import           Epidemic.Types.Events
-import           Epidemic.Types.Parameter
-import           Epidemic.Types.Population
-import           Epidemic.Types.Time       (AbsoluteTime (..), TimeDelta (..))
+import           Epidemic.Data.Events
+import           Epidemic.Data.Parameter
+import           Epidemic.Data.Population
+import           Epidemic.Data.Time       (AbsoluteTime (..), TimeDelta (..))
 import           GHC.Word                  (Word32)
 import           System.Random.MWC         (GenIO, create, createSystemRandom,
                                             initialize)

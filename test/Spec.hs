@@ -13,17 +13,17 @@ import           Epidemic
 import qualified Epidemic.Model.BDSCOD              as BDSCOD
 import qualified Epidemic.Model.InhomogeneousBDS    as InhomBDS
 import qualified Epidemic.Model.InhomogeneousBDSCOD as InhomBDSCOD
-import           Epidemic.Types.Events
-import           Epidemic.Types.Newick
-import           Epidemic.Types.Observations
-import           Epidemic.Types.Parameter
-import           Epidemic.Types.Population
-import           Epidemic.Types.Simulation          (SimulationState (..),
+import           Epidemic.Data.Events
+import           Epidemic.Data.Newick
+import           Epidemic.Data.Observations
+import           Epidemic.Data.Parameter
+import           Epidemic.Data.Population
+import           Epidemic.Data.Simulation          (SimulationState (..),
                                                      TerminationHandler (..),
                                                      genIOFromFixed,
                                                      genIOFromSystem,
                                                      genIOFromWord32)
-import           Epidemic.Types.Time
+import           Epidemic.Data.Time
 import           Epidemic.Utility
 import           Statistics.Sample
 import qualified System.Random.MWC                  as MWC
@@ -354,7 +354,7 @@ helperFuncTests = do
       (isJust $ InhomBDS.inhomBDSRates timedBirthRate 0.5 0.5) `shouldBe` False
 
 simTypeTests =
-  describe "Test Types.Simulation PRNG helpers" $
+  describe "Test Data.Simulation PRNG helpers" $
   do it "check genIOFromFixed always gives same result" $
        do g1 <- genIOFromFixed
           u11 <- MWC.uniform g1 :: IO Double

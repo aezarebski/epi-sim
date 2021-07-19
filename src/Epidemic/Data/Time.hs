@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveGeneric   #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Epidemic.Types.Time
+module Epidemic.Data.Time
   ( AbsoluteTime(..)
   , TimeDelta(..)
   , TimeInterval(..)

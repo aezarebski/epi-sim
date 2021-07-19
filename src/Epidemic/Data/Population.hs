@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 
 -- |
--- Module: Epidemic.Types.Population
+-- Module: Epidemic.Data.Population
 -- Copyright: (c) 2021 Alexander E. Zarebski
 -- License: MIT
 --
@@ -18,14 +18,16 @@
 --   * and 'Population' is a typeclass for working with people that have some structure.
 --
 
-module Epidemic.Types.Population
+module Epidemic.Data.Population
   ( Person(Person)
   , People(People)
   , Population(..)
   , Identifier(Identifier)
   , asPeople
   , includesPerson
+  , initialIdentifier
   , haveCommonPeople
+  , newPerson
   , nullPeople
   , numPeople
   , addPerson
@@ -103,3 +105,10 @@ removePerson person (People persons) = People $ V.filter (/= person) persons
 -- | A bytestring builder for a person
 personByteString :: Person -> BBuilder.Builder
 personByteString (Person (Identifier n)) = BBuilder.integerDec n
+
+initialIdentifier :: Identifier
+initialIdentifier = Identifier 1
+
+-- | A new person constructed from the given identifier and a new identifier.
+newPerson :: Identifier -> (Person, Identifier)
+newPerson idntty@(Identifier idInt) = (Person idntty, Identifier (idInt + 1))

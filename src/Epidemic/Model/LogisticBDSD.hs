@@ -11,36 +11,37 @@ module Epidemic.Model.LogisticBDSD
 import Data.Maybe (fromJust)
 import qualified Data.Vector as V
 import qualified Data.Vector.Generic as G
-import Epidemic (firstScheduled, noScheduledEvent)
-import Epidemic.Types.Events (EpidemicEvent(..))
-import Epidemic.Types.Time
+import Epidemic.Data.Events (EpidemicEvent(..))
+import Epidemic.Data.Time
   ( AbsoluteTime(..)
   , Timed(..)
   , TimeDelta(..)
   , asTimed
   , timeAfterDelta
   )
-import Epidemic.Types.Parameter
+import Epidemic.Data.Parameter
   (  ModelParameters(..)
   , Probability
   , Rate
+  , firstScheduled
+  , noScheduledEvent
   )
-import Epidemic.Types.Population
+import Epidemic.Data.Population
   ( Identifier(..)
   , People(..)
   , Population(..)
   , addPerson
+  , initialIdentifier
+  , newPerson
   , nullPeople
   , numPeople
   )
-import Epidemic.Types.Simulation
+import Epidemic.Data.Simulation
   ( SimulationConfiguration(..)
   , SimulationRandEvent(..), TerminationHandler(..)
   )
 import Epidemic.Utility
-  ( initialIdentifier
-  , maybeToRight
-  , newPerson
+  ( maybeToRight
   , randomPerson
   )
 import System.Random.MWC (GenIO)

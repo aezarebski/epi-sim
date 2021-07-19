@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveGeneric   #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Epidemic.Types.Observations
+module Epidemic.Data.Observations
   ( Observation(..)
   , ReconstructedTree(..)
   , maybeReconstructedTree
@@ -14,11 +14,11 @@ module Epidemic.Types.Observations
 
 import qualified Data.Aeson                as Json
 import qualified Data.List                 as List
-import           Epidemic.Types.Events     (EpidemicEvent (..),
+import           Epidemic.Data.Events     (EpidemicEvent (..),
                                             EpidemicTree (..),
                                             maybeEpidemicTree)
-import           Epidemic.Types.Population (asPeople)
-import           Epidemic.Types.Time       (TimeInterval (..), TimeStamp (..),
+import           Epidemic.Data.Population (asPeople)
+import           Epidemic.Data.Time       (TimeInterval (..), TimeStamp (..),
                                             inInterval)
 import           GHC.Generics
 

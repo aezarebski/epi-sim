@@ -2,9 +2,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 
-module Epidemic.Types.Events
+module Epidemic.Data.Events
   ( EpidemicEvent(Infection, Removal, IndividualSample,
               PopulationSample, StoppingTime, Extinction)
+  , eventPopDelta
   , popSampPeople
   , popSampSeq
   , popSampTime
@@ -19,8 +20,9 @@ module Epidemic.Types.Events
   ) where
 
 import qualified Data.Aeson                as Json
-import           Epidemic.Types.Population
-import           Epidemic.Types.Time       (AbsoluteTime (..), TimeStamp (..))
+import           Epidemic.Data.Population
+import           Epidemic.Data.Parameter (Probability, noScheduledEvent)
+import           Epidemic.Data.Time       (AbsoluteTime (..), TimeStamp (..))
 import           GHC.Generics
 
 -- | Events that can occur in an epidemic with their absolute time.
@@ -168,3 +170,16 @@ maybeEpidemicTree (e:es) =
       Left "Extinction event encountered. It should have been removed"
     StoppingTime {} ->
       Left "Stopping time encountered. It should have been removed"
+
+-- | The number of people added or removed in an event. In the case of an
+-- extinction event the number of people removed is arbitrarily set to zero
+-- because this information is available from the prior event in the sequence.
+eventPopDelta :: EpidemicEvent -> Integer
+eventPopDelta e =
+  case e of
+    Infection {}          -> 1
+    Removal {}            -> -1
+    IndividualSample {}   -> -1
+    PopulationSample {..} -> fromIntegral $ numPeople popSampPeople
+    StoppingTime {}       -> 0
+    Extinction {}         -> 0

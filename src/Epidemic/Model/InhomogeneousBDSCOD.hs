@@ -72,14 +72,13 @@ import           Data.List                       as List
 import           Data.Maybe                      (fromJust)
 import qualified Data.Vector                     as V
 import qualified Data.Vector.Generic             as G
-import           Epidemic
-import           Epidemic.Types.Events           (EpidemicEvent (..))
-import           Epidemic.Types.Parameter
-import           Epidemic.Types.Population
-import           Epidemic.Types.Simulation       (SimulationConfiguration (..),
+import           Epidemic.Data.Events           (EpidemicEvent (..))
+import           Epidemic.Data.Parameter
+import           Epidemic.Data.Population
+import           Epidemic.Data.Simulation       (SimulationConfiguration (..),
                                                   SimulationRandEvent (..),
                                                   TerminationHandler (..))
-import           Epidemic.Types.Time             (AbsoluteTime (..),
+import           Epidemic.Data.Time             (AbsoluteTime (..),
                                                   TimeDelta (..), Timed (..),
                                                   allTimes, asTimed,
                                                   cadlagValue, maybeNextTimed)

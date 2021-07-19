@@ -1,6 +1,6 @@
 cabal-version:      1.22
 name:               epi-sim
-version:            0.7.0
+version:            0.8.0
 synopsis:
   A library for simulating epidemics as birth-death processes.
 
@@ -40,18 +40,17 @@ source-repository head
 
 library
   exposed-modules:
-    Epidemic
     Epidemic.Model.BDSCOD
     Epidemic.Model.InhomogeneousBDS
     Epidemic.Model.InhomogeneousBDSCOD
     Epidemic.Model.LogisticBDSD
-    Epidemic.Types.Events
-    Epidemic.Types.Newick
-    Epidemic.Types.Observations
-    Epidemic.Types.Parameter
-    Epidemic.Types.Population
-    Epidemic.Types.Simulation
-    Epidemic.Types.Time
+    Epidemic.Data.Events
+    Epidemic.Data.Newick
+    Epidemic.Data.Observations
+    Epidemic.Data.Parameter
+    Epidemic.Data.Population
+    Epidemic.Data.Simulation
+    Epidemic.Data.Time
     Epidemic.Utility
 
   other-modules:    Paths_epi_sim

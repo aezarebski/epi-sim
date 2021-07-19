@@ -118,8 +118,8 @@ derivedFromPeople people (e:es) =
     StoppingTime {} -> derivedFromPeople people es
 
 -- | The whole transmission tree including the unobserved leaves. Lineages that
--- are still extant are modelled as /shoots/ and contain a 'Person' as their
--- data rather than an event.
+-- are still extant in the epidemic when the tree is made are modelled as
+-- /shoots/ and contain a 'Person' as their data rather than an event.
 data EpidemicTree
   = Branch EpidemicEvent EpidemicTree EpidemicTree
   | Leaf EpidemicEvent

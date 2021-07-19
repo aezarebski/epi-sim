@@ -5,7 +5,6 @@ module Epidemic.Utility ( allEvents
                         , inhomExponential
                         , randomPerson
                         , maybeToRight
-                        , infected
                         , infectedBy
                         , isReconTreeLeaf
                         , simulationWithSystem
@@ -27,23 +26,14 @@ import           Epidemic.Data.Time             (AbsoluteTime (..),
                                                   timeAfterDelta)
 import           System.Random.MWC
 import           System.Random.MWC.Distributions (exponential)
-
--- | An element of a vector and the vector with that element removed.
-selectElem :: V.Vector a -> Int -> (a, V.Vector a)
-selectElem v n
-  | n == 0 = (V.head v, V.tail v)
-  | otherwise =
-    let (foo, bar) = V.splitAt n v
-     in (V.head bar, foo V.++ (V.tail bar))
+import qualified Data.Set as Set
 
 -- | A random person and the remaining group of people after they have been
 -- sampled with removal.
 randomPerson :: People -> GenIO -> IO (Person, People)
 randomPerson people@(People persons) gen = do
-  u <- uniform gen
-  let personIx = floor (u * (fromIntegral $ numPeople people :: Double))
-      (person, remPeople) = selectElem persons personIx
-   in return (person, People remPeople)
+  randIx <- uniformR (0, numPeople people - 1) gen
+  return (Set.elemAt randIx persons, People $ Set.deleteAt randIx persons)
 
 type NName = Maybe String
 
@@ -82,8 +72,8 @@ instance Show NTree where
   show (NTree bs) = show (NBranchSet bs) ++ ";"
 
 -- | The number of elements of the list that map to @True@ under the predicate.
-count' :: (a -> Bool) -> [a] -> Int
-count' p xs = sum [if p x then 1 else 0 | x <- xs]
+countTrues :: (a -> Bool) -> [a] -> Int
+countTrues p xs = sum [if p x then 1 else 0 | x <- xs]
 
 -- | Run a simulation described by a configuration object and the model's
 -- @allEvents@ style function (see the example in
@@ -137,7 +127,7 @@ simulationAtLeastCherry config@SimulationConfiguration {..} allEventsFunc gen = 
       gen
   case simState of
     SimulationState (_, events, _, _) -> 
-      if count' isReconTreeLeaf events >= 2
+      if countTrues isReconTreeLeaf events >= 2
       then return $ Right $ List.sort events
       else simulationAtLeastCherry config allEventsFunc gen
     TerminatedSimulation maybeSummary -> return $ Left maybeSummary
@@ -161,7 +151,7 @@ simulationWithSystem config@SimulationConfiguration {..} allEventsFunc = do
   case simState of
     SimulationState (_, events, _, _) ->
       if scRequireCherry
-      then (if count' isReconTreeLeaf events >= 2
+      then (if countTrues isReconTreeLeaf events >= 2
              then return $ Right $ List.sort events
              else simulationWithSystem config allEventsFunc)
       else return $ Right $ List.sort events
@@ -221,17 +211,6 @@ maybeToRight a maybeB =
     (Just b) -> Right b
     Nothing  -> Left a
 
--- | Predicate for whether the first person infected the second in the given event
-infected ::
-     Person -- ^ Potential infector
-  -> Person -- ^ Potential infectee
-  -> EpidemicEvent -- ^ Given event
-  -> Bool
-infected p1 p2 e =
-  case e of
-    (Infection _ infector infectee) -> infector == p1 && infectee == p2
-    _                               -> False
-
 -- | The people infected by a particular person in a list of events.
 infectedBy ::
      Person -- ^ Potential infector
@@ -239,7 +218,7 @@ infectedBy ::
   -> People
 infectedBy person events =
   case events of
-    [] -> People V.empty
+    [] -> People Set.empty
     (Infection _ infector infectee:es) ->
       if infector == person
         then addPerson infectee $ infectedBy person es

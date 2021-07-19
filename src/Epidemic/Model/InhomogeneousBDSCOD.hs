@@ -85,6 +85,9 @@ import           Epidemic.Data.Time             (AbsoluteTime (..),
 import           Epidemic.Utility
 import           System.Random.MWC
 import           System.Random.MWC.Distributions (bernoulli, categorical)
+import Control.Monad (replicateM)
+import qualified Data.Set as Set
+import Data.Coerce (coerce)
 
 data InhomBDSCODRates =
   InhomBDSCODRates
@@ -249,13 +252,13 @@ randomEvent' inhomRates@InhomBDSCODRates {..} currTime currPop currId gen =
                          , currId )
                  2 -> let currNumSampled = ipNumRemovedBySampling currPop
                       in ( newEventTime
-                         , IndividualSample newEventTime selectedPerson True
+                         , IndividualSample newEventTime selectedPerson True True
                          , currPop { ipInfectedPeople = unselectedPeople
                                    , ipNumRemovedBySampling = currNumSampled + 1 }
                          , currId)
                  3 -> let currNumOccurrence = ipNumRemovedByOccurrence currPop
                       in ( newEventTime
-                         , IndividualSample newEventTime selectedPerson False
+                         , IndividualSample newEventTime selectedPerson False True
                          , currPop { ipInfectedPeople = unselectedPeople
                                    , ipNumRemovedByOccurrence = currNumOccurrence + 1}
                          , currId)
@@ -285,11 +288,12 @@ randomCatastropheEvent ::
   -> GenIO
   -> IO (EpidemicEvent, InhomBDSCODPop)
 randomCatastropheEvent (catastTime, rhoProb) currPop gen =
-  let (Just (People currPeople)) = infectiousPeople currPop
-  in do rhoBernoullis <- G.replicateM (V.length currPeople) (bernoulli rhoProb gen)
-        let filterZip predicate a b = fst . V.unzip . V.filter predicate $ V.zip a b
-            sampledPeople = People $ filterZip snd currPeople rhoBernoullis
-            unsampledPeople = People $ filterZip (not . snd) currPeople rhoBernoullis
+  let (Just currPeople) = infectiousPeople currPop
+  in do rhoBernoullis <- replicateM (numPeople currPeople) (bernoulli rhoProb gen)
+        let setFilterZip pred a b = Set.fromList [x | p@(x, _) <- zip a b, pred p]
+            currPersons = Set.toList $ coerce currPeople
+            sampledPeople = People $ setFilterZip snd currPersons rhoBernoullis
+            unsampledPeople = People $ setFilterZip (not . snd) currPersons rhoBernoullis
             currNumCatastrophe = ipNumRemovedByCatastrophe currPop
          in return ( PopulationSample catastTime sampledPeople True
                    , currPop { ipInfectedPeople = unsampledPeople
@@ -303,11 +307,12 @@ randomDisasterEvent ::
   -> GenIO
   -> IO (EpidemicEvent, InhomBDSCODPop)
 randomDisasterEvent (disastTime, nuProb) currPop gen = do
-  let (Just (People currPeople)) = infectiousPeople currPop
-  nuBernoullis <- G.replicateM (V.length currPeople) (bernoulli nuProb gen)
-  let filterZip predicate a b = fst . V.unzip . V.filter predicate $ V.zip a b
-      sampledPeople = People $ filterZip snd currPeople nuBernoullis
-      unsampledPeople = People $ filterZip (not . snd) currPeople nuBernoullis
+  let (Just currPeople) = infectiousPeople currPop
+      currPersons = Set.toList $ coerce currPeople
+  nuBernoullis <- replicateM (numPeople currPeople) (bernoulli nuProb gen)
+  let setFilterZip pred a b = Set.fromList [x | p@(x, _) <- zip a b, pred p]
+      sampledPeople = People $ setFilterZip snd currPersons nuBernoullis
+      unsampledPeople = People $ setFilterZip (not . snd) currPersons nuBernoullis
       currNumDisaster = ipNumRemovedByDisaster currPop
    in return ( PopulationSample disastTime sampledPeople False
              , currPop { ipInfectedPeople = unsampledPeople

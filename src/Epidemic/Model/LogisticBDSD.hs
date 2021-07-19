@@ -8,6 +8,7 @@ module Epidemic.Model.LogisticBDSD
   , LogisticBDSDPopulation(..)
   ) where
 
+import Control.Monad (replicateM)
 import Data.Maybe (fromJust)
 import qualified Data.Vector as V
 import qualified Data.Vector.Generic as G
@@ -46,6 +47,7 @@ import Epidemic.Utility
   )
 import System.Random.MWC (GenIO)
 import System.Random.MWC.Distributions (bernoulli, categorical, exponential)
+import qualified Data.Set as Set
 
 -- | The parameters of the logistic-BDSD process. This process allows for
 -- infections, removals, sampling and disasters.
@@ -115,7 +117,7 @@ configuration simDuration atLeastCherry maybeTHFuncs (birthRate, capacity, death
             samplingRate
             disasterTP
         (seedPerson, newId) = newPerson initialIdentifier
-        logBDSDPop = LogisticBDSDPopulation (People $ V.singleton seedPerson)
+        logBDSDPop = LogisticBDSDPopulation (People $ Set.singleton seedPerson)
         termHandler = do (f1, f2) <- maybeTHFuncs
                          return $ TerminationHandler f1 f2
      in return $
@@ -166,7 +168,7 @@ randEvent' params@LogisticBDSDParameters {..} currTime currPop@(LogisticBDSDPopu
                    , currId)
                  2 ->
                    ( newEventTime
-                   , IndividualSample newEventTime randPerson True
+                   , IndividualSample newEventTime randPerson True True
                    , LogisticBDSDPopulation otherPeople
                    , currId)
                  _ -> error "do not recognise the type of event index."
@@ -184,10 +186,12 @@ randomDisasterEvent ::
   -> GenIO
   -> IO (EpidemicEvent, LogisticBDSDPopulation)
 randomDisasterEvent (dsstrTime, dsstrProb) (LogisticBDSDPopulation (People currPpl)) gen = do
-  randBernoullis <- G.replicateM (V.length currPpl) (bernoulli dsstrProb gen)
-  let filterZip predicate a b = fst . V.unzip . V.filter predicate $ V.zip a b
-      sampledPeople = filterZip snd currPpl randBernoullis
-      unsampledPeople = filterZip (not . snd) currPpl randBernoullis
+  let nPplCurr = Set.size currPpl
+      pplList = Set.toList currPpl
+      setFilterZip pred a b = Set.fromList [x | p@(x, _) <- zip a b, pred p]
+  randBernoullis <- replicateM nPplCurr (bernoulli dsstrProb gen)
+  let sampledPeople = setFilterZip snd pplList randBernoullis
+      unsampledPeople = setFilterZip (not . snd) pplList randBernoullis
    in return
         ( PopulationSample dsstrTime (People sampledPeople) False
         , LogisticBDSDPopulation (People unsampledPeople))

@@ -2,13 +2,13 @@
 
 module Epidemic.Data.Newick where
 
-import qualified Data.ByteString.Builder as BBuilder
-import qualified Data.List as List
-import qualified Data.Vector as V
-import Epidemic.Data.Observations
-import Epidemic.Data.Events
-import Epidemic.Data.Population
-import Epidemic.Data.Time
+import qualified Data.ByteString.Builder    as BBuilder
+import qualified Data.List                  as List
+import qualified Data.Set                   as Set
+import           Epidemic.Data.Events
+import           Epidemic.Data.Observations
+import           Epidemic.Data.Population
+import           Epidemic.Data.Time
 
 -- | Class of types that can be expressed in Newick format.
 class Newick t
@@ -34,9 +34,9 @@ commaBuilder :: BBuilder.Builder
 commaBuilder = BBuilder.charUtf8 ','
 
 catastrophePeopleBuilder :: People -> BBuilder.Builder
-catastrophePeopleBuilder (People persons) =
-  mconcat $
-  List.intersperse ampersandBuilder [personByteString p | p <- V.toList persons]
+catastrophePeopleBuilder (People ps) =
+  mconcat . List.intersperse ampersandBuilder $ map personByteString pList
+  where pList = Set.toList ps
 
 instance Newick ReconstructedTree where
   asNewickString (t, _) (RLeaf (Observation e)) =

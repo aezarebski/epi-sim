@@ -30,14 +30,17 @@ module Epidemic.Data.Population
   , newPerson
   , nullPeople
   , numPeople
+  , personId
   , addPerson
+  , addPersons
   , removePerson
   , personByteString
   ) where
 
 import qualified Data.Aeson              as Json
 import qualified Data.ByteString.Builder as BBuilder
-import qualified Data.Vector             as V
+import           Data.Coerce             (coerce)
+import qualified Data.Set                as Set
 import           GHC.Generics
 
 -- | Class of types that can represent populations in an epidemic simulation.
@@ -50,24 +53,31 @@ class Population a where
 -- | A type to hold an integer which is unique to each 'Person'.
 newtype Identifier =
   Identifier Integer
-  deriving (Show, Generic, Eq)
+  deriving (Show, Generic, Eq, Ord)
 
 instance Json.FromJSON Identifier
 
 instance Json.ToJSON Identifier
 
+instance Enum Identifier where
+  toEnum = Identifier . toInteger
+  fromEnum (Identifier i) = fromInteger i
+
 -- | A type to represent a single person in a group of 'People'
 newtype Person =
   Person Identifier
-  deriving (Show, Generic, Eq)
+  deriving (Show, Generic, Eq, Ord)
 
 instance Json.FromJSON Person
 
 instance Json.ToJSON Person
 
+personId :: Person -> Identifier
+personId = coerce
+
 -- | A type to represent a population.
 newtype People =
-  People (V.Vector Person)
+  People (Set.Set Person)
   deriving (Show, Eq, Generic)
 
 instance Json.FromJSON People
@@ -76,39 +86,44 @@ instance Json.ToJSON People
 
 -- | A list of persons as a people
 asPeople :: [Person] -> People
-asPeople persons = People $ V.fromList persons
+asPeople persons = People $ Set.fromList persons
 
 -- | Predicate for whether a person is one of the people
 includesPerson :: People -> Person -> Bool
-includesPerson (People persons) person = V.elem person persons
+includesPerson (People persons) person = person `Set.member` persons
 
 -- | Predicate for whether two sets of people have any members in common.
 haveCommonPeople :: People -> People -> Bool
-haveCommonPeople (People ps1) (People ps2) = V.any (`V.elem` ps2) ps1
+haveCommonPeople (People ps1) (People ps2) = not . Set.null $ Set.intersection ps1 ps2
 
 -- | Predicate for whether there are any people
 nullPeople :: People -> Bool
-nullPeople (People persons) = V.null persons
+nullPeople (People persons) = Set.null persons
 
 -- | The number of people
 numPeople :: People -> Int
-numPeople (People persons) = V.length persons
+numPeople (People persons) = Set.size persons
 
--- | Add a person to a group of people
+-- | Add a person to a group of people if they are not already included.
 addPerson :: Person -> People -> People
-addPerson person (People persons) = People $ V.cons person persons
+addPerson p people@(People ps) = People $ p `Set.insert` ps
+
+-- | Add a person to a group of people if they are not already included.
+addPersons :: [Person] -> People -> People
+addPersons ps (People people) = People . Set.union people $ Set.fromList ps
 
 -- | Remove a person from a group of people
 removePerson :: Person -> People -> People
-removePerson person (People persons) = People $ V.filter (/= person) persons
+removePerson person (People persons) = People $ Set.filter (/= person) persons
 
 -- | A bytestring builder for a person
 personByteString :: Person -> BBuilder.Builder
 personByteString (Person (Identifier n)) = BBuilder.integerDec n
 
+-- | An initial identifier.
 initialIdentifier :: Identifier
 initialIdentifier = Identifier 1
 
 -- | A new person constructed from the given identifier and a new identifier.
 newPerson :: Identifier -> (Person, Identifier)
-newPerson idntty@(Identifier idInt) = (Person idntty, Identifier (idInt + 1))
+newPerson id = (Person id, succ id)

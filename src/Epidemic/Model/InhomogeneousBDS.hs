@@ -30,6 +30,7 @@ import Epidemic.Data.Simulation
 import Epidemic.Utility
 import System.Random.MWC
 import System.Random.MWC.Distributions (categorical)
+import qualified Data.Set as Set
 
 data InhomBDSRates =
   InhomBDSRates (Timed Rate) Rate Rate
@@ -83,7 +84,7 @@ configuration ::
   -> Maybe (SimulationConfiguration InhomBDSRates InhomBDSPop s)
 configuration maxTime atLeastCherry maybeTHFuncs (tBrPairs, deathRate, sampleRate) =
   let (seedPerson, newId) = newPerson initialIdentifier
-      bdsPop = InhomBDSPop (People $ V.singleton seedPerson)
+      bdsPop = InhomBDSPop (People $ Set.singleton seedPerson)
       termHandler = do (f1, f2) <- maybeTHFuncs
                        return $ TerminationHandler f1 f2
    in do timedBirthRate <- asTimed tBrPairs
@@ -139,7 +140,7 @@ randomEvent' inhomRates@(InhomBDSRates brts _ _) currTime pop@(InhomBDSPop peopl
                , currId)
              2 ->
                ( newEventTime
-               , IndividualSample newEventTime selectedPerson True
+               , IndividualSample newEventTime selectedPerson True True
                , InhomBDSPop unselectedPeople
                , currId)
              _ -> error "no birth-death-sampling event selected."

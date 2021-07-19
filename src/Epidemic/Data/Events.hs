@@ -12,6 +12,9 @@ module Epidemic.Data.Events
   , indSampPerson
   , indSampSeq
   , indSampTime
+  , infTime
+  , infInfector
+  , infInfectee
   , EpidemicTree(Branch, Leaf, Shoot)
   , maybeEpidemicTree
   , isExtinctionOrStopping
@@ -19,25 +22,39 @@ module Epidemic.Data.Events
   , derivedFrom
   ) where
 
-import qualified Data.Aeson                as Json
+import qualified Data.Aeson               as Json
+import           Data.Function            ((&))
+import           Epidemic.Data.Parameter  (Probability, noScheduledEvent)
 import           Epidemic.Data.Population
-import           Epidemic.Data.Parameter (Probability, noScheduledEvent)
 import           Epidemic.Data.Time       (AbsoluteTime (..), TimeStamp (..))
 import           GHC.Generics
 
--- | Events that can occur in an epidemic with their absolute time.
+-- | Events that can occur during an epidemic.
+--
+-- >>> p1 = Person initialIdentifier
+-- >>> p2 = p1 & personId & succ & Person
+-- >>> infEvent = Infection (AbsoluteTime 1.0) p1 p2
+--
 data EpidemicEvent
-  = Infection AbsoluteTime Person Person -- ^ absolute time; infector; infectee
-  | Removal AbsoluteTime Person
+  = Infection
+      { infTime     :: AbsoluteTime
+      , infInfector :: Person -- ^ the person doing the infecting
+      , infInfectee :: Person -- ^ the person who got infected
+      }
+  | Removal
+      { remTime   :: AbsoluteTime
+      , remPerson :: Person
+      }
   | IndividualSample
-      { indSampTime   :: AbsoluteTime
-      , indSampPerson :: Person
-      , indSampSeq    :: Bool
+      { indSampTime    :: AbsoluteTime
+      , indSampPerson  :: Person
+      , indSampSeq     :: Bool -- ^ whether the sample was sequenced
+      , indSampRemoved :: Bool -- ^ whether the individual was removed upon observation
       }
   | PopulationSample
       { popSampTime   :: AbsoluteTime
       , popSampPeople :: People
-      , popSampSeq    :: Bool
+      , popSampSeq    :: Bool -- ^ whether the samples were sequenced
       }
   | Extinction AbsoluteTime -- ^ epidemic went extinct
   | StoppingTime AbsoluteTime -- ^ the simulation reached the stopping time
@@ -50,18 +67,31 @@ instance Json.ToJSON EpidemicEvent
 instance TimeStamp EpidemicEvent where
   absTime ee =
     case ee of
-      Infection absT _ _    -> absT
-      Removal absT _        -> absT
+      Infection {..}        -> infTime
+      Removal  {..}         -> remTime
       IndividualSample {..} -> indSampTime
       PopulationSample {..} -> popSampTime
       StoppingTime absT     -> absT
       Extinction absT       -> absT
+
+-- | Predicate for the event being an infection event.
+isInfection :: EpidemicEvent -> Bool
+isInfection ee = case ee of
+  Infection {} -> True
+  _ -> False
 
 -- | Predicate for the event being an individual sample event.
 isIndividualSample :: EpidemicEvent -> Bool
 isIndividualSample ee =
   case ee of
     IndividualSample {} -> True
+    _                   -> False
+
+-- | Predicate for the event being an population sample event.
+isPopulationSample :: EpidemicEvent -> Bool
+isPopulationSample ee =
+  case ee of
+    PopulationSample {} -> True
     _                   -> False
 
 -- | Predicate for whether an @EpidemicEvent@ is one of the terminal events of
@@ -94,9 +124,9 @@ derivedFromPeople ::
 derivedFromPeople _ [] = []
 derivedFromPeople people (e:es) =
   case e of
-    Infection _ p1 p2 ->
-      if includesPerson people p1 || includesPerson people p2
-        then let people' = addPerson p2 (addPerson p1 people)
+    Infection {..} ->
+      if includesPerson people infInfector || includesPerson people infInfectee
+        then let people' = addPersons [infInfectee, infInfector] people
               in e : derivedFromPeople people' es
         else derivedFromPeople people es
     Removal _ p ->

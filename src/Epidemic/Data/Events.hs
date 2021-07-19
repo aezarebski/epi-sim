@@ -147,11 +147,16 @@ derivedFromPeople people (e:es) =
     Extinction {} -> derivedFromPeople people es
     StoppingTime {} -> derivedFromPeople people es
 
--- | The whole transmission tree including the unobserved leaves. Lineages that
--- are still extant in the epidemic when the tree is made are modelled as
--- /shoots/ and contain a 'Person' as their data rather than an event.
+-- | A tree representing every event in the epidemic.
+--
+--     * Branch - an infection event
+--     * Burr - an individual sample without removal
+--     * Leaf - removal or observation.
+--     * Shoot - an active lineage at present
+--
 data EpidemicTree
   = Branch EpidemicEvent EpidemicTree EpidemicTree
+  | Burr EpidemicEvent EpidemicTree
   | Leaf EpidemicEvent
   | Shoot Person
   deriving (Show, Eq)

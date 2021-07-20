@@ -264,15 +264,6 @@ eventHandlingTests = do
 
 helperFuncTests = do
   describe "Helpers in Utility" $ do
-    it "the isAscending function works" $ do
-      (isAscending ([] :: [AbsoluteTime])) `shouldBe` True
-      (isAscending [-1.0]) `shouldBe` True
-      (isAscending [1.0]) `shouldBe` True
-      (isAscending [1.0, 2.0]) `shouldBe` True
-      (isAscending [1.0, 2.0, 3.0]) `shouldBe` True
-      (isAscending [1.0, -2.0]) `shouldBe` False
-      (isAscending [1.0, -2.0, 3.0]) `shouldBe` False
-      (isAscending [1.0, 2.0, -3.0]) `shouldBe` False
     it "the asTimed function works" $ do
       (isJust $ asTimed []) `shouldBe` True
       (isJust $ asTimed [(AbsoluteTime 0, 1)]) `shouldBe` True
@@ -554,15 +545,6 @@ inhomogeneousBDSTest =
 
 helperTypeTests = do
   describe "Helpers for working with the types" $ do
-    it "the isAscending function works" $ do
-      (isAscending ([] :: [AbsoluteTime])) `shouldBe` True
-      (isAscending [-1.0]) `shouldBe` True
-      (isAscending [1.0]) `shouldBe` True
-      (isAscending [1.0, 2.0]) `shouldBe` True
-      (isAscending [1.0, 2.0, 3.0]) `shouldBe` True
-      (isAscending [1.0, -2.0]) `shouldBe` False
-      (isAscending [1.0, -2.0, 3.0]) `shouldBe` False
-      (isAscending [1.0, 2.0, -3.0]) `shouldBe` False
     it "the asTimed function works" $ do
       (isJust $ asTimed []) `shouldBe` True
       (isJust $ asTimed [(AbsoluteTime 0, 1)]) `shouldBe` True

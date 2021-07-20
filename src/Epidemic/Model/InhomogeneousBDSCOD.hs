@@ -225,11 +225,12 @@ randomEvent' inhomRates@InhomBDSCODRates {..} currTime currPop currId gen =
   let (Just people) = infectiousPeople currPop
       popSize = fromIntegral $ numPeople people :: Double
       weightVecFunc = eventWeights currPop inhomRates
-      -- we need a new step function to account for the population size.
+      -- we need a new step function to account for the changes in the
+      -- population size at each step.
       (Just stepFunction) =
         asTimed
           [ (t, popSize * fromJust (perCapitaEventRate currPop inhomRates t))
-          | t <- List.sort $ concatMap allTimes [irBirthRate, irDeathRate, irSamplingRate, irOccurrenceRate]
+          | t <- List.sort . List.nub $ concatMap allTimes [irBirthRate, irDeathRate, irSamplingRate, irOccurrenceRate]
           ]
    in do (Just newEventTime) <- inhomExponential stepFunction currTime gen
          if noScheduledEvent currTime newEventTime (irCatastropheSpec <> irDisasterSpec)

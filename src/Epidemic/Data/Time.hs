@@ -15,7 +15,6 @@ module Epidemic.Data.Time
   , diracDeltaValue
   , hasTime
   , inInterval
-  , isAscending
   , maybeNextTimed
   , nextTime
   , timeAfterDelta
@@ -132,23 +131,20 @@ instance Json.ToJSON a => Json.ToJSON (Timed a)
 instance Semigroup (Timed a) where
   (Timed x) <> (Timed y) = Timed $ List.sortOn fst (x ++ y)
 
--- | Construct a timed list if possible.
+-- | Construct a timed numeric value from a /sorted/ list of values and their
+-- times.
 asTimed ::
      Num a
   => [(AbsoluteTime, a)] -- ^ list of ascending times and values
   -> Maybe (Timed a)
-asTimed tas =
-  if isAscending $ map fst tas
-    then Just (Timed $ tas ++ [(AbsoluteTime (1 / 0), -1)])
-    else Nothing
-
--- | Predicate to check if a list of orderable objects is in ascending order.
-isAscending :: Ord a => [a] -> Bool
-isAscending xs =
-  case xs of
-    []        -> True
-    [_]       -> True
-    (x:y:xs') -> x <= y && isAscending (y : xs')
+asTimed tas
+  | strictlyInc $ map fst tas = return . Timed $ tas <> pointAtInf
+  | otherwise = Nothing
+  where pointAtInf = [(AbsoluteTime (1 / 0), -1)]
+        strictlyInc xs =
+          case xs of
+            (a:b:c) -> a < b && strictlyInc (b:c)
+            _ -> True
 
 -- | Evaluate the timed object treating it as a cadlag function
 cadlagValue :: Timed a -> AbsoluteTime -> Maybe a

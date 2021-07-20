@@ -7,30 +7,26 @@ module Epidemic.Model.BDSCOD
   , BDSCODPopulation(..)
   ) where
 
-import qualified Data.Vector as V
-import qualified Data.Vector.Generic as G
-import Epidemic
-import Epidemic.Data.Events (EpidemicEvent(..))
-import Epidemic.Data.Parameter
-import Epidemic.Data.Population
-import Epidemic.Data.Simulation
-  ( SimulationConfiguration(..)
-  , SimulationRandEvent(..), TerminationHandler(..)
-  )
-import Epidemic.Data.Time
-  ( AbsoluteTime(..)
-  , TimeDelta(..)
-  , Timed(..)
-  , asTimed
-  , maybeNextTimed
-  , timeAfterDelta
-  )
-import Epidemic.Utility
-import System.Random.MWC
-import System.Random.MWC.Distributions (bernoulli, categorical, exponential)
-import qualified Data.Set as Set
-import Data.Coerce (coerce)
-import Control.Monad (replicateM)
+import           Control.Monad                   (replicateM)
+import           Data.Coerce                     (coerce)
+import qualified Data.Set                        as Set
+import qualified Data.Vector                     as V
+import qualified Data.Vector.Generic             as G
+import           Epidemic
+import           Epidemic.Data.Events            (EpidemicEvent (..))
+import           Epidemic.Data.Parameter
+import           Epidemic.Data.Population
+import           Epidemic.Data.Simulation        (SimulationConfiguration (..),
+                                                  SimulationRandEvent (..),
+                                                  TerminationHandler (..))
+import           Epidemic.Data.Time              (AbsoluteTime (..),
+                                                  TimeDelta (..), Timed (..),
+                                                  asTimed, maybeNextTimed,
+                                                  timeAfterDelta)
+import           Epidemic.Utility
+import           System.Random.MWC
+import           System.Random.MWC.Distributions (bernoulli, categorical,
+                                                  exponential)
 
 -- | birth rate, death rate, sampling rate, catastrophe specification, occurrence rate and disaster specification
 data BDSCODParameters =

@@ -91,7 +91,7 @@ reconstructedTree (Leaf e) =
     IndividualSample {..} ->
       if indSampSeq && indSampRemoved
         then Right $ RLeaf (Observation e)
-        else Left "Leaf with non-sequenced or non-removed individual sample."
+        else Left $ "Leaf with non-sequenced or non-removed individual sample: \n" <> show e
     PopulationSample {..} ->
       if popSampSeq
         then Right $ RLeaf (Observation e)

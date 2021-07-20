@@ -234,6 +234,7 @@ eventHandlingTests = do
         simulationWithFixedSeed
           (fromJust
              (BDSCOD.configuration
+                (AbsoluteTime 0)
                 (TimeDelta 4)
                 False
                 Nothing
@@ -242,7 +243,8 @@ eventHandlingTests = do
                 , 0.1
                 , [(AbsoluteTime 3, 0.5)]
                 , 0.2
-                , [(AbsoluteTime 3.5, 0.5)])))
+                , [(AbsoluteTime 3.5, 0.5)]
+                , 1.0)))
           (allEvents BDSCOD.randomEvent)
       length demoSim > 1 `shouldBe` True
   describe "Extracting observed events" $ do
@@ -443,21 +445,26 @@ illFormedTreeTest =
         simOmega = 0.3
         simNu = 0.15
         simNuTime = AbsoluteTime 3.0
+        simRemProb = 1.0
         simParams =
           ( simLambda
           , simMu
           , simPsi
           , [(simRhoTime, simRho)]
           , simOmega
-          , [(simNuTime, simNu)])
-        simConfig = BDSCOD.configuration simDuration True Nothing simParams
+          , [(simNuTime, simNu)]
+          , simRemProb)
+        simConfig = BDSCOD.configuration (AbsoluteTime 0) simDuration True Nothing simParams
      in do it "stress testing the observed events function" $ do
+             isJust simConfig `shouldBe` True
              null (observedEvents []) `shouldBe` True
              (Right simEvents) <-
                simulationWithFixedSeed (fromJust simConfig) (allEvents BDSCOD.randomEvent)
              any isReconTreeLeaf simEvents `shouldBe` True
-             let (Right oes) = observedEvents simEvents
-             (length oes > 1) `shouldBe` True
+             let eitherObsEs = observedEvents simEvents
+             print eitherObsEs
+             isRight eitherObsEs `shouldBe` True
+             either (const False) (\oes -> length oes > 1) eitherObsEs `shouldBe` True
            it "check leaves are recognised correctly" $ do
              let (absT, person) = (AbsoluteTime 1.0, Person (Identifier 1))
                  infEvent = Infection absT person person

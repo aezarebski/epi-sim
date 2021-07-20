@@ -30,7 +30,10 @@ import           System.Random.MWC.Distributions (bernoulli, categorical,
                                                   exponential)
 
 -- | Parameters of the BDSCOD process: birth rate, death rate, sampling rate,
--- catastrophe specification, occurrence rate and disaster specification
+-- catastrophe specification, occurrence rate and disaster specification. The SO
+-- removal probability is the probability that if an individual appears in a
+-- sample or an occurrence that they will be removed from the infectious
+-- population.
 data BDSCODParameters =
   BDSCODParameters
   { bdscodBirthRate       :: Rate
@@ -39,6 +42,7 @@ data BDSCODParameters =
   , bdscodCatastropheSpec :: Timed Probability
   , bdscodOccurrenceRate  :: Rate
   , bdscodDisasterSpec    :: Timed Probability
+  , bdscodSORemovalProb   :: Probability
   } deriving (Show, Eq)
 
 data BDSCODPopulation =
@@ -46,8 +50,10 @@ data BDSCODPopulation =
   deriving (Show)
 
 instance ModelParameters BDSCODParameters BDSCODPopulation where
+  -- | Since sampling and occurrence only sometimes results in removal we must
+  -- account for this.
   rNaught _ BDSCODParameters {..} _ =
-    return $ bdscodBirthRate / (bdscodDeathRate + bdscodSamplingRate + bdscodOccurrenceRate)
+    return $ bdscodBirthRate / (bdscodDeathRate + bdscodSORemovalProb * bdscodSamplingRate + bdscodSORemovalProb * bdscodOccurrenceRate)
   perCapitaEventRate _ BDSCODParameters {..} _ =
     return $ bdscodBirthRate + bdscodDeathRate + bdscodSamplingRate + bdscodOccurrenceRate
   birthProb pop params@BDSCODParameters {..} absT =
@@ -63,9 +69,11 @@ instance Population BDSCODPopulation where
   removedPeople _ = Nothing
   isInfected (BDSCODPopulation (People people)) = not $ Set.null people
 
--- | Configuration of a birth-death-sampling-occurrence-disaster simulation
+-- | Configuration of a birth-death-sampling-occurrence-disaster simulation,
+-- potentially with sampled ancestors.
 configuration ::
-     TimeDelta -- ^ Duration of the simulation
+     AbsoluteTime -- ^ Start time of the simulation
+  -> TimeDelta -- ^ Duration of the simulation
   -> Bool -- ^ condition upon at least two sequenced samples.
   -> Maybe (BDSCODPopulation -> Bool, [EpidemicEvent] -> s) -- ^ values for termination handling.
   -> ( Rate
@@ -73,9 +81,10 @@ configuration ::
      , Rate
      , [(AbsoluteTime, Probability)]
      , Rate
-     , [(AbsoluteTime, Probability)]) -- ^ Birth, Death, Sampling, Catastrophe probability, Occurrence rates and Disaster probabilities
+     , [(AbsoluteTime, Probability)]
+     , Probability) -- ^ Birth, Death, Sampling, Catastrophe probability, Occurrence rates, Disaster probabilities and the probability of removal upon individual sampling.
   -> Maybe (SimulationConfiguration BDSCODParameters BDSCODPopulation s)
-configuration maxTime atLeastCherry maybeTHFuncs (birthRate, deathRate, samplingRate, catastropheSpec, occurrenceRate, disasterSpec) = do
+configuration startTime maxTime atLeastCherry maybeTHFuncs (birthRate, deathRate, samplingRate, catastropheSpec, occurrenceRate, disasterSpec, sampOccRemovalProb) = do
   catastropheSpec' <- asTimed catastropheSpec
   disasterSpec' <- asTimed disasterSpec
   let bdscodParams =
@@ -86,6 +95,7 @@ configuration maxTime atLeastCherry maybeTHFuncs (birthRate, deathRate, sampling
           catastropheSpec'
           occurrenceRate
           disasterSpec'
+          sampOccRemovalProb
       (seedPerson, newId) = newPerson initialIdentifier
       bdscodPop = BDSCODPopulation . People . Set.singleton $ seedPerson
       termHandler = do (f1, f2) <- maybeTHFuncs
@@ -95,7 +105,7 @@ configuration maxTime atLeastCherry maybeTHFuncs (birthRate, deathRate, sampling
         bdscodParams
         bdscodPop
         newId
-        (AbsoluteTime 0)
+        startTime
         maxTime
         termHandler
         atLeastCherry
@@ -114,7 +124,7 @@ randomEvent' ::
   -> IO (AbsoluteTime, EpidemicEvent, BDSCODPopulation, Identifier)
 randomEvent' params@BDSCODParameters {..} currTime currPop@(BDSCODPopulation currPeople) currId gen =
   let (Just netEventRate) = perCapitaEventRate currPop params currTime
-      (Just weightVec) = eventWeights currPop params currTime
+      (Just weightVec) = eventWeights currPop params currTime -- birth, death, sampling, occurrence.
    in do delay <-
            exponential (fromIntegral (numPeople currPeople) * netEventRate) gen
          let newEventTime = timeAfterDelta currTime (TimeDelta delay)
@@ -122,6 +132,7 @@ randomEvent' params@BDSCODParameters {..} currTime currPop@(BDSCODPopulation cur
          then do
                 eventIx <- categorical weightVec gen
                 (selectedPerson, unselectedPeople) <- randomPerson currPeople gen
+                removeIndividual <- bernoulli bdscodSORemovalProb gen
                 return $
                   case eventIx of
                     0 ->
@@ -138,15 +149,25 @@ randomEvent' params@BDSCODParameters {..} currTime currPop@(BDSCODPopulation cur
                       , BDSCODPopulation unselectedPeople
                       , currId)
                     2 ->
-                      ( newEventTime
-                      , IndividualSample newEventTime selectedPerson True True
-                      , BDSCODPopulation unselectedPeople
-                      , currId)
+                      if removeIndividual
+                      then ( newEventTime
+                           , IndividualSample newEventTime selectedPerson True True
+                           , BDSCODPopulation unselectedPeople
+                           , currId)
+                      else ( newEventTime
+                           , IndividualSample newEventTime selectedPerson True False
+                           , BDSCODPopulation currPeople -- population has not changed!
+                           , currId)
                     3 ->
-                      ( newEventTime
-                      , IndividualSample newEventTime selectedPerson False True
-                      , BDSCODPopulation unselectedPeople
-                      , currId)
+                      if removeIndividual
+                      then ( newEventTime
+                           , IndividualSample newEventTime selectedPerson False True
+                           , BDSCODPopulation unselectedPeople
+                           , currId)
+                      else ( newEventTime
+                           , IndividualSample newEventTime selectedPerson False False
+                           , BDSCODPopulation currPeople -- population has not changed!
+                           , currId)
                     _ ->
                       error "no birth, death, sampling, occurrence event selected."
          else case maybeNextTimed bdscodCatastropheSpec bdscodDisasterSpec currTime of

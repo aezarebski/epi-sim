@@ -210,7 +210,7 @@ allTimes (Timed txs) = [t | (t, _) <- txs, not $ isInfiniteAbsoluteTime t]
 -- [2,1]
 --
 allValues :: Timed a -> [a]
-allValues timed = Maybe.fromJust . cadlagValue timed <$> allTimes timed
+allValues (Timed txs) = [x | (t, x) <- txs, not $ isInfiniteAbsoluteTime t]
 
 -- | Predicate for an infinite absolute time
 isInfiniteAbsoluteTime :: AbsoluteTime -> Bool

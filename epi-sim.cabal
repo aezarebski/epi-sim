@@ -13,9 +13,8 @@ description:
   include:
   .
   1. Birth-Death-Sampling-Catastrophe-Occurrence-Disaster (see `Epidemic.Model.BDSCOD`)
-  2. Inhomogeneous Birth-Death-Sampling (see `Epidemic.Model.InhomogeneousBDS`)
-  3. Inhomogeneous BDSCOD (see `Epidemic.Model.InhomogeneousBDSCOD`)
-  4. Logistic Birth-Death-Sampling-Disaster (see `Epidemic.Model.LogisticBDSD`)
+  2. Inhomogeneous BDSCOD (see `Epidemic.Model.InhomogeneousBDSCOD`)
+  3. Logistic Birth-Death-Sampling-Disaster (see `Epidemic.Model.LogisticBDSD`)
   .
   There are more details in the documentation of the "Epidemic" module.
   .
@@ -41,7 +40,6 @@ source-repository head
 library
   exposed-modules:
     Epidemic.Model.BDSCOD
-    Epidemic.Model.InhomogeneousBDS
     Epidemic.Model.InhomogeneousBDSCOD
     Epidemic.Model.LogisticBDSD
     Epidemic.Data.Events

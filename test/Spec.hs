@@ -11,7 +11,6 @@ import           Data.Maybe                         (fromJust, isJust,
 import qualified Data.Vector                        as V
 import           Epidemic
 import qualified Epidemic.Model.BDSCOD              as BDSCOD
-import qualified Epidemic.Model.InhomogeneousBDS    as InhomBDS
 import qualified Epidemic.Model.InhomogeneousBDSCOD as InhomBDSCOD
 import           Epidemic.Data.Events
 import           Epidemic.Data.Newick
@@ -349,11 +348,9 @@ helperFuncTests = do
              val3 == Just 3.0 `shouldBe` True
     it "the asTimed function returns nothing as expected" $ do
       (isJust $ asTimed [(AbsoluteTime 0.0, -1)]) `shouldBe` True
-      (isJust $ asTimed [(AbsoluteTime 0.0, 1), (AbsoluteTime 1.0, -1)]) `shouldBe`
-        True
-      let (Just timedBirthRate) =
-            asTimed [(AbsoluteTime 0.0, 1.0), (AbsoluteTime 1.0, -1.0)]
-      (isJust $ InhomBDS.inhomBDSRates timedBirthRate 0.5 0.5) `shouldBe` False
+      (isJust $ asTimed [(AbsoluteTime 0.0, 1), (AbsoluteTime 1.0, -1)]) `shouldBe` True
+      (isNothing $ asTimed [(AbsoluteTime 2.0, 1), (AbsoluteTime 1.0, -1)]) `shouldBe` True
+      (isNothing $ asTimed [(AbsoluteTime 1.0, 1), (AbsoluteTime 1.0, -1)]) `shouldBe` True
 
 simTypeTests =
   describe "Test Data.Simulation PRNG helpers" $

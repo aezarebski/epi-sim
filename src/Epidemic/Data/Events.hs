@@ -5,17 +5,17 @@
 module Epidemic.Data.Events
   ( EpidemicEvent(Infection, Removal, IndividualSample,
               PopulationSample, StoppingTime, Extinction)
-  , eventPopDelta
   , popSampPeople
   , popSampSeq
   , popSampTime
   , indSampPerson
   , indSampSeq
   , indSampTime
+  , indSampRemoved
   , infTime
   , infInfector
   , infInfectee
-  , EpidemicTree(Branch, Leaf, Shoot)
+  , EpidemicTree(Branch, Burr, Leaf, Shoot)
   , maybeEpidemicTree
   , isExtinctionOrStopping
   , isIndividualSample
@@ -205,16 +205,3 @@ maybeEpidemicTree (e:es) =
       Left "Extinction event encountered. It should have been removed"
     StoppingTime {} ->
       Left "Stopping time encountered. It should have been removed"
-
--- | The number of people added or removed in an event. In the case of an
--- extinction event the number of people removed is arbitrarily set to zero
--- because this information is available from the prior event in the sequence.
-eventPopDelta :: EpidemicEvent -> Integer
-eventPopDelta e =
-  case e of
-    Infection {}          -> 1
-    Removal {}            -> -1
-    IndividualSample {}   -> -1
-    PopulationSample {..} -> fromIntegral $ numPeople popSampPeople
-    StoppingTime {}       -> 0
-    Extinction {}         -> 0

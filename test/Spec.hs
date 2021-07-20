@@ -803,7 +803,7 @@ newickTests =
           (maybeEpidemicTree demoEvents == maybeEpidemicTree (tail demoEvents)) `shouldBe`
             True
         it "asNewickString works for ReconstructedTree" $ do
-          isJust
+          isRight
             (asNewickString
                (AbsoluteTime 0, Person (Identifier 1))
                (RLeaf
@@ -832,12 +832,12 @@ newickTests =
                 ]
           let et = maybeEpidemicTree trickyEvents :: Either String EpidemicTree
               rt = reconstructedTree =<< et :: Either String ReconstructedTree
-              maybeNewickPair = asNewickString (AbsoluteTime 0, Person (Identifier 1)) =<< (either2Maybe rt)
+              maybeNewickPair = asNewickString (AbsoluteTime 0, Person (Identifier 1)) =<< rt
           let newickTarget =
                 BBuilder.stringUtf8 "(1:0.39999999999999997,3:0.3):0.3"
-          isJust maybeNewickPair `shouldBe` True
-          [ indSampWithRemoval (AbsoluteTime 0.6) (Person (Identifier 3)) True, indSampWithRemoval (AbsoluteTime 0.7) (Person (Identifier 1)) True] == snd (fromJust maybeNewickPair) `shouldBe` True
-          equalBuilders newickTarget (fst $ fromJust maybeNewickPair) `shouldBe`
+          isRight maybeNewickPair `shouldBe` True
+          [ indSampWithRemoval (AbsoluteTime 0.6) (Person (Identifier 3)) True, indSampWithRemoval (AbsoluteTime 0.7) (Person (Identifier 1)) True] == snd (fromJust $ either2Maybe maybeNewickPair) `shouldBe` True
+          equalBuilders newickTarget (fst . fromJust $ either2Maybe maybeNewickPair) `shouldBe`
             True
           let catasNewick =
                 (asNewickString
@@ -849,7 +849,7 @@ newickTests =
                             [Person (Identifier 1), Person (Identifier 2)])
                          True))))
           let catasTarget = BBuilder.stringUtf8 "1&2:1.0"
-          equalBuilders catasTarget (fst $ fromJust catasNewick) `shouldBe` True
+          equalBuilders catasTarget (fst . fromJust . either2Maybe $ catasNewick) `shouldBe` True
 
 main :: IO ()
 main =

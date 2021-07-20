@@ -16,7 +16,7 @@ class Newick t
   asNewickString ::
        (AbsoluteTime, Person) -- ^ The person and time of the root of the tree
     -> t
-    -> Maybe (BBuilder.Builder, [EpidemicEvent])
+    -> Either String (BBuilder.Builder, [EpidemicEvent])
 
 ampersandBuilder :: BBuilder.Builder
 ampersandBuilder = BBuilder.charUtf8 '&'
@@ -46,19 +46,19 @@ instance Newick ReconstructedTree where
      in case e of
           IndividualSample {..} ->
             if indSampSeq
-              then Just
+              then return
                      ( personByteString indSampPerson <>
                        colonBuilder <> branchLength t indSampTime
                      , [e])
-              else Nothing
+              else Left $ "non-sequenced individual sample in reconstructed tree: " <> show e
           PopulationSample {..} ->
             if popSampSeq
-              then Just
+              then return
                      ( catastrophePeopleBuilder popSampPeople <>
                        colonBuilder <> branchLength t popSampTime
                      , [e])
-              else Nothing
-          _ -> Nothing
+              else Left $ "non-sequenced population sample in reconstructed tree: " <> show e
+          _ -> Left $ "leaf of reconstructed tree does not contain a sample: " <> show e
   asNewickString (t, _) (RBranch (Observation e) lt rt) =
     case e of
       (Infection t' p1 p2) -> do
@@ -73,4 +73,4 @@ instance Newick ReconstructedTree where
             commaBuilder <>
             rightNS <> rightBraceBuilder <> colonBuilder <> branchLength
           , List.sort $ leftEs ++ rightEs)
-      _ -> Nothing
+      _ -> Left $ "branch of reconstructed tree does not contain an infection: " <> show e

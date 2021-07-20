@@ -39,6 +39,7 @@ source-repository head
 
 library
   exposed-modules:
+    Epidemic
     Epidemic.Model.BDSCOD
     Epidemic.Model.InhomogeneousBDSCOD
     Epidemic.Model.LogisticBDSD

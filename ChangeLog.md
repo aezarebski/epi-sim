@@ -2,6 +2,10 @@
 
 ## 0.8.0
 
+- `asTimed` now expects a list of strictly increasing timed values since
+  otherwise there is ambiguity as to which value to use.
+- Remove the `InhomogeneousBDS` model because it is already provided by the
+  BDSCOD version.
 - Both the `EpidemicTree` and `ReconstructedTree` now have a constructor for a
   burr, which corresponds to a sampled ancestor.
 - Represent a group of people with a set (from the `container` instead of using

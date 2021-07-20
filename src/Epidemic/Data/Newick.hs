@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module Epidemic.Data.Newick where
+module Epidemic.Data.Newick (Newick, asNewickString) where
 
 import qualified Data.ByteString.Builder    as BBuilder
 import qualified Data.List                  as List

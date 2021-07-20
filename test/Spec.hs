@@ -15,7 +15,14 @@ import qualified Epidemic.Model.InhomogeneousBDS    as InhomBDS
 import qualified Epidemic.Model.InhomogeneousBDSCOD as InhomBDSCOD
 import           Epidemic.Data.Events
 import           Epidemic.Data.Newick
-import           Epidemic.Data.Observations
+import           Epidemic.Data.Observations ( Observation(..)
+                                            , ReconstructedTree(..)
+                                            , reconstructedTree
+                                            , PointProcessEvents(..)
+                                            , pointProcessEvents
+                                            , reconstructedTreeEvents
+                                            , observedEvents
+                                            , aggregated)
 import           Epidemic.Data.Parameter
 import           Epidemic.Data.Population
 import           Epidemic.Data.Simulation          (SimulationState (..),
@@ -838,7 +845,7 @@ newickTests =
                     True
                 ]
           let et = maybeEpidemicTree trickyEvents :: Either String EpidemicTree
-              rt = maybeReconstructedTree =<< et :: Either String ReconstructedTree
+              rt = reconstructedTree =<< et :: Either String ReconstructedTree
               maybeNewickPair = asNewickString (AbsoluteTime 0, Person (Identifier 1)) =<< (either2Maybe rt)
           let newickTarget =
                 BBuilder.stringUtf8 "(1:0.39999999999999997,3:0.3):0.3"

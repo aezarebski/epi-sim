@@ -14,9 +14,10 @@
 
 module Epidemic.Data.Parameter (ModelParameters (..), Rate, Probability, firstScheduled, noScheduledEvent) where
 
-import Data.Vector (Vector)
-import Epidemic.Data.Population (Population(..))
-import Epidemic.Data.Time (AbsoluteTime(..), Timed (..), diracDeltaValue, nextTime)
+import           Data.Vector              (Vector)
+import           Epidemic.Data.Population (Population (..))
+import           Epidemic.Data.Time       (AbsoluteTime (..), Timed (..),
+                                           diracDeltaValue, nextTime)
 
 -- | Class of types that can be considered parameterisations of a epidemic
 -- model.
@@ -24,7 +25,7 @@ class (Population p) => ModelParameters a p where
 
   -- | The basic reproduction number.
   --
-  -- __NOTE__ that this is not the /effective/ reproduction number the
+  -- __NOTE__ that this is /not/ the effective reproduction number the
   -- population is included in case there is structure other than immunity that
   -- needs to be accounted for.
   rNaught :: p -> a -> AbsoluteTime -> Maybe Double

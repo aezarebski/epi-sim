@@ -2,6 +2,10 @@
 
 ## 0.8.0
 
+- Both the `EpidemicTree` and `ReconstructedTree` now have a constructor for a
+  burr, which corresponds to a sampled ancestor.
+- Represent a group of people with a set (from the `container` instead of using
+  vectors from `vector`) because this uses more efficient algorithms.
 - Random functions scattered throughout the modules have been put into more
   appropriate data modules and some redundant functions have been removed.
 - The `Epidemic.Types` modules have been renamed to `Epidemic.Data` because they

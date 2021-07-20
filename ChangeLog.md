@@ -2,6 +2,7 @@
 
 ## 0.8.0
 
+- `BDSCOD` now allows for sampled ancestors in the case of individual samples.
 - `asTimed` now expects a list of strictly increasing timed values since
   otherwise there is ambiguity as to which value to use.
 - Remove the `InhomogeneousBDS` model because it is already provided by the

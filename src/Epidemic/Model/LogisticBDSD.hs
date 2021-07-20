@@ -73,12 +73,12 @@ logisticBirthRate LogisticBDSDParameters {..} (LogisticBDSDPopulation pop) =
 
 instance ModelParameters LogisticBDSDParameters LogisticBDSDPopulation where
   rNaught _ _ _ = Nothing
-  eventRate (LogisticBDSDPopulation pop) LogisticBDSDParameters {..} _ =
+  perCapitaEventRate (LogisticBDSDPopulation pop) LogisticBDSDParameters {..} _ =
     let propCapcity = fromIntegral (numPeople pop) / fromIntegral paramsCapacity
         br = paramsBirthRate * (1.0 - propCapcity)
      in Just $ br + paramsDeathRate + paramsSamplingRate
   birthProb lpop lparam absTime = do
-    er <- eventRate lpop lparam absTime
+    er <- perCapitaEventRate lpop lparam absTime
     Just $ br / er
     where
       br = logisticBirthRate lparam lpop
@@ -142,7 +142,7 @@ randEvent' ::
   -> GenIO
   -> IO (AbsoluteTime, EpidemicEvent, LogisticBDSDPopulation, Identifier)
 randEvent' params@LogisticBDSDParameters {..} currTime currPop@(LogisticBDSDPopulation currPpl) currId gen =
-  let netEventRate = (fromJust $ eventRate currPop params currTime)
+  let (Just netEventRate) = perCapitaEventRate currPop params currTime
       popSizeDouble = fromIntegral $ numPeople currPpl
       (Just weightsVec) = eventWeights currPop params currTime
    in do delay <- exponential (netEventRate * popSizeDouble) gen

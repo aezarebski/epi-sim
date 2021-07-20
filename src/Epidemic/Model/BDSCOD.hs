@@ -1,4 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RecordWildCards       #-}
 
 module Epidemic.Model.BDSCOD
   ( configuration
@@ -28,23 +29,33 @@ import           System.Random.MWC
 import           System.Random.MWC.Distributions (bernoulli, categorical,
                                                   exponential)
 
--- | birth rate, death rate, sampling rate, catastrophe specification, occurrence rate and disaster specification
+-- | Parameters of the BDSCOD process: birth rate, death rate, sampling rate,
+-- catastrophe specification, occurrence rate and disaster specification
 data BDSCODParameters =
-  BDSCODParameters Rate Rate Rate (Timed Probability) Rate (Timed Probability)
+  BDSCODParameters
+  { bdscodBirthRate       :: Rate
+  , bdscodDeathRate       :: Rate
+  , bdscodSamplingRate    :: Rate
+  , bdscodCatastropheSpec :: Timed Probability
+  , bdscodOccurrenceRate  :: Rate
+  , bdscodDisasterSpec    :: Timed Probability
+  } deriving (Show, Eq)
 
 data BDSCODPopulation =
   BDSCODPopulation People
   deriving (Show)
 
 instance ModelParameters BDSCODParameters BDSCODPopulation where
-  rNaught _ (BDSCODParameters br dr sRate _ occRate _) _ =
-    Just $ br / (dr + sRate + occRate)
-  eventRate _ (BDSCODParameters br dr sRate _ occRate _) _ =
-    Just $ br + dr + sRate + occRate
-  birthProb _ (BDSCODParameters br dr sRate _ occRate _) _ =
-    Just $ br / (br + dr + sRate + occRate)
-  eventWeights _ (BDSCODParameters br dr sRate _ occRate _) _ =
-    Just $ V.fromList [br, dr, sRate, occRate]
+  rNaught _ BDSCODParameters {..} _ =
+    return $ bdscodBirthRate / (bdscodDeathRate + bdscodSamplingRate + bdscodOccurrenceRate)
+  perCapitaEventRate _ BDSCODParameters {..} _ =
+    return $ bdscodBirthRate + bdscodDeathRate + bdscodSamplingRate + bdscodOccurrenceRate
+  birthProb pop params@BDSCODParameters {..} absT =
+    do
+      eR <- perCapitaEventRate pop params absT
+      return $ bdscodBirthRate / eR
+  eventWeights _ BDSCODParameters {..} _ =
+    return $ V.fromList [bdscodBirthRate, bdscodDeathRate, bdscodSamplingRate, bdscodOccurrenceRate]
 
 instance Population BDSCODPopulation where
   susceptiblePeople _ = Nothing
@@ -101,13 +112,13 @@ randomEvent' ::
   -> Identifier -- ^ The current state of the identifier generator
   -> GenIO -- ^ The current state of the PRNG
   -> IO (AbsoluteTime, EpidemicEvent, BDSCODPopulation, Identifier)
-randomEvent' params@(BDSCODParameters _ _ _ catastInfo _ disastInfo) currTime currPop@(BDSCODPopulation currPeople) currId gen =
-  let (Just netEventRate) = eventRate currPop params currTime
+randomEvent' params@BDSCODParameters {..} currTime currPop@(BDSCODPopulation currPeople) currId gen =
+  let (Just netEventRate) = perCapitaEventRate currPop params currTime
       (Just weightVec) = eventWeights currPop params currTime
    in do delay <-
            exponential (fromIntegral (numPeople currPeople) * netEventRate) gen
          let newEventTime = timeAfterDelta currTime (TimeDelta delay)
-         if noScheduledEvent currTime newEventTime (catastInfo <> disastInfo)
+         if noScheduledEvent currTime newEventTime (bdscodCatastropheSpec <> bdscodDisasterSpec)
          then do
                 eventIx <- categorical weightVec gen
                 (selectedPerson, unselectedPeople) <- randomPerson currPeople gen
@@ -138,7 +149,7 @@ randomEvent' params@(BDSCODParameters _ _ _ catastInfo _ disastInfo) currTime cu
                       , currId)
                     _ ->
                       error "no birth, death, sampling, occurrence event selected."
-         else case maybeNextTimed catastInfo disastInfo currTime of
+         else case maybeNextTimed bdscodCatastropheSpec bdscodDisasterSpec currTime of
                 Just (disastTime, Right disastProb) ->
                  do (disastEvent, postDisastPop) <-
                       randomDisasterEvent

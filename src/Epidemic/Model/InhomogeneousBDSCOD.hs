@@ -136,7 +136,7 @@ instance ModelParameters InhomBDSCODRates InhomBDSCODPop where
       sampleRate <- cadlagValue irSamplingRate time
       occurrenceRate <- cadlagValue irOccurrenceRate time
       Just $ birthRate / (deathRate + sampleRate + occurrenceRate)
-  eventRate _ InhomBDSCODRates {..} time =
+  perCapitaEventRate _ InhomBDSCODRates {..} time =
     do
       birthRate <- cadlagValue irBirthRate time
       deathRate <- cadlagValue irDeathRate time
@@ -146,7 +146,7 @@ instance ModelParameters InhomBDSCODRates InhomBDSCODPop where
   birthProb p inhomRates@InhomBDSCODRates {..} time =
     do
       birthRate <- cadlagValue irBirthRate time
-      totalEventRate <- eventRate p inhomRates time
+      totalEventRate <- perCapitaEventRate p inhomRates time
       Just $ birthRate / totalEventRate
   eventWeights _ InhomBDSCODRates{..} time =
     do
@@ -228,7 +228,7 @@ randomEvent' inhomRates@InhomBDSCODRates {..} currTime currPop currId gen =
       -- we need a new step function to account for the population size.
       (Just stepFunction) =
         asTimed
-          [ (t, popSize * fromJust (eventRate currPop inhomRates t))
+          [ (t, popSize * fromJust (perCapitaEventRate currPop inhomRates t))
           | t <- List.sort $ concatMap allTimes [irBirthRate, irDeathRate, irSamplingRate, irOccurrenceRate]
           ]
    in do (Just newEventTime) <- inhomExponential stepFunction currTime gen

@@ -43,7 +43,7 @@ instance ModelParameters InhomBDSRates InhomBDSPop where
   rNaught _ (InhomBDSRates timedBirthRate deathRate sampleRate) time =
     let birthRate = cadlagValue timedBirthRate time
      in (/ (deathRate + sampleRate)) <$> birthRate
-  eventRate _ (InhomBDSRates timedBirthRate deathRate sampleRate) time =
+  perCapitaEventRate _ (InhomBDSRates timedBirthRate deathRate sampleRate) time =
     let birthRate = cadlagValue timedBirthRate time
      in (+ (deathRate + sampleRate)) <$> birthRate
   birthProb _ (InhomBDSRates timedBirthRate deathRate sampleRate) time =
@@ -119,7 +119,7 @@ randomEvent' inhomRates@(InhomBDSRates brts _ _) currTime pop@(InhomBDSPop peopl
       -- we need a new step function to account for the population size.
       (Just stepFunction) =
         asTimed
-          [ (t, popSize * fromJust (eventRate pop inhomRates t))
+          [ (t, popSize * fromJust (perCapitaEventRate pop inhomRates t))
           | t <- allTimes brts
           ]
    in do (Just newEventTime) <- inhomExponential stepFunction currTime gen

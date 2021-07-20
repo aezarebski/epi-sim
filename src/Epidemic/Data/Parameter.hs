@@ -30,8 +30,8 @@ class (Population p) => ModelParameters a p where
   -- needs to be accounted for.
   rNaught :: p -> a -> AbsoluteTime -> Maybe Double
 
-  -- | The total event rate at a particular point in time.
-  eventRate :: p -> a -> AbsoluteTime -> Maybe Rate
+  -- | The per capita event rate at a particular point in time.
+  perCapitaEventRate :: p -> a -> AbsoluteTime -> Maybe Rate
 
   -- | The probability that an event will result in an infection.
   birthProb :: p -> a -> AbsoluteTime -> Maybe Probability

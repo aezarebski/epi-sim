@@ -5,7 +5,7 @@ import           Control.Monad
 import qualified Data.Aeson                         as Json
 import qualified Data.ByteString                    as B
 import qualified Data.ByteString.Builder            as BBuilder
-import           Data.Either                        (isRight)
+import           Data.Either                        (isRight, isLeft)
 import           Data.Maybe                         (fromJust, isJust,
                                                      isNothing)
 import qualified Data.Vector                        as V
@@ -462,7 +462,6 @@ illFormedTreeTest =
                simulationWithFixedSeed (fromJust simConfig) (allEvents BDSCOD.randomEvent)
              any isReconTreeLeaf simEvents `shouldBe` True
              let eitherObsEs = observedEvents simEvents
-             print eitherObsEs
              isRight eitherObsEs `shouldBe` True
              either (const False) (\oes -> length oes > 1) eitherObsEs `shouldBe` True
            it "check leaves are recognised correctly" $ do
@@ -633,10 +632,15 @@ jsonTests = do
 equalBuilders :: BBuilder.Builder -> BBuilder.Builder -> Bool
 equalBuilders a b = BBuilder.toLazyByteString a == BBuilder.toLazyByteString b
 
+rightEqualBuilders a b = case (a, b) of
+  (Right av, Right bv) -> equalBuilders av bv
+  _ -> False
+
 newickTests =
   let p1 = Person (Identifier 1)
       p2 = Person (Identifier 2)
       p3 = Person (Identifier 3)
+      absT = AbsoluteTime
       ps = asPeople [p1, p2]
       maybeEpiTree =
         maybeEpidemicTree
@@ -667,9 +671,9 @@ newickTests =
             False
         it "derivedFrom works as expected" $ do
           let p1 = Person (Identifier 1)
-          let p2 = Person (Identifier 2)
-          let p3 = Person (Identifier 3)
-          let e = [Infection (AbsoluteTime 0.3) p1 p2]
+              p2 = Person (Identifier 2)
+              p3 = Person (Identifier 3)
+              e = [Infection (AbsoluteTime 0.3) p1 p2]
           derivedFrom p1 e == derivedFrom p2 e `shouldBe` True
           derivedFrom p1 e /= derivedFrom p3 e `shouldBe` True
           derivedFrom p1 e /= [] `shouldBe` True
@@ -802,7 +806,8 @@ newickTests =
           (length demoEvents == 4) `shouldBe` True
           (maybeEpidemicTree demoEvents == maybeEpidemicTree (tail demoEvents)) `shouldBe`
             True
-        it "asNewickString works for ReconstructedTree" $ do
+
+        it "asNewickString works for ReconstructedTree: 1" $ do
           isRight
             (asNewickString
                (AbsoluteTime 0, Person (Identifier 1))
@@ -830,14 +835,12 @@ newickTests =
                     (Person (Identifier 1))
                     True
                 ]
-          let et = maybeEpidemicTree trickyEvents :: Either String EpidemicTree
+              et = maybeEpidemicTree trickyEvents :: Either String EpidemicTree
               rt = reconstructedTree =<< et :: Either String ReconstructedTree
               maybeNewickPair = asNewickString (AbsoluteTime 0, Person (Identifier 1)) =<< rt
-          let newickTarget =
-                BBuilder.stringUtf8 "(1:0.39999999999999997,3:0.3):0.3"
+              newickTarget = BBuilder.stringUtf8 "(1:0.39999999999999997,3:0.3):0.3"
           isRight maybeNewickPair `shouldBe` True
-          [ indSampWithRemoval (AbsoluteTime 0.6) (Person (Identifier 3)) True, indSampWithRemoval (AbsoluteTime 0.7) (Person (Identifier 1)) True] == snd (fromJust $ either2Maybe maybeNewickPair) `shouldBe` True
-          equalBuilders newickTarget (fst . fromJust $ either2Maybe maybeNewickPair) `shouldBe`
+          equalBuilders newickTarget (fromJust $ either2Maybe maybeNewickPair) `shouldBe`
             True
           let catasNewick =
                 (asNewickString
@@ -849,7 +852,30 @@ newickTests =
                             [Person (Identifier 1), Person (Identifier 2)])
                          True))))
           let catasTarget = BBuilder.stringUtf8 "1&2:1.0"
-          equalBuilders catasTarget (fst . fromJust . either2Maybe $ catasNewick) `shouldBe` True
+          equalBuilders catasTarget (fromJust . either2Maybe $ catasNewick) `shouldBe` True
+
+        it "asNewickString works for ReconstructedTree: 2" $ do
+
+          let toNS = asNewickString (absT 0.0, p1)
+              leafBaseCase1 = toNS $ RLeaf (Observation (IndividualSample (absT 1.0) p1 True True))
+              leafBaseCase1Sol = Right $ BBuilder.stringUtf8 "1:1.0"
+          rightEqualBuilders leafBaseCase1 leafBaseCase1Sol `shouldBe` True
+
+          let leafBaseCase2 = toNS $ RLeaf (Observation (IndividualSample (absT 1.0) p1 False True))
+              leafBaseCase3 = toNS $ RLeaf (Observation (IndividualSample (absT 1.0) p1 True False))
+          isLeft leafBaseCase2 `shouldBe` True
+          isLeft leafBaseCase3 `shouldBe` True
+
+          let subTree = RLeaf (Observation (IndividualSample (absT 2.0) p2 True True))
+              leafBaseCase4 = toNS $ RBurr (Observation (IndividualSample (absT 1.0) p1 True True)) (Just subTree)
+              leafBaseCase4Sol = Right $ BBuilder.stringUtf8 "(2:1.0)1:1.0"
+              leafBaseCase5 = toNS $ RBurr (Observation (IndividualSample (absT 1.0) p1 True True)) Nothing
+              leafBaseCase5Sol = Right $ BBuilder.stringUtf8 "1:1.0"
+              leafBaseCase6 = toNS $ RBurr (Observation (Removal undefined undefined)) (Just subTree)
+          rightEqualBuilders leafBaseCase4 leafBaseCase4Sol `shouldBe` True
+          rightEqualBuilders leafBaseCase4 leafBaseCase5 `shouldBe` False
+          rightEqualBuilders leafBaseCase5 leafBaseCase5Sol `shouldBe` True
+          isLeft leafBaseCase6 `shouldBe` True
 
 main :: IO ()
 main =

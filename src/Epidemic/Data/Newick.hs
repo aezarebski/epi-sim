@@ -34,10 +34,10 @@ catastrophePeopleBuilder (People ps) =
 instance Newick ReconstructedTree where
   asNewickString (t, _) (RLeaf (Observation e)) =
     case e of
-      IndividualSample {..} ->
-        if indSampSeq
-        then return $ personByteString indSampPerson <> bb ':' <> branchLengthBuilder t indSampTime
-        else Left $ "non-sequenced individual sample in reconstructed tree: " <> show e
+      IndividualSample {..}
+        | indSampSeq && indSampRemoved -> return $ personByteString indSampPerson <> bb ':' <> branchLengthBuilder t indSampTime
+        | indSampSeq -> Left $ "sequenced individual sample not removed in reconstructed leaf: " <> show e
+        | otherwise -> Left $ "non-sequenced individual sample in reconstructed tree: " <> show e
       PopulationSample {..} ->
         if popSampSeq
         then return $ catastrophePeopleBuilder popSampPeople <> bb ':' <> branchLengthBuilder t popSampTime

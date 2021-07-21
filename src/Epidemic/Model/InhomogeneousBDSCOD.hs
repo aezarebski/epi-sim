@@ -84,6 +84,9 @@ import           Epidemic.Utility
 import           System.Random.MWC
 import           System.Random.MWC.Distributions (bernoulli, categorical)
 
+-- | Parameters of the BDSCOD process which are all allowed to vary through time
+-- (ie the process is inhomogeneous). Bear in mind that the Catastrophe and
+-- Disaster parameters are a literal list of sampling times and probabilities.
 data InhomBDSCODRates =
   InhomBDSCODRates
     { irBirthRate       :: Timed Rate
@@ -92,19 +95,24 @@ data InhomBDSCODRates =
     , irCatastropheSpec :: Timed Probability
     , irOccurrenceRate  :: Timed Rate
     , irDisasterSpec    :: Timed Probability
+    , irSORemovalProb   :: Timed Probability
     }
   deriving (Show, Eq)
 
 -- | The population in which the epidemic occurs. This includes information
 -- about the number of people that have previously been infected and
--- subsequently removed.
+-- subsequently removed. NOTE that in the counts of people Sampled and
+-- Occurrence-ed, there are separate counts depending upon whether the
+-- individual was subsequently removed.
 data InhomBDSCODPop =
   InhomBDSCODPop
   { ipInfectedPeople          :: People
   , ipNumRemovedByDeath       :: Int
-  , ipNumRemovedBySampling    :: Int
+  , ipNumSamplingAndRemoved   :: Int
+  , ipNumSamplingNotRemoved   :: Int
   , ipNumRemovedByCatastrophe :: Int
-  , ipNumRemovedByOccurrence  :: Int
+  , ipNumOccurrenceAndRemoved :: Int
+  , ipNumOccurrenceNotRemoved :: Int
   , ipNumRemovedByDisaster    :: Int
   } deriving (Show)
 
@@ -115,26 +123,27 @@ instance ModelParameters InhomBDSCODRates InhomBDSCODPop where
       deathRate <- cadlagValue irDeathRate time
       sampleRate <- cadlagValue irSamplingRate time
       occurrenceRate <- cadlagValue irOccurrenceRate time
-      Just $ birthRate / (deathRate + sampleRate + occurrenceRate)
+      removalProb <- cadlagValue irSORemovalProb
+      return $ birthRate / (deathRate + removalProb * sampleRate + removalProb * occurrenceRate)
   perCapitaEventRate _ InhomBDSCODRates {..} time =
     do
       birthRate <- cadlagValue irBirthRate time
       deathRate <- cadlagValue irDeathRate time
       sampleRate <- cadlagValue irSamplingRate time
       occurrenceRate <- cadlagValue irOccurrenceRate time
-      Just $ birthRate + deathRate + sampleRate + occurrenceRate
+      return $ birthRate + deathRate + sampleRate + occurrenceRate
   birthProb p inhomRates@InhomBDSCODRates {..} time =
     do
       birthRate <- cadlagValue irBirthRate time
       totalEventRate <- perCapitaEventRate p inhomRates time
-      Just $ birthRate / totalEventRate
+      return $ birthRate / totalEventRate
   eventWeights _ InhomBDSCODRates{..} time =
     do
       birthRate <- cadlagValue irBirthRate time
       deathRate <- cadlagValue irDeathRate time
       sampleRate <- cadlagValue irSamplingRate time
       occurrenceRate <- cadlagValue irOccurrenceRate time
-      Just $ V.fromList [birthRate, deathRate, sampleRate, occurrenceRate]
+      return $ V.fromList [birthRate, deathRate, sampleRate, occurrenceRate]
 
 instance Population InhomBDSCODPop where
   susceptiblePeople _ = Nothing
@@ -144,7 +153,8 @@ instance Population InhomBDSCODPop where
 
 -- | Configuration for the simulation of the inhomogeneous rates BDSCOD process.
 configuration ::
-     TimeDelta -- ^ Duration of the simulation after starting at time 0.
+     AbsoluteTime -- ^ Start time of the simulation
+  -> TimeDelta -- ^ Duration of the simulation after starting at time 0.
   -> Bool -- ^ condition upon at least two sequenced samples.
   -> Maybe (InhomBDSCODPop -> Bool, [EpidemicEvent] -> s) -- ^ values for termination handling.
   -> ( [(AbsoluteTime, Rate)]
@@ -152,15 +162,18 @@ configuration ::
      , [(AbsoluteTime, Rate)]
      , [(AbsoluteTime, Probability)]
      , [(AbsoluteTime, Rate)]
+     , [(AbsoluteTime, Probability)]
      , [(AbsoluteTime, Probability)])
   -> Maybe (SimulationConfiguration InhomBDSCODRates InhomBDSCODPop s)
-configuration maxTime atLeastCherry maybeTHFuncs (tBirthRate, tDeathRate, tSampleRate, cSpec, tOccurrenceRate, dSpec) =
+configuration startAT maxTime atLeastCherry maybeTHFuncs (tBirthRate, tDeathRate, tSampleRate, cSpec, tOccurrenceRate, dSpec, tSORemovalProb) =
   let (seedPerson, newId) = newPerson initialIdentifier
       bdscodPop = InhomBDSCODPop { ipInfectedPeople = asPeople [seedPerson]
                                  , ipNumRemovedByDeath = 0
-                                 , ipNumRemovedBySampling = 0
+                                 , ipNumSamplingAndRemoved = 0
+                                 , ipNumSamplingNotRemoved = 0
                                  , ipNumRemovedByCatastrophe = 0
-                                 , ipNumRemovedByOccurrence = 0
+                                 , ipNumOccurrenceAndRemoved = 0
+                                 , ipNumOccurrenceNotRemoved = 0
                                  , ipNumRemovedByDisaster = 0 }
    in do timedBirthRate <- asTimed tBirthRate
          timedDeathRate <- asTimed tDeathRate
@@ -168,6 +181,7 @@ configuration maxTime atLeastCherry maybeTHFuncs (tBirthRate, tDeathRate, tSampl
          catastropheSpec <- asTimed cSpec
          timedOccurrenceRate <- asTimed tOccurrenceRate
          disasterSpec <- asTimed dSpec
+         timedSORemovalProb <- asTimed tSORemovalProb
          let irVal =
                InhomBDSCODRates
                  timedBirthRate
@@ -176,6 +190,7 @@ configuration maxTime atLeastCherry maybeTHFuncs (tBirthRate, tDeathRate, tSampl
                  catastropheSpec
                  timedOccurrenceRate
                  disasterSpec
+                 timedSORemovalProb
              termHandler = do (f1, f2) <- maybeTHFuncs
                               return $ TerminationHandler f1 f2
          if maxTime > TimeDelta 0
@@ -184,7 +199,7 @@ configuration maxTime atLeastCherry maybeTHFuncs (tBirthRate, tDeathRate, tSampl
                      irVal
                      bdscodPop
                      newId
-                     (AbsoluteTime 0)
+                     startAT
                      maxTime
                      termHandler
                      atLeastCherry)
@@ -205,18 +220,21 @@ randomEvent' inhomRates@InhomBDSCODRates {..} currTime currPop currId gen =
   let (Just people) = infectiousPeople currPop
       popSize = fromIntegral $ numPeople people :: Double
       weightVecFunc = eventWeights currPop inhomRates
-      -- we need a new step function to account for the changes in the
-      -- population size at each step.
+      -- we need a new step function to represent the net event rate for the
+      -- whole population to account for the changes in the population size and
+      -- parameter values at each step.
       (Just stepFunction) =
         asTimed
           [ (t, popSize * fromJust (perCapitaEventRate currPop inhomRates t))
-          | t <- List.sort . List.nub $ concatMap allTimes [irBirthRate, irDeathRate, irSamplingRate, irOccurrenceRate]
+          | t <- List.sort . List.nub $ concatMap allTimes [irBirthRate, irDeathRate, irSamplingRate, irOccurrenceRate, irSORemovalProb]
           ]
    in do (Just newEventTime) <- inhomExponential stepFunction currTime gen
          if noScheduledEvent currTime newEventTime (irCatastropheSpec <> irDisasterSpec)
            then do
              eventIx <- categorical (fromJust $ weightVecFunc newEventTime) gen
              (selectedPerson, unselectedPeople) <- randomPerson people gen
+             let (Just remProb) = cadlagValue irSORemovalProb newEventTime
+             removeIndividual <- bernoulli remProb gen
              return $
                case eventIx of
                  0 ->
@@ -231,18 +249,28 @@ randomEvent' inhomRates@InhomBDSCODRates {..} currTime currPop currId gen =
                          , currPop { ipInfectedPeople = unselectedPeople
                                    , ipNumRemovedByDeath = currNumDeaths + 1 }
                          , currId )
-                 2 -> let currNumSampled = ipNumRemovedBySampling currPop
-                      in ( newEventTime
-                         , IndividualSample newEventTime selectedPerson True True
-                         , currPop { ipInfectedPeople = unselectedPeople
-                                   , ipNumRemovedBySampling = currNumSampled + 1 }
-                         , currId)
-                 3 -> let currNumOccurrence = ipNumRemovedByOccurrence currPop
-                      in ( newEventTime
-                         , IndividualSample newEventTime selectedPerson False True
-                         , currPop { ipInfectedPeople = unselectedPeople
-                                   , ipNumRemovedByOccurrence = currNumOccurrence + 1}
-                         , currId)
+                 2 -> if removeIndividual
+                      then ( newEventTime
+                           , IndividualSample newEventTime selectedPerson True True
+                           , currPop { ipInfectedPeople = unselectedPeople
+                                     , ipNumSamplingAndRemoved = ipNumSamplingAndRemoved currPop + 1 }
+                           , currId)
+                      else ( newEventTime
+                           , IndividualSample newEventTime selectedPerson True False
+                           , currPop { ipInfectedPeople = people -- they were not removed!
+                                     , ipNumSamplingNotRemoved = ipNumSamplingNotRemoved currPop + 1 }
+                           , currId)
+                 3 -> if removeIndividual
+                      then ( newEventTime
+                           , IndividualSample newEventTime selectedPerson False True
+                           , currPop { ipInfectedPeople = unselectedPeople
+                                     , ipNumOccurrenceAndRemoved = ipNumOccurrenceAndRemoved currPop + 1 }
+                           , currId)
+                      else ( newEventTime
+                           , IndividualSample newEventTime selectedPerson False False
+                           , currPop { ipInfectedPeople = people -- they were not removed!
+                                     , ipNumOccurrenceNotRemoved = ipNumOccurrenceNotRemoved currPop + 1 }
+                           , currId)
                  _ -> error "no birth, death, sampling, or occurrence event selected."
            else case maybeNextTimed irCatastropheSpec irDisasterSpec currTime of
                   Just (disastTime, Right disastProb) ->

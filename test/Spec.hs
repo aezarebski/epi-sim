@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+{-# LANGUAGE RecordWildCards #-}
 import           Control.Exception                  (evaluate)
 import           Control.Monad
 import qualified Data.Aeson                         as Json
@@ -32,8 +33,17 @@ import           Epidemic.Data.Simulation          (SimulationState (..),
 import           Epidemic.Data.Time
 import           Epidemic.Utility
 import           Statistics.Sample
+import qualified Statistics.Distribution as Dist
+import Statistics.Distribution.Binomial (binomial)
 import qualified System.Random.MWC                  as MWC
 import           Test.Hspec
+
+-- | check if the value x seems like a plausible draw from a Binom(n,p) distribution.
+binomialTest :: Int -> Int -> Probability -> Probability -> Bool
+binomialTest x n p a =
+  let binom = binomial n p
+      cdfVal = Dist.cumulative binom (fromIntegral x)
+  in a < cdfVal && cdfVal < (1 - a)
 
 indSampWithRemoval :: AbsoluteTime -> Person -> Bool -> EpidemicEvent
 indSampWithRemoval a b c = IndividualSample a b c True
@@ -344,6 +354,42 @@ helperFuncTests = do
       (isJust $ asTimed [(AbsoluteTime 0.0, 1), (AbsoluteTime 1.0, -1)]) `shouldBe` True
       (isNothing $ asTimed [(AbsoluteTime 2.0, 1), (AbsoluteTime 1.0, -1)]) `shouldBe` True
       (isNothing $ asTimed [(AbsoluteTime 1.0, 1), (AbsoluteTime 1.0, -1)]) `shouldBe` True
+
+bdscodTests =
+  describe "Test BDSCOD simulations look reasonable" $
+  do it "number of removed individual samples looks right" $
+       let
+         startTime = AbsoluteTime 0.0
+         duration = TimeDelta 4.0
+         atLeastCherry = True
+         remProb = 0.5
+         sampRate = 0.45
+         occrRate = 0.45
+         paramTuple = (2.0,0.1,sampRate,[],occrRate,[],remProb)
+         (Just simConfig) =
+           BDSCOD.configuration startTime duration atLeastCherry Nothing paramTuple
+
+         -- It is helpful to be able to count the number of removed and
+         -- non-removed individual samples.
+         numIndSamp = length . filter isIndividualSample
+         numIndSampSeq = length . filter indSampSeq . filter isIndividualSample
+         numRemIndSamp = length . filter indSampRemoved . filter isIndividualSample
+
+         -- carry out a hypothesis test that the observation looks reasonable in
+         -- the sense that the correct proportion of individuals have been
+         -- removed after sampling and that the correct proportion of sampled
+         -- individuals have their viral genome sequenced.
+         bTest a = do eEvents <- simulationWithSystem simConfig (allEvents BDSCOD.randomEvent)
+                      isRight eEvents `shouldBe` True
+                      let (Right events) = eEvents
+                          x = numRemIndSamp events
+                          y = numIndSampSeq events
+                          n = numIndSamp events
+                      -- print ((x, n), (y, n))
+                      binomialTest x n remProb a `shouldBe` True
+                      binomialTest y n (sampRate / (sampRate + occrRate)) a `shouldBe` True
+
+       in do replicateM_ 10 (bTest 0.01) -- 10 tests at 0.01-level.
 
 simTypeTests =
   describe "Test Data.Simulation PRNG helpers" $
@@ -947,3 +993,4 @@ main =
     aggregationTests
     simTypeTests
     terminationTests1
+    bdscodTests

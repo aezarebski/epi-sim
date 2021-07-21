@@ -877,21 +877,6 @@ newickTests =
           rightEqualBuilders leafBaseCase5 leafBaseCase5Sol `shouldBe` True
           isLeft leafBaseCase6 `shouldBe` True
 
-main :: IO ()
-main =
-  hspec $ do
-    eventHandlingTests
-    helperFuncTests
-    inhomExpTests
-    illFormedTreeTest
-    inhomogeneousBDSTest
-    helperTypeTests
-    jsonTests
-    newickTests
-    aggregationTests
-    simTypeTests
-    terminationTests1
-
 terminationTests1 =
   describe "Termination handling tests: InhomogeneousBDSCOD" $ do
     let duration = TimeDelta 2.0
@@ -947,3 +932,18 @@ terminationTests1 =
                 (Left (Just n)) -> do n == numDeadThreshold + 1 `shouldBe` True
                 (Left Nothing) -> True `shouldBe` False -- this branch should not be reached.
                 )
+
+main :: IO ()
+main =
+  hspec $ do
+    eventHandlingTests
+    helperFuncTests
+    inhomExpTests
+    illFormedTreeTest
+    inhomogeneousBDSTest
+    helperTypeTests
+    jsonTests
+    newickTests
+    aggregationTests
+    simTypeTests
+    terminationTests1

@@ -40,9 +40,6 @@ source-repository head
 library
   exposed-modules:
     Epidemic
-    Epidemic.Model.BDSCOD
-    Epidemic.Model.InhomogeneousBDSCOD
-    Epidemic.Model.LogisticBDSD
     Epidemic.Data.Events
     Epidemic.Data.Newick
     Epidemic.Data.Observations
@@ -50,6 +47,9 @@ library
     Epidemic.Data.Population
     Epidemic.Data.Simulation
     Epidemic.Data.Time
+    Epidemic.Model.BDSCOD
+    Epidemic.Model.InhomogeneousBDSCOD
+    Epidemic.Model.LogisticBDSD
     Epidemic.Utility
 
   other-modules:    Paths_epi_sim
@@ -58,7 +58,7 @@ library
       aeson       >=1.4.7   && <1.6
     , base        >=4.14.1  && <4.15
     , bytestring  >=0.10.10 && <0.11
-    , containers
+    , containers  >=0.6.2   && <0.7
     , hspec       >=2.7.6   && <2.8
     , mwc-random  >=0.14.0  && <0.16
     , primitive   >=0.7.0   && <0.8

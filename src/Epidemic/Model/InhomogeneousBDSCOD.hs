@@ -61,33 +61,28 @@ module Epidemic.Model.InhomogeneousBDSCOD
   , randomEvent
   , InhomBDSCODRates(..)
   , InhomBDSCODPop(..)
-  , getNumRemovedByDeath
-  , getNumRemovedBySampling
-  , getNumRemovedByCatastrophe
-  , getNumRemovedByOccurrence
-  , getNumRemovedByDisaster
   ) where
 
+import           Control.Monad                   (replicateM)
+import           Data.Coerce                     (coerce)
 import           Data.List                       as List
 import           Data.Maybe                      (fromJust)
+import qualified Data.Set                        as Set
 import qualified Data.Vector                     as V
 import qualified Data.Vector.Generic             as G
-import           Epidemic.Data.Events           (EpidemicEvent (..))
+import           Epidemic.Data.Events            (EpidemicEvent (..))
 import           Epidemic.Data.Parameter
 import           Epidemic.Data.Population
-import           Epidemic.Data.Simulation       (SimulationConfiguration (..),
+import           Epidemic.Data.Simulation        (SimulationConfiguration (..),
                                                   SimulationRandEvent (..),
                                                   TerminationHandler (..))
-import           Epidemic.Data.Time             (AbsoluteTime (..),
+import           Epidemic.Data.Time              (AbsoluteTime (..),
                                                   TimeDelta (..), Timed (..),
                                                   allTimes, asTimed,
                                                   cadlagValue, maybeNextTimed)
 import           Epidemic.Utility
 import           System.Random.MWC
 import           System.Random.MWC.Distributions (bernoulli, categorical)
-import Control.Monad (replicateM)
-import qualified Data.Set as Set
-import Data.Coerce (coerce)
 
 data InhomBDSCODRates =
   InhomBDSCODRates
@@ -112,21 +107,6 @@ data InhomBDSCODPop =
   , ipNumRemovedByOccurrence  :: Int
   , ipNumRemovedByDisaster    :: Int
   } deriving (Show)
-
-getNumRemovedByDeath :: InhomBDSCODPop -> Int
-getNumRemovedByDeath = ipNumRemovedByDeath
-
-getNumRemovedBySampling :: InhomBDSCODPop -> Int
-getNumRemovedBySampling = ipNumRemovedBySampling
-
-getNumRemovedByCatastrophe :: InhomBDSCODPop -> Int
-getNumRemovedByCatastrophe = ipNumRemovedByCatastrophe
-
-getNumRemovedByOccurrence :: InhomBDSCODPop -> Int
-getNumRemovedByOccurrence = ipNumRemovedByOccurrence
-
-getNumRemovedByDisaster :: InhomBDSCODPop -> Int
-getNumRemovedByDisaster = ipNumRemovedByDisaster
 
 instance ModelParameters InhomBDSCODRates InhomBDSCODPop where
   rNaught _ InhomBDSCODRates {..} time =

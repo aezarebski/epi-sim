@@ -943,7 +943,7 @@ terminationTests1 =
         simConfigNever = conf (Just (const False, const ()))
         simConfigAlways = conf (Just (const True, const ()))
         numDeadThreshold = 3
-        simConfigSometimes = conf (Just ((>numDeadThreshold) . InhomBDSCOD.getNumRemovedByDeath,
+        simConfigSometimes = conf (Just ((>numDeadThreshold) . InhomBDSCOD.ipNumRemovedByDeath,
                                          \es -> length [() | Removal _ _ <- es]))
         allEventsFunc = allEvents InhomBDSCOD.randomEvent
     it "test simulation works without hander" $

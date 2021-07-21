@@ -389,7 +389,10 @@ bdscodTests =
                       binomialTest x n remProb a `shouldBe` True
                       binomialTest y n (sampRate / (sampRate + occrRate)) a `shouldBe` True
 
-       in do replicateM_ 10 (bTest 0.01) -- 10 tests at 0.01-level.
+       in do
+         -- this test will occassionally fail because it relies on random
+         -- numbers.
+         replicateM_ 10 (bTest 0.01) -- 10 tests at 0.01-level.
 
 simTypeTests =
   describe "Test Data.Simulation PRNG helpers" $

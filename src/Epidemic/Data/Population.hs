@@ -34,6 +34,7 @@ module Epidemic.Data.Population
   , addPerson
   , addPersons
   , removePerson
+  , peopleByteString
   , personByteString
   ) where
 
@@ -42,6 +43,7 @@ import qualified Data.ByteString.Builder as BBuilder
 import           Data.Coerce             (coerce)
 import qualified Data.Set                as Set
 import           GHC.Generics
+import qualified Data.List as List
 
 -- | Class of types that can represent populations in an epidemic simulation.
 class Population a where
@@ -119,6 +121,12 @@ removePerson person (People persons) = People $ Set.filter (/= person) persons
 -- | A bytestring builder for a person
 personByteString :: Person -> BBuilder.Builder
 personByteString (Person (Identifier n)) = BBuilder.charUtf8 'p' <> BBuilder.integerDec n
+
+-- | A bytestring builder for a person
+peopleByteString :: People -> BBuilder.Builder
+peopleByteString (People ps) =
+  mconcat . List.intersperse (BBuilder.charUtf8 '&') $ map personByteString pList
+  where pList = Set.toList ps
 
 -- | An initial identifier.
 initialIdentifier :: Identifier

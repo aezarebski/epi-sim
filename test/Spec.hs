@@ -929,14 +929,16 @@ newickTests =
 terminationTests1 =
   describe "Termination handling tests: InhomogeneousBDSCOD" $ do
     let duration = TimeDelta 2.0
+        startTime = AbsoluteTime 0.0
         birthRateSpec = [(AbsoluteTime 0.0, 1.5), (AbsoluteTime 0.5, 0.5)]
         deathRateSpec = [(AbsoluteTime 0.0, 0.4)]
         sampRateSpec = [(AbsoluteTime 0.0, 0.1)]
         occRateSpec = [(AbsoluteTime 0.0, 0.1)]
         seqSched = [(AbsoluteTime 0.9, 0.1)]
         unseqSched = [(AbsoluteTime 0.5, 0.4), (AbsoluteTime 0.75, 0.5)]
-        ratesAndProbs = (birthRateSpec,deathRateSpec,sampRateSpec,seqSched,occRateSpec,unseqSched)
-        conf maybeTH = fromJust $ InhomBDSCOD.configuration duration True maybeTH ratesAndProbs
+        sampOccRemProbSpec = [(AbsoluteTime 0.0, 1.0)]
+        ratesAndProbs = (birthRateSpec,deathRateSpec,sampRateSpec,seqSched,occRateSpec,unseqSched, sampOccRemProbSpec)
+        conf maybeTH = fromJust $ InhomBDSCOD.configuration startTime duration True maybeTH ratesAndProbs
         -- We need one simulation configuration for each of the termination
         -- handlers that we want to test.
         simConfigNothing  = conf Nothing

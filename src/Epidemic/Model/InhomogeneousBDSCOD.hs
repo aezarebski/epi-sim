@@ -123,7 +123,7 @@ instance ModelParameters InhomBDSCODRates InhomBDSCODPop where
       deathRate <- cadlagValue irDeathRate time
       sampleRate <- cadlagValue irSamplingRate time
       occurrenceRate <- cadlagValue irOccurrenceRate time
-      removalProb <- cadlagValue irSORemovalProb
+      removalProb <- cadlagValue irSORemovalProb time
       return $ birthRate / (deathRate + removalProb * sampleRate + removalProb * occurrenceRate)
   perCapitaEventRate _ InhomBDSCODRates {..} time =
     do

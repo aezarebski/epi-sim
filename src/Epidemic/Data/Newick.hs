@@ -32,34 +32,38 @@ catastrophePeopleBuilder (People ps) =
   where pList = Set.toList ps
 
 instance Newick ReconstructedTree where
-  asNewickString (t, _) (RLeaf (Observation e)) =
-    case e of
-      IndividualSample {..}
-        | indSampSeq && indSampRemoved -> return $ personByteString indSampPerson <> bb ':' <> branchLengthBuilder t indSampTime
-        | indSampSeq -> Left $ "sequenced individual sample not removed in reconstructed leaf: " <> show e
-        | otherwise -> Left $ "non-sequenced individual sample in reconstructed tree: " <> show e
-      PopulationSample {..} ->
-        if popSampSeq
-        then return $ catastrophePeopleBuilder popSampPeople <> bb ':' <> branchLengthBuilder t popSampTime
-        else Left $ "non-sequenced population sample in reconstructed tree: " <> show e
-      _ -> Left $ "leaf of reconstructed tree does not contain a sample: " <> show e
-  asNewickString (t, _) (RBranch (Observation e) lt rt) =
-    case e of
-      (Infection t' p1 p2) -> do
-        leftNS <- asNewickString (t', p1) lt
-        rightNS <- asNewickString (t', p2) rt
-        let branchLength = branchLengthBuilder t t'
-        return $ bb '(' <> leftNS <> bb ',' <> rightNS <> bb ')' <> bb ':' <> branchLength
-      _ -> Left $ "branch of reconstructed tree does not contain an infection: " <> show e
-  asNewickString (t, _) (RBurr (Observation e) mt) =
-    case e of
-      IndividualSample {..} ->
-        let branchLength = branchLengthBuilder t indSampTime
-            idColonLength = personByteString indSampPerson <> bb ':' <> branchLength
-        in case mt of
-             Just reconT ->
-               do tNS <- asNewickString (indSampTime, indSampPerson) reconT
-                  return $ bb '(' <> tNS <> bb ')' <> idColonLength
-             Nothing ->
-               return idColonLength
-      _ -> Left $ "burr of reconstructed tree does not contain an individual sample: " <> show e
+  asNewickString p rt = do
+    ns <- reconTreeNewickHelper p rt
+    return $ ns <> bb ';'
+
+reconTreeNewickHelper (t, _) (RLeaf (Observation e)) =
+  case e of
+    IndividualSample {..}
+      | indSampSeq && indSampRemoved -> return $ personByteString indSampPerson <> bb ':' <> branchLengthBuilder t indSampTime
+      | indSampSeq -> Left $ "sequenced individual sample not removed in reconstructed leaf: " <> show e
+      | otherwise -> Left $ "non-sequenced individual sample in reconstructed tree: " <> show e
+    PopulationSample {..} ->
+      if popSampSeq
+      then return $ catastrophePeopleBuilder popSampPeople <> bb ':' <> branchLengthBuilder t popSampTime
+      else Left $ "non-sequenced population sample in reconstructed tree: " <> show e
+    _ -> Left $ "leaf of reconstructed tree does not contain a sample: " <> show e
+reconTreeNewickHelper (t, _) (RBranch (Observation e) lt rt) =
+  case e of
+    (Infection t' p1 p2) -> do
+      leftNS <- reconTreeNewickHelper (t', p1) lt
+      rightNS <- reconTreeNewickHelper (t', p2) rt
+      let branchLength = branchLengthBuilder t t'
+      return $ bb '(' <> leftNS <> bb ',' <> rightNS <> bb ')' <> bb ':' <> branchLength
+    _ -> Left $ "branch of reconstructed tree does not contain an infection: " <> show e
+reconTreeNewickHelper (t, _) (RBurr (Observation e) mt) =
+  case e of
+    IndividualSample {..} ->
+      let branchLength = branchLengthBuilder t indSampTime
+          idColonLength = personByteString indSampPerson <> bb ':' <> branchLength
+      in case mt of
+           Just reconT ->
+             do tNS <- reconTreeNewickHelper (indSampTime, indSampPerson) reconT
+                return $ bb '(' <> tNS <> bb ')' <> idColonLength
+           Nothing ->
+             return idColonLength
+    _ -> Left $ "burr of reconstructed tree does not contain an individual sample: " <> show e

@@ -838,7 +838,7 @@ newickTests =
               et = maybeEpidemicTree trickyEvents :: Either String EpidemicTree
               rt = reconstructedTree =<< et :: Either String ReconstructedTree
               maybeNewickPair = asNewickString (AbsoluteTime 0, Person (Identifier 1)) =<< rt
-              newickTarget = BBuilder.stringUtf8 "(1:0.39999999999999997,3:0.3):0.3;"
+              newickTarget = BBuilder.stringUtf8 "(p1:0.39999999999999997,p3:0.3):0.3;"
           isRight maybeNewickPair `shouldBe` True
           equalBuilders newickTarget (fromJust $ either2Maybe maybeNewickPair) `shouldBe`
             True
@@ -851,14 +851,14 @@ newickTests =
                          (asPeople
                             [Person (Identifier 1), Person (Identifier 2)])
                          True))))
-          let catasTarget = BBuilder.stringUtf8 "1&2:1.0;"
+          let catasTarget = BBuilder.stringUtf8 "p1&p2:1.0;"
           equalBuilders catasTarget (fromJust . either2Maybe $ catasNewick) `shouldBe` True
 
         it "asNewickString works for ReconstructedTree: 2" $ do
 
           let toNS = asNewickString (absT 0.0, p1)
               leafBaseCase1 = toNS $ RLeaf (Observation (IndividualSample (absT 1.0) p1 True True))
-              leafBaseCase1Sol = Right $ BBuilder.stringUtf8 "1:1.0;"
+              leafBaseCase1Sol = Right $ BBuilder.stringUtf8 "p1:1.0;"
           rightEqualBuilders leafBaseCase1 leafBaseCase1Sol `shouldBe` True
 
           let leafBaseCase2 = toNS $ RLeaf (Observation (IndividualSample (absT 1.0) p1 False True))
@@ -868,9 +868,9 @@ newickTests =
 
           let subTree = RLeaf (Observation (IndividualSample (absT 2.0) p2 True True))
               leafBaseCase4 = toNS $ RBurr (Observation (IndividualSample (absT 1.0) p1 True True)) (Just subTree)
-              leafBaseCase4Sol = Right $ BBuilder.stringUtf8 "(2:1.0)1:1.0;"
+              leafBaseCase4Sol = Right $ BBuilder.stringUtf8 "(p2:1.0)p1:1.0;"
               leafBaseCase5 = toNS $ RBurr (Observation (IndividualSample (absT 1.0) p1 True True)) Nothing
-              leafBaseCase5Sol = Right $ BBuilder.stringUtf8 "1:1.0;"
+              leafBaseCase5Sol = Right $ BBuilder.stringUtf8 "p1:1.0;"
               leafBaseCase6 = toNS $ RBurr (Observation (Removal undefined undefined)) (Just subTree)
           rightEqualBuilders leafBaseCase4 leafBaseCase4Sol `shouldBe` True
           rightEqualBuilders leafBaseCase4 leafBaseCase5 `shouldBe` False

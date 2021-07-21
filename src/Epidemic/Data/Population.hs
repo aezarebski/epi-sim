@@ -118,7 +118,7 @@ removePerson person (People persons) = People $ Set.filter (/= person) persons
 
 -- | A bytestring builder for a person
 personByteString :: Person -> BBuilder.Builder
-personByteString (Person (Identifier n)) = BBuilder.integerDec n
+personByteString (Person (Identifier n)) = BBuilder.charUtf8 'p' <> BBuilder.integerDec n
 
 -- | An initial identifier.
 initialIdentifier :: Identifier

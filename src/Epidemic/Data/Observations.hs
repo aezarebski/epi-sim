@@ -1,10 +1,11 @@
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE DeriveGeneric   #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Epidemic.Types.Observations
+module Epidemic.Data.Observations
   ( Observation(..)
   , ReconstructedTree(..)
-  , maybeReconstructedTree
+  , reconstructedTree
   , PointProcessEvents(..)
   , pointProcessEvents
   , reconstructedTreeEvents
@@ -12,14 +13,13 @@ module Epidemic.Types.Observations
   , aggregated
   ) where
 
-import qualified Data.Aeson                as Json
-import qualified Data.List                 as List
-import           Epidemic.Types.Events     (EpidemicEvent (..),
-                                            EpidemicTree (..),
-                                            maybeEpidemicTree)
-import           Epidemic.Types.Population (asPeople)
-import           Epidemic.Types.Time       (TimeInterval (..), TimeStamp (..),
-                                            inInterval)
+import qualified Data.Aeson               as Json
+import qualified Data.List                as List
+import           Epidemic.Data.Events     (EpidemicEvent (..),
+                                           EpidemicTree (..), maybeEpidemicTree)
+import           Epidemic.Data.Population (asPeople)
+import           Epidemic.Data.Time       (TimeInterval (..), TimeStamp (..),
+                                           inInterval)
 import           GHC.Generics
 
 -- | A wrapper for an 'EpidemicEvent' to indicate that this is an even that was
@@ -43,65 +43,97 @@ newtype PointProcessEvents =
 
 -- | Extract the events from an epidemic tree which are observed but not part of
 -- the reconstructed tree, ie the ones that are not sequenced.
-pointProcessEvents :: EpidemicTree -> PointProcessEvents
-pointProcessEvents Shoot {} = PointProcessEvents []
+pointProcessEvents :: EpidemicTree -> Either String PointProcessEvents
+pointProcessEvents Shoot {} = return $ PointProcessEvents []
 pointProcessEvents (Leaf e) =
   case e of
+    Removal {} ->
+      return $ PointProcessEvents []
     IndividualSample {..} ->
-      PointProcessEvents [Observation e | not indSampSeq]
+      return $ PointProcessEvents [Observation e | not indSampSeq]
     PopulationSample {..} ->
-      PointProcessEvents [Observation e | not popSampSeq]
-    _ -> PointProcessEvents []
-pointProcessEvents (Branch _ lt rt) =
-  let (PointProcessEvents lEs) = pointProcessEvents lt
-      (PointProcessEvents rEs) = pointProcessEvents rt
-      allEs = List.sort $ lEs ++ rEs
-   in PointProcessEvents allEs
+      return $ PointProcessEvents [Observation e | not popSampSeq]
+    _ -> Left "encountered invalid leaf in epidemic tree."
+pointProcessEvents (Branch _ lt rt) = do
+  (PointProcessEvents lEs) <- pointProcessEvents lt
+  (PointProcessEvents rEs) <- pointProcessEvents rt
+  let allEs = List.sort $ lEs <> rEs
+    in return $ PointProcessEvents allEs
+pointProcessEvents (Burr e t) = do
+  (PointProcessEvents es) <- pointProcessEvents t
+  case e of
+    IndividualSample {..} ->
+      if not indSampRemoved
+      then return . PointProcessEvents . List.sort $ [Observation e | not indSampSeq] <> es
+      else Left "encountered burr with removal in epidemic tree"
+    _ -> Left "encountered non-individual sample burr in epidemic tree."
+
 
 -- | A representation of the reconstructed tree, ie the tree where the leaves
 -- correspond to sequenced observations.
+--
+--     * Branch - an bifurcation
+--     * Burr - sequenced individual without removal
+--     * Leaf - sequenced removal
+--
 data ReconstructedTree
   = RBranch Observation ReconstructedTree ReconstructedTree
+  | RBurr Observation (Maybe ReconstructedTree)
   | RLeaf Observation
   deriving (Show, Eq)
 
 -- | The reconstructed phylogeny obtained by pruning an 'EpidemicTree' which
--- contains represents the transmission tree of the epidemic. In the case where
--- there are no sequenced samples in the epidemic then there is no tree to
--- reconstruct which is why this function is in the either monad.
-maybeReconstructedTree :: EpidemicTree -> Either String ReconstructedTree
-maybeReconstructedTree Shoot {} = Left "EpidemicTree is only a Shoot"
-maybeReconstructedTree (Leaf e) =
+-- represents the whole transmission tree of the epidemic.
+reconstructedTree :: EpidemicTree -> Either String ReconstructedTree
+reconstructedTree Shoot {} = Left "EpidemicTree is only a Shoot"
+reconstructedTree (Leaf e) =
   case e of
     IndividualSample {..} ->
-      if indSampSeq
+      if indSampSeq && indSampRemoved
         then Right $ RLeaf (Observation e)
-        else Left "Leaf with non-sequenced event individual sample"
+        else Left $ "Leaf with non-sequenced or non-removed individual sample: \n" <> show e
     PopulationSample {..} ->
       if popSampSeq
         then Right $ RLeaf (Observation e)
         else Left "Leaf with non-sequenced event population sample"
-    _ -> Left "Bad leaf in the EpidemicTree"
-maybeReconstructedTree (Branch e@Infection {} lt rt)
-  | hasSequencedLeaf lt && hasSequencedLeaf rt = do
-    rlt <- maybeReconstructedTree lt
-    rrt <- maybeReconstructedTree rt
-    Right $ RBranch (Observation e) rlt rrt
-  | hasSequencedLeaf lt = maybeReconstructedTree lt
-  | hasSequencedLeaf rt = maybeReconstructedTree rt
-  | otherwise = Left "Neither subtree has a sequenced leaf"
-maybeReconstructedTree Branch {} = Left "EpidemicTree is a bad branch"
+    _ -> Left "Bad leaf encountered when trying to reconstruct tree."
+reconstructedTree (Branch e lt rt) =
+  case e of
+    Infection {..}
+      | hasSequencedObs lt && hasSequencedObs rt ->
+        do rlt <- reconstructedTree lt
+           rrt <- reconstructedTree rt
+           return $ RBranch (Observation e) rlt rrt
+      | hasSequencedObs lt -> reconstructedTree lt
+      | hasSequencedObs rt -> reconstructedTree rt
+      | otherwise -> Left "neither sub-tree has a sequenced node."
+    _ -> Left "non-infection event in branch when trying to reconstruct tree."
+reconstructedTree (Burr e t) =
+  case e of
+    IndividualSample {..} ->
+      if | indSampSeq && indSampRemoved && hasSequencedObs t ->
+           do
+             st <- reconstructedTree t
+             return $ RBurr (Observation e) (Just st)
+         | indSampSeq && indSampRemoved && not (hasSequencedObs t) ->
+           return $ RBurr (Observation e) Nothing
+         | otherwise -> Left "invalid individual sample encountered in burr."
+    _ -> Left "non-individual sample encountered in burr."
 
--- | Predicate for whether an 'EpidemicTree' has any leaf which corresponds to a
+-- | Predicate for whether an 'EpidemicTree' has any node which corresponds to a
 -- sequenced observation and hence should be included in a @ReconstructedTree@.
-hasSequencedLeaf :: EpidemicTree -> Bool
-hasSequencedLeaf Shoot {} = False
-hasSequencedLeaf (Leaf e) =
+hasSequencedObs :: EpidemicTree -> Bool
+hasSequencedObs Shoot {} = False
+hasSequencedObs (Leaf e) =
   case e of
     IndividualSample {..} -> indSampSeq
     PopulationSample {..} -> popSampSeq
     _                     -> False
-hasSequencedLeaf (Branch _ lt rt) = hasSequencedLeaf lt || hasSequencedLeaf rt
+hasSequencedObs (Branch _ lt rt) = hasSequencedObs lt || hasSequencedObs rt
+hasSequencedObs (Burr e t) =
+  case e of
+    IndividualSample {..} -> indSampSeq || hasSequencedObs t
+    _                     -> False
 
 -- | The events that were observed during the epidemic, ie those in the
 -- reconstructed tree and any unsequenced samples. If this is not possible an
@@ -109,10 +141,10 @@ hasSequencedLeaf (Branch _ lt rt) = hasSequencedLeaf lt || hasSequencedLeaf rt
 observedEvents :: [EpidemicEvent] -> Either String [Observation]
 observedEvents epiEvents = do
   epiTree <- maybeEpidemicTree epiEvents
-  let (PointProcessEvents unseqObss) = pointProcessEvents epiTree
+  (PointProcessEvents unseqObss) <- pointProcessEvents epiTree
   reconTreeEvents <-
-    if hasSequencedLeaf epiTree
-      then reconstructedTreeEvents <$> maybeReconstructedTree epiTree
+    if hasSequencedObs epiTree
+      then reconstructedTreeEvents <$> reconstructedTree epiTree
       else Right []
   return $ List.sort . List.nub $ unseqObss ++ reconTreeEvents
 
@@ -124,6 +156,10 @@ reconstructedTreeEvents rt =
       List.sort $
       obs : (reconstructedTreeEvents rtl ++ reconstructedTreeEvents rtr)
     RLeaf obs -> [obs]
+    RBurr obs mt ->
+      case mt of
+        Nothing -> [obs]
+        Just t -> List.sort $ obs : reconstructedTreeEvents t
 
 -- | Aggregate the sequenced and unsequenced individual level samples
 aggregated :: [TimeInterval] -> [TimeInterval] -> [Observation] -> [Observation]

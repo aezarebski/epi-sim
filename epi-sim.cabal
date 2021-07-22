@@ -1,6 +1,6 @@
 cabal-version:      1.22
 name:               epi-sim
-version:            0.7.0
+version:            0.8.0
 synopsis:
   A library for simulating epidemics as birth-death processes.
 
@@ -13,9 +13,8 @@ description:
   include:
   .
   1. Birth-Death-Sampling-Catastrophe-Occurrence-Disaster (see `Epidemic.Model.BDSCOD`)
-  2. Inhomogeneous Birth-Death-Sampling (see `Epidemic.Model.InhomogeneousBDS`)
-  3. Inhomogeneous BDSCOD (see `Epidemic.Model.InhomogeneousBDSCOD`)
-  4. Logistic Birth-Death-Sampling-Disaster (see `Epidemic.Model.LogisticBDSD`)
+  2. Inhomogeneous BDSCOD (see `Epidemic.Model.InhomogeneousBDSCOD`)
+  3. Logistic Birth-Death-Sampling-Disaster (see `Epidemic.Model.LogisticBDSD`)
   .
   There are more details in the documentation of the "Epidemic" module.
   .
@@ -30,7 +29,6 @@ license-file:       LICENSE
 build-type:         Simple
 category:           Simulation
 extra-source-files:
-  ARCHITECTURE.md
   ChangeLog.md
   README.md
 
@@ -41,17 +39,16 @@ source-repository head
 library
   exposed-modules:
     Epidemic
+    Epidemic.Data.Events
+    Epidemic.Data.Newick
+    Epidemic.Data.Observations
+    Epidemic.Data.Parameter
+    Epidemic.Data.Population
+    Epidemic.Data.Simulation
+    Epidemic.Data.Time
     Epidemic.Model.BDSCOD
-    Epidemic.Model.InhomogeneousBDS
     Epidemic.Model.InhomogeneousBDSCOD
     Epidemic.Model.LogisticBDSD
-    Epidemic.Types.Events
-    Epidemic.Types.Newick
-    Epidemic.Types.Observations
-    Epidemic.Types.Parameter
-    Epidemic.Types.Population
-    Epidemic.Types.Simulation
-    Epidemic.Types.Time
     Epidemic.Utility
 
   other-modules:    Paths_epi_sim
@@ -60,6 +57,7 @@ library
       aeson       >=1.4.7   && <1.6
     , base        >=4.14.1  && <4.15
     , bytestring  >=0.10.10 && <0.11
+    , containers  >=0.6.2   && <0.7
     , hspec       >=2.7.6   && <2.8
     , mwc-random  >=0.14.0  && <0.16
     , primitive   >=0.7.0   && <0.8

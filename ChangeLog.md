@@ -1,5 +1,23 @@
 # Changelog for epi-sim
 
+## 0.8.0
+
+- `BDSCOD` and `InhomogeneousBDSCOD` now allow for sampled ancestors in the case
+  of individual samples. Because this requires an additional parameter there
+  will be some changes to the functions here.
+- `asTimed` now expects a list of strictly increasing timed values since
+  otherwise there is ambiguity as to which value to use.
+- Remove the `InhomogeneousBDS` model because it is already provided by the
+  BDSCOD version.
+- Both the `EpidemicTree` and `ReconstructedTree` now have a constructor for a
+  burr, which corresponds to a sampled ancestor.
+- Represent a group of people with a set (from the `container` instead of using
+  vectors from `vector`) because this uses more efficient algorithms.
+- Random functions scattered throughout the modules have been put into more
+  appropriate data modules and some redundant functions have been removed.
+- The `Epidemic.Types` modules have been renamed to `Epidemic.Data` because they
+  are not limited to type definitions.
+
 ## 0.7.0
 
 - Simulation functions (eg `simulationWithGenIO`) return either the simulated

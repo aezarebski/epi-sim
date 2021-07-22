@@ -1,6 +1,24 @@
 {-# LANGUAGE GADTs #-}
 
-module Epidemic.Types.Simulation
+-- |
+-- Module: Epidemic.Data.Time
+-- Copyright: (c) 2021 Alexander E. Zarebski
+-- License: MIT
+--
+-- Maintainer: Alexander E. Zarebski <aezarebski@gmail.com>
+-- Stability: unstable
+-- Portability: ghc
+--
+-- This module provides some types and functions for working with simulations.
+-- The 'TerminationHandler' type is used to control early termination of a
+-- simulation. The use case of this is that you can terminate a simulation once
+-- it reaches a state specified by a predicate. If this occurs then the
+-- simulation is terminated and a summary function is applied to the simulation
+-- and this value is returned. This is particularly useful if you want to
+-- terminate simulations that have exploded and threaten to eat up all the
+-- memory on your machine.
+
+module Epidemic.Data.Simulation
   ( SimulationConfiguration(..)
   , SimulationState(..)
   , SimulationRandEvent(..)
@@ -11,10 +29,10 @@ module Epidemic.Types.Simulation
   ) where
 
 import qualified Data.Vector.Unboxed       as Unboxed
-import           Epidemic.Types.Events
-import           Epidemic.Types.Parameter
-import           Epidemic.Types.Population
-import           Epidemic.Types.Time       (AbsoluteTime (..), TimeDelta (..))
+import           Epidemic.Data.Events
+import           Epidemic.Data.Parameter
+import           Epidemic.Data.Population
+import           Epidemic.Data.Time       (AbsoluteTime (..), TimeDelta (..))
 import           GHC.Word                  (Word32)
 import           System.Random.MWC         (GenIO, create, createSystemRandom,
                                             initialize)

@@ -8,43 +8,46 @@ module Epidemic.Model.LogisticBDSD
   , LogisticBDSDPopulation(..)
   ) where
 
+import Control.Monad (replicateM)
 import Data.Maybe (fromJust)
 import qualified Data.Vector as V
 import qualified Data.Vector.Generic as G
-import Epidemic (firstScheduled, noScheduledEvent)
-import Epidemic.Types.Events (EpidemicEvent(..))
-import Epidemic.Types.Time
+import Epidemic.Data.Events (EpidemicEvent(..))
+import Epidemic.Data.Time
   ( AbsoluteTime(..)
   , Timed(..)
   , TimeDelta(..)
   , asTimed
   , timeAfterDelta
   )
-import Epidemic.Types.Parameter
+import Epidemic.Data.Parameter
   (  ModelParameters(..)
   , Probability
   , Rate
+  , firstScheduled
+  , noScheduledEvent
   )
-import Epidemic.Types.Population
+import Epidemic.Data.Population
   ( Identifier(..)
   , People(..)
   , Population(..)
   , addPerson
+  , initialIdentifier
+  , newPerson
   , nullPeople
   , numPeople
   )
-import Epidemic.Types.Simulation
+import Epidemic.Data.Simulation
   ( SimulationConfiguration(..)
   , SimulationRandEvent(..), TerminationHandler(..)
   )
 import Epidemic.Utility
-  ( initialIdentifier
-  , maybeToRight
-  , newPerson
+  ( maybeToRight
   , randomPerson
   )
 import System.Random.MWC (GenIO)
 import System.Random.MWC.Distributions (bernoulli, categorical, exponential)
+import qualified Data.Set as Set
 
 -- | The parameters of the logistic-BDSD process. This process allows for
 -- infections, removals, sampling and disasters.
@@ -70,12 +73,12 @@ logisticBirthRate LogisticBDSDParameters {..} (LogisticBDSDPopulation pop) =
 
 instance ModelParameters LogisticBDSDParameters LogisticBDSDPopulation where
   rNaught _ _ _ = Nothing
-  eventRate (LogisticBDSDPopulation pop) LogisticBDSDParameters {..} _ =
+  perCapitaEventRate (LogisticBDSDPopulation pop) LogisticBDSDParameters {..} _ =
     let propCapcity = fromIntegral (numPeople pop) / fromIntegral paramsCapacity
         br = paramsBirthRate * (1.0 - propCapcity)
      in Just $ br + paramsDeathRate + paramsSamplingRate
   birthProb lpop lparam absTime = do
-    er <- eventRate lpop lparam absTime
+    er <- perCapitaEventRate lpop lparam absTime
     Just $ br / er
     where
       br = logisticBirthRate lparam lpop
@@ -114,7 +117,7 @@ configuration simDuration atLeastCherry maybeTHFuncs (birthRate, capacity, death
             samplingRate
             disasterTP
         (seedPerson, newId) = newPerson initialIdentifier
-        logBDSDPop = LogisticBDSDPopulation (People $ V.singleton seedPerson)
+        logBDSDPop = LogisticBDSDPopulation (People $ Set.singleton seedPerson)
         termHandler = do (f1, f2) <- maybeTHFuncs
                          return $ TerminationHandler f1 f2
      in return $
@@ -139,7 +142,7 @@ randEvent' ::
   -> GenIO
   -> IO (AbsoluteTime, EpidemicEvent, LogisticBDSDPopulation, Identifier)
 randEvent' params@LogisticBDSDParameters {..} currTime currPop@(LogisticBDSDPopulation currPpl) currId gen =
-  let netEventRate = (fromJust $ eventRate currPop params currTime)
+  let (Just netEventRate) = perCapitaEventRate currPop params currTime
       popSizeDouble = fromIntegral $ numPeople currPpl
       (Just weightsVec) = eventWeights currPop params currTime
    in do delay <- exponential (netEventRate * popSizeDouble) gen
@@ -165,7 +168,7 @@ randEvent' params@LogisticBDSDParameters {..} currTime currPop@(LogisticBDSDPopu
                    , currId)
                  2 ->
                    ( newEventTime
-                   , IndividualSample newEventTime randPerson True
+                   , IndividualSample newEventTime randPerson True True
                    , LogisticBDSDPopulation otherPeople
                    , currId)
                  _ -> error "do not recognise the type of event index."
@@ -183,10 +186,12 @@ randomDisasterEvent ::
   -> GenIO
   -> IO (EpidemicEvent, LogisticBDSDPopulation)
 randomDisasterEvent (dsstrTime, dsstrProb) (LogisticBDSDPopulation (People currPpl)) gen = do
-  randBernoullis <- G.replicateM (V.length currPpl) (bernoulli dsstrProb gen)
-  let filterZip predicate a b = fst . V.unzip . V.filter predicate $ V.zip a b
-      sampledPeople = filterZip snd currPpl randBernoullis
-      unsampledPeople = filterZip (not . snd) currPpl randBernoullis
+  let nPplCurr = Set.size currPpl
+      pplList = Set.toList currPpl
+      setFilterZip pred a b = Set.fromList [x | p@(x, _) <- zip a b, pred p]
+  randBernoullis <- replicateM nPplCurr (bernoulli dsstrProb gen)
+  let sampledPeople = setFilterZip snd pplList randBernoullis
+      unsampledPeople = setFilterZip (not . snd) pplList randBernoullis
    in return
         ( PopulationSample dsstrTime (People sampledPeople) False
         , LogisticBDSDPopulation (People unsampledPeople))

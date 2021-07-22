@@ -1,11 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 
-module Epidemic.Utility ( initialIdentifier
+module Epidemic.Utility ( allEvents
                         , inhomExponential
                         , randomPerson
                         , maybeToRight
-                        , newPerson
+                        , infectedBy
                         , isReconTreeLeaf
                         , simulationWithSystem
                         , simulationWithFixedSeed
@@ -16,42 +16,24 @@ import           Control.Monad.Primitive         (PrimMonad, PrimState)
 import qualified Data.List                       as List
 import qualified Data.Maybe                      as Maybe
 import qualified Data.Vector                     as V
-import           Epidemic
-import           Epidemic.Types.Events
-import           Epidemic.Types.Parameter
-import           Epidemic.Types.Population
-import           Epidemic.Types.Simulation
-import           Epidemic.Types.Time             (AbsoluteTime (..),
+import           Epidemic.Data.Events
+import           Epidemic.Data.Parameter
+import           Epidemic.Data.Population
+import           Epidemic.Data.Simulation
+import           Epidemic.Data.Time             (AbsoluteTime (..),
                                                   TimeDelta (..), Timed (..),
                                                   cadlagValue, nextTime,
                                                   timeAfterDelta)
 import           System.Random.MWC
 import           System.Random.MWC.Distributions (exponential)
-
-
-initialIdentifier :: Identifier
-initialIdentifier = Identifier 1
-
--- | A new person constructed from the given identifier and a new identifier.
-newPerson :: Identifier -> (Person, Identifier)
-newPerson idntty@(Identifier idInt) = (Person idntty, Identifier (idInt + 1))
-
--- | An element of a vector and the vector with that element removed.
-selectElem :: V.Vector a -> Int -> (a, V.Vector a)
-selectElem v n
-  | n == 0 = (V.head v, V.tail v)
-  | otherwise =
-    let (foo, bar) = V.splitAt n v
-     in (V.head bar, foo V.++ (V.tail bar))
+import qualified Data.Set as Set
 
 -- | A random person and the remaining group of people after they have been
 -- sampled with removal.
 randomPerson :: People -> GenIO -> IO (Person, People)
 randomPerson people@(People persons) gen = do
-  u <- uniform gen
-  let personIx = floor (u * (fromIntegral $ numPeople people :: Double))
-      (person, remPeople) = selectElem persons personIx
-   in return (person, People remPeople)
+  randIx <- uniformR (0, numPeople people - 1) gen
+  return (Set.elemAt randIx persons, People $ Set.deleteAt randIx persons)
 
 type NName = Maybe String
 
@@ -90,8 +72,8 @@ instance Show NTree where
   show (NTree bs) = show (NBranchSet bs) ++ ";"
 
 -- | The number of elements of the list that map to @True@ under the predicate.
-count' :: (a -> Bool) -> [a] -> Int
-count' p xs = sum [if p x then 1 else 0 | x <- xs]
+countTrues :: (a -> Bool) -> [a] -> Int
+countTrues p xs = sum [if p x then 1 else 0 | x <- xs]
 
 -- | Run a simulation described by a configuration object and the model's
 -- @allEvents@ style function (see the example in
@@ -145,7 +127,7 @@ simulationAtLeastCherry config@SimulationConfiguration {..} allEventsFunc gen = 
       gen
   case simState of
     SimulationState (_, events, _, _) -> 
-      if count' isReconTreeLeaf events >= 2
+      if countTrues isReconTreeLeaf events >= 2
       then return $ Right $ List.sort events
       else simulationAtLeastCherry config allEventsFunc gen
     TerminatedSimulation maybeSummary -> return $ Left maybeSummary
@@ -169,7 +151,7 @@ simulationWithSystem config@SimulationConfiguration {..} allEventsFunc = do
   case simState of
     SimulationState (_, events, _, _) ->
       if scRequireCherry
-      then (if count' isReconTreeLeaf events >= 2
+      then (if countTrues isReconTreeLeaf events >= 2
              then return $ Right $ List.sort events
              else simulationWithSystem config allEventsFunc)
       else return $ Right $ List.sort events
@@ -184,12 +166,6 @@ isReconTreeLeaf e =
     IndividualSample {..} -> indSampSeq
     PopulationSample {..} -> popSampSeq && not (nullPeople popSampPeople)
     _                     -> False
-
--- | The number of lineages at the end of a simulation.
-finalSize ::
-     [EpidemicEvent] -- ^ The events from the simulation
-  -> Integer
-finalSize = foldl (\x y -> x + eventPopDelta y) 1
 
 -- | Generate exponentially distributed random variates with inhomogeneous rate
 -- starting from a particular point in time.
@@ -234,3 +210,63 @@ maybeToRight a maybeB =
   case maybeB of
     (Just b) -> Right b
     Nothing  -> Left a
+
+-- | The people infected by a particular person in a list of events.
+infectedBy ::
+     Person -- ^ Potential infector
+  -> [EpidemicEvent] -- ^ Events
+  -> People
+infectedBy person events =
+  case events of
+    [] -> People Set.empty
+    (Infection _ infector infectee:es) ->
+      if infector == person
+        then addPerson infectee $ infectedBy person es
+        else infectedBy person es
+    (_:es) -> infectedBy person es
+
+
+-- | Run the simulation until the specified stopping time and return a
+-- @SimulationState@ which holds the history of the simulation.
+allEvents ::
+     (ModelParameters a b, Population b)
+  => SimulationRandEvent a b
+  -> a
+  -> AbsoluteTime -- ^ time at which to stop the simulation
+  -> Maybe (TerminationHandler b c)
+  -> SimulationState b c -- ^ the initial/current state of the simulation
+  -> GenIO
+  -> IO (SimulationState b c)
+allEvents _ _ _ _ ts@(TerminatedSimulation _) _ = return ts
+allEvents (SimulationRandEvent randEvent) modelParams maxTime maybeTermHandler (SimulationState (currTime, currEvents, currPop, currId)) gen =
+  let isNotTerminated = case maybeTermHandler of
+        Nothing                                   -> const True
+        Just (TerminationHandler hasTerminated _) -> not . hasTerminated
+  in if isNotTerminated currPop
+     then if isInfected currPop
+           then do
+             (newTime, event, newPop, newId) <-
+               randEvent modelParams currTime currPop currId gen
+             if newTime < maxTime
+               then allEvents
+                      (SimulationRandEvent randEvent)
+                      modelParams
+                      maxTime
+                      maybeTermHandler
+                      (SimulationState
+                         (newTime, event : currEvents, newPop, newId))
+                      gen
+               else return $
+                    SimulationState
+                      ( maxTime
+                      , StoppingTime maxTime : currEvents
+                      , currPop
+                      , currId)
+           else return $
+                SimulationState
+                  ( currTime
+                  , Extinction currTime : currEvents
+                  , currPop
+                  , currId)
+     else return . TerminatedSimulation $ do TerminationHandler _ termSummary <- maybeTermHandler
+                                             return $ termSummary currEvents

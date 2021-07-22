@@ -1,5 +1,23 @@
 {-# LANGUAGE GADTs #-}
 
+-- |
+-- Module: Epidemic.Data.Time
+-- Copyright: (c) 2021 Alexander E. Zarebski
+-- License: MIT
+--
+-- Maintainer: Alexander E. Zarebski <aezarebski@gmail.com>
+-- Stability: unstable
+-- Portability: ghc
+--
+-- This module provides some types and functions for working with simulations.
+-- The 'TerminationHandler' type is used to control early termination of a
+-- simulation. The use case of this is that you can terminate a simulation once
+-- it reaches a state specified by a predicate. If this occurs then the
+-- simulation is terminated and a summary function is applied to the simulation
+-- and this value is returned. This is particularly useful if you want to
+-- terminate simulations that have exploded and threaten to eat up all the
+-- memory on your machine.
+
 module Epidemic.Data.Simulation
   ( SimulationConfiguration(..)
   , SimulationState(..)

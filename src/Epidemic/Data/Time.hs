@@ -1,6 +1,21 @@
 {-# LANGUAGE DeriveGeneric   #-}
 {-# LANGUAGE RecordWildCards #-}
 
+-- |
+-- Module: Epidemic.Data.Time
+-- Copyright: (c) 2021 Alexander E. Zarebski
+-- License: MIT
+--
+-- Maintainer: Alexander E. Zarebski <aezarebski@gmail.com>
+-- Stability: unstable
+-- Portability: ghc
+--
+-- This module provides some types and functions for working with times. For
+-- absolute times there is the 'AbsoluteTime' type and for differences between
+-- times there is the 'TimeDelta' type. For quantities that vary across time the
+-- 'Timed' type is a way to represent piecewise constant functions and there are
+-- several helper functions to query these objects.
+
 module Epidemic.Data.Time
   ( AbsoluteTime(..)
   , TimeDelta(..)

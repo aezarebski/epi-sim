@@ -29,7 +29,6 @@ license-file:       LICENSE
 build-type:         Simple
 category:           Simulation
 extra-source-files:
-  ARCHITECTURE.md
   ChangeLog.md
   README.md
 

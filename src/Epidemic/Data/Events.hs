@@ -16,6 +16,7 @@ module Epidemic.Data.Events
   , infInfector
   , infInfectee
   , EpidemicTree(Branch, Burr, Leaf, Shoot)
+  , hasSequencedObs
   , maybeEpidemicTree
   , isExtinctionOrStopping
   , isIndividualSample
@@ -78,7 +79,7 @@ instance TimeStamp EpidemicEvent where
 isInfection :: EpidemicEvent -> Bool
 isInfection ee = case ee of
   Infection {} -> True
-  _ -> False
+  _            -> False
 
 -- | Predicate for the event being an individual sample event.
 isIndividualSample :: EpidemicEvent -> Bool
@@ -160,6 +161,21 @@ data EpidemicTree
   | Leaf EpidemicEvent
   | Shoot Person
   deriving (Show, Eq)
+
+-- | Predicate for whether an 'EpidemicTree' has any node which corresponds to a
+-- sequenced observation.
+hasSequencedObs :: EpidemicTree -> Bool
+hasSequencedObs Shoot {} = False
+hasSequencedObs (Leaf e) =
+  case e of
+    IndividualSample {..} -> indSampSeq
+    PopulationSample {..} -> popSampSeq
+    _                     -> False
+hasSequencedObs (Branch _ lt rt) = hasSequencedObs lt || hasSequencedObs rt
+hasSequencedObs (Burr e t) =
+  case e of
+    IndividualSample {..} -> indSampSeq || hasSequencedObs t
+    _                     -> False
 
 -- | If possible return an 'EpidemicTree' describing the /sorted/ list of
 -- 'EpidemicEvent'.

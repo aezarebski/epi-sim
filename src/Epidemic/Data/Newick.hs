@@ -1,5 +1,18 @@
 {-# LANGUAGE RecordWildCards #-}
 
+-- |
+-- Module: Epidemic.Data.Parameter
+-- Copyright: (c) 2021 Alexander E. Zarebski
+-- License: MIT
+--
+-- Maintainer: Alexander E. Zarebski <aezarebski@gmail.com>
+-- Stability: unstable
+-- Portability: ghc
+--
+-- This module provides functionality for representing tree-like data in [Newick
+-- format](https://en.wikipedia.org/wiki/Newick_format).
+--
+
 module Epidemic.Data.Newick (Newick, asNewickString) where
 
 import qualified Data.ByteString.Builder    as BBuilder

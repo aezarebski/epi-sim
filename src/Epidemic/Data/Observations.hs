@@ -18,7 +18,7 @@ import qualified Data.Aeson               as Json
 import qualified Data.List                as List
 import           Epidemic.Data.Events     (EpidemicEvent (..),
                                            EpidemicTree (..), hasSequencedObs)
-import           Epidemic.Data.Population (asPeople, numPeople)
+import           Epidemic.Data.Population (People, Person, asPeople, numPeople)
 import           Epidemic.Data.Time       (AbsoluteTime, TimeInterval (..),
                                            TimeStamp (..), inInterval)
 import           GHC.Generics             (Generic)
@@ -36,14 +36,14 @@ import           GHC.Generics             (Generic)
 --
 data Observation
   = ObsBranch AbsoluteTime
-  | ObsBurr AbsoluteTime
-  | ObsLeafRemoved AbsoluteTime
-  | ObsLeafNotRemoved AbsoluteTime
-  | ObsLeafScheduled AbsoluteTime Int
-  | ObsOccurrenceScheduled AbsoluteTime Int
-  | ObsOccurrenceRemoved AbsoluteTime
-  | ObsOccurrenceNotRemoved AbsoluteTime
-  deriving (Show, Eq, Generic, Ord)
+  | ObsBurr AbsoluteTime Person
+  | ObsLeafRemoved AbsoluteTime Person
+  | ObsLeafNotRemoved AbsoluteTime Person
+  | ObsLeafScheduled AbsoluteTime People
+  | ObsOccurrenceScheduled AbsoluteTime People
+  | ObsOccurrenceRemoved AbsoluteTime Person
+  | ObsOccurrenceNotRemoved AbsoluteTime Person
+  deriving (Show, Eq, Generic)
 
 instance Json.FromJSON Observation
 
@@ -52,14 +52,17 @@ instance Json.ToJSON Observation
 instance TimeStamp Observation where
   absTime obs =
     case obs of
-      ObsBranch at                -> at
-      ObsBurr at                  -> at
-      ObsLeafRemoved at           -> at
-      ObsLeafNotRemoved at        -> at
-      ObsLeafScheduled at _       -> at
-      ObsOccurrenceScheduled at _ -> at
-      ObsOccurrenceRemoved at     -> at
-      ObsOccurrenceNotRemoved at  -> at
+      ObsBranch at                 -> at
+      ObsBurr at _                 -> at
+      ObsLeafRemoved at _          -> at
+      ObsLeafNotRemoved at _       -> at
+      ObsLeafScheduled at _        -> at
+      ObsOccurrenceScheduled at _  -> at
+      ObsOccurrenceRemoved at _    -> at
+      ObsOccurrenceNotRemoved at _ -> at
+
+instance Ord Observation where
+  a <= b = absTime a <= absTime b
 
 -- | The observations due to non-sequenced observations.
 newtype UnsequencedObs = UnsequencedObs [Observation]
@@ -82,12 +85,12 @@ unsequencedObservations et =
           if not indSampSeq
           then Right . UnsequencedObs $
                if indSampRemoved
-               then [ObsOccurrenceRemoved indSampTime]
-               else [ObsOccurrenceNotRemoved indSampTime]
+               then [ObsOccurrenceRemoved indSampTime indSampPerson]
+               else [ObsOccurrenceNotRemoved indSampTime indSampPerson]
           else Right $ UnsequencedObs []
         PopulationSample {..} ->
           if not popSampSeq
-          then Right $ UnsequencedObs [ObsOccurrenceScheduled popSampTime (numPeople popSampPeople)]
+          then Right $ UnsequencedObs [ObsOccurrenceScheduled popSampTime popSampPeople]
           else Right $ UnsequencedObs []
         _ -> Left $ "Invalid event on leaf: " <> show e
 
@@ -146,8 +149,8 @@ reconstructedTree et =
     Burr ee@IndividualSample {..} st ->
       case (indSampSeq, not indSampRemoved, hasSequencedObs st) of
         (True,True,True) -> do rst <- reconstructedTree st
-                               Right $ RBurr (ObsBurr indSampTime) (Just rst)
-        (True,True,False) -> Right $ RBurr (ObsBurr indSampTime) Nothing
+                               Right $ RBurr (ObsBurr indSampTime indSampPerson) (Just rst)
+        (True,True,False) -> Right $ RBurr (ObsBurr indSampTime indSampPerson) Nothing
         _ -> Left $ "invalid individual sample in burr: " <> show ee
     Burr ee _ -> Left $ "non-individual sample in burr: " <> show ee
 
@@ -155,11 +158,11 @@ reconstructedTree et =
       case ee of
         IndividualSample {..} ->
           if indSampRemoved && indSampSeq
-          then Right . RLeaf $ ObsLeafRemoved indSampTime
+          then Right . RLeaf $ ObsLeafRemoved indSampTime indSampPerson
           else Left $ "bad individual sample while reconstructing: " <> show ee
         PopulationSample {..} ->
           if popSampSeq
-          then Right . RLeaf $ ObsLeafScheduled popSampTime (numPeople popSampPeople)
+          then Right . RLeaf $ ObsLeafScheduled popSampTime popSampPeople
           else Left $ "bad population sampled while reconstructing: " <> show ee
         _ -> Left $ "Invalid leaf event encountered: " <> show ee
 

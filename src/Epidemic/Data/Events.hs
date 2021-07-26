@@ -241,13 +241,23 @@ epiTree es =
                    else Burr e $ Shoot indSampPerson
          e@PopulationSample {..} -> if numPeople popSampPeople == 1
                                     then Right $ Leaf e
-                                    else Left errMsg
-         _ -> Left errMsg
+                                    else Left $ errMsg e
+         e -> Left $ errMsg e
   else case NonEmpty.head es of
          e@Infection {..} ->
            let remainingEvents = NonEmpty.fromList $ NonEmpty.drop 1 es
            in do infectorSET <- epiTreeDescendedFrom infInfector remainingEvents
                  infecteeSET <- epiTreeDescendedFrom infInfectee remainingEvents
-                 Right $ Branch e infectorSET infecteeSET
-         e -> Left $ errMsg <> " when first event is " <> show e
-  where errMsg = "cannot construct EpidemicTree"
+                 return $ Branch e infectorSET infecteeSET
+         e@IndividualSample {..}
+           | not indSampRemoved ->
+             do subET <- epiTreeDescendedFrom indSampPerson (nonEmptyTail es)
+                return $ Burr e subET
+           | otherwise -> Left $ errMsg e
+         e@PopulationSample {..}
+           | nullPeople popSampPeople -> epiTree . nonEmptyTail $ es
+           | numPeople popSampPeople == 1 -> return $ Leaf e
+           | otherwise -> Left $ errMsg e
+         e -> Left $ errMsg e
+  where errMsg e = "cannot construct EpidemicTree when first event is " <> show e
+        nonEmptyTail = NonEmpty.fromList . NonEmpty.tail

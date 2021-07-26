@@ -2,9 +2,11 @@
 
 ## 0.8.0
 
+- __THE AGGREGATION CODE IS BROKEN.__
 - In order to properly describe sampled ancestors additional context is needed
   by values of the type `Observation`. To remedy this there has been substantial
-  changes to the `Epidemic.Data.Observations` module.
+  changes to the `Epidemic.Data.Observations`, `Epidemic.Data.Events` and
+  `Epidemic.Data.Newick` modules.
 - `BDSCOD` and `InhomogeneousBDSCOD` now allow for sampled ancestors in the case
   of individual samples. Because this requires an additional parameter there
   will be some changes to the functions here.

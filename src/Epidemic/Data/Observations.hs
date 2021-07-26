@@ -193,9 +193,13 @@ reconstructedTree et =
 observations :: EpidemicTree -> Either String [Observation]
 observations et = do
   (UnsequencedObs unseqObs) <- unsequencedObservations et
-  reconTree <- reconstructedTree et
-  (SequencedObs seqObs) <- sequencedObservations reconTree
-  Right . List.sort $ unseqObs <> seqObs
+  -- handle the case where there were no sequenced observations because
+  -- otherwise it is not possible to reconstruct the tree.
+  (SequencedObs seqObs) <- if hasSequencedObs et
+                           then do reconTree <- reconstructedTree et
+                                   sequencedObservations reconTree
+                           else return (SequencedObs [])
+  Right . List.sort . List.nub $ unseqObs <> seqObs
 
 -- | Aggregate the sequenced and unsequenced individual level samples
 aggregated :: [TimeInterval] -> [TimeInterval] -> [Observation] -> [Observation]

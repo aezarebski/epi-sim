@@ -5,6 +5,7 @@
 module Epidemic.Data.Observations
   ( Observation(..)
   , observations
+  , eventAsObservation
   , UnsequencedObs(..)
   , unsequencedObservations
   , ReconstructedTree(..)
@@ -63,6 +64,25 @@ instance TimeStamp Observation where
 
 instance Ord Observation where
   a <= b = absTime a <= absTime b
+
+-- | Helper function for converting between events and observations where
+-- possible.
+eventAsObservation :: EpidemicEvent -> Maybe Observation
+eventAsObservation e =
+  case e of
+    Infection {..} -> Just $ ObsBranch infTime
+    Removal {..} -> Nothing
+    IndividualSample {..} ->
+      Just $ case (indSampSeq, indSampRemoved) of
+               (True,True) -> ObsLeafRemoved indSampTime indSampPerson
+               (True,False) -> ObsLeafNotRemoved indSampTime indSampPerson
+               (False,True) -> ObsOccurrenceRemoved indSampTime indSampPerson
+               (False,False) -> ObsOccurrenceNotRemoved indSampTime indSampPerson
+    PopulationSample {..} ->
+      Just $ if popSampSeq
+             then ObsLeafScheduled popSampTime popSampPeople
+             else ObsOccurrenceScheduled popSampTime popSampPeople
+    _ -> Nothing
 
 -- | The observations due to non-sequenced observations.
 newtype UnsequencedObs = UnsequencedObs [Observation]

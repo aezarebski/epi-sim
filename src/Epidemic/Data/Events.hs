@@ -17,7 +17,7 @@ module Epidemic.Data.Events
   , infInfectee
   , EpidemicTree(Branch, Burr, Leaf, Shoot)
   , hasSequencedObs
-  , maybeEpidemicTree
+  , epiTree
   , isExtinctionOrStopping
   , isIndividualSample
   , derivedFrom
@@ -25,6 +25,7 @@ module Epidemic.Data.Events
 
 import qualified Data.Aeson               as Json
 import           Data.Function            ((&))
+import qualified Data.List.NonEmpty as NonEmpty
 import           Epidemic.Data.Parameter  (Probability, noScheduledEvent)
 import           Epidemic.Data.Population
 import           Epidemic.Data.Time       (AbsoluteTime (..), TimeStamp (..))
@@ -110,7 +111,9 @@ isExtinctionOrStopping e =
 instance Ord EpidemicEvent where
   e1 <= e2 = absTime e1 <= absTime e2
 
--- | The events that occurred as a result of the existance of the given person.
+-- | The events that occurred as a result of the existance of the given person,
+-- ie the epidemic events that are descendent of an individual in the full
+-- epidemic tree.
 derivedFrom ::
      Person
   -> [EpidemicEvent] -- ^ ordered epidemic events
@@ -148,11 +151,13 @@ derivedFromPeople people (e:es) =
     Extinction {} -> derivedFromPeople people es
     StoppingTime {} -> derivedFromPeople people es
 
--- | A tree representing every event in the epidemic.
+-- | A tree representing every event in the epidemic, this includes both the
+-- transmission and removal events, and the observation process.
 --
 --     * Branch - an infection event
---     * Burr - an individual sample without removal
---     * Leaf - removal or observation.
+--     * Burr - an individual sample without removal. If there no descendent
+--       events the subtree will just be a shoot.
+--     * Leaf - removal (including those without observation) or an observation.
 --     * Shoot - an active lineage at present
 --
 data EpidemicTree
@@ -177,47 +182,72 @@ hasSequencedObs (Burr e t) =
     IndividualSample {..} -> indSampSeq || hasSequencedObs t
     _                     -> False
 
--- | If possible return an 'EpidemicTree' describing the /sorted/ list of
--- 'EpidemicEvent'.
-maybeEpidemicTree ::
-     [EpidemicEvent] -- ^ ordered epidemic events
+-- | Helper function to construct a subtree which starts from a particular
+-- lineage.
+epiTreeDescendedFrom :: Person
+                     -> NonEmpty.NonEmpty EpidemicEvent
+                     -> Either String EpidemicTree
+epiTreeDescendedFrom p es =
+  let derivedEvents = derivedFrom p $ NonEmpty.toList es
+  in case derivedEvents of
+       [] -> Right $ Shoot p
+       de:des ->
+         case de of
+           Infection {..}
+             | infInfector == p ->
+               do infectorSET <-
+                    case NonEmpty.nonEmpty $ derivedFrom p des of
+                      (Just infectorEs) -> epiTreeDescendedFrom p infectorEs
+                      Nothing -> Right $ Shoot p
+                  infecteeSET <-
+                    case NonEmpty.nonEmpty $ derivedFrom infInfectee des of
+                      (Just infecteeEs) -> epiTreeDescendedFrom infInfectee infecteeEs
+                      Nothing -> Right $ Shoot infInfectee
+                  Right $ Branch de infectorSET infecteeSET
+             | otherwise -> Left errMsg
+           Removal {..}
+             | remPerson == p -> Right $ Leaf de
+             | otherwise      -> Left errMsg
+           IndividualSample {..}
+             | indSampPerson == p && indSampRemoved && null des -> Right $ Leaf de
+             | indSampPerson == p && indSampRemoved -> Left errMsg
+             | indSampPerson == p && not indSampRemoved && null des ->
+               Right . Burr de $ Shoot p
+             | indSampPerson == p && not indSampRemoved ->
+               do subEpiTree <- epiTreeDescendedFrom p $ NonEmpty.fromList des
+                  Right $ Burr de subEpiTree
+             | otherwise -> Left errMsg
+           PopulationSample {..}
+             | includesPerson popSampPeople p && null des -> Right $ Leaf de
+             | otherwise -> Left errMsg
+           StoppingTime {} -> Right $ Shoot p
+           Extinction {} -> Left errMsg
+           where
+             errMsg = "invalid derived event: " <> show de <> " from " <> show p
+
+-- | Epidemic tree from a non-empty list of ordered epidemic events.
+epiTree ::
+     NonEmpty.NonEmpty EpidemicEvent -- ^ ordered epidemic events
   -> Either String EpidemicTree
-maybeEpidemicTree [] =
-  Left "There are no EpidemicEvent values to construct a tree with."
-maybeEpidemicTree [e] =
-  case e of
-    Infection _ p1 p2 -> Right (Branch e (Shoot p1) (Shoot p2))
-    Removal {} -> Right (Leaf e)
-    IndividualSample {} -> Right (Leaf e)
-    PopulationSample {..} ->
-      if nullPeople popSampPeople
-        then Left "The last event is a PopulationSample with no people sampled"
-        else Right (Leaf e)
-    Extinction {} ->
-      Left "Extinction event encountered. It should have been removed"
-    StoppingTime {} ->
-      Left "Stopping time encountered. It should have been removed"
-maybeEpidemicTree (e:es) =
-  case e of
-    Infection _ p1 p2 ->
-      let infectorEvents = derivedFrom p1 es
-          infecteeEvents = derivedFrom p2 es
-       in do leftTree <-
-               if null infectorEvents
-                 then Right (Shoot p1)
-                 else maybeEpidemicTree infectorEvents
-             rightTree <-
-               if null infecteeEvents
-                 then Right (Shoot p2)
-                 else maybeEpidemicTree infecteeEvents
-             return $ Branch e leftTree rightTree
-    Removal {} -> Right (Leaf e)
-    IndividualSample {} -> Right (Leaf e)
-    PopulationSample {..} ->
-      if nullPeople popSampPeople
-        then maybeEpidemicTree es
-        else Right (Leaf e)
-    Extinction {} ->
-      Left "Extinction event encountered. It should have been removed"
-    StoppingTime {} ->
-      Left "Stopping time encountered. It should have been removed"
+epiTree es =
+  if NonEmpty.length es == 1
+  then case NonEmpty.head es of
+         e@Infection {..} ->
+           Right $ Branch e (Shoot infInfector) (Shoot infInfectee)
+         e@Removal {} -> Right $ Leaf e
+         e@IndividualSample {..} ->
+           Right $ if indSampRemoved
+                   then Leaf e
+                   else Burr e $ Shoot indSampPerson
+         e@PopulationSample {..} -> if numPeople popSampPeople == 1
+                                    then Right $ Leaf e
+                                    else Left errMsg
+         _ -> Left errMsg
+  else case NonEmpty.head es of
+         e@Infection {..} ->
+           let remainingEvents = NonEmpty.fromList $ NonEmpty.drop 1 es
+           in do infectorSET <- epiTreeDescendedFrom infInfector remainingEvents
+                 infecteeSET <- epiTreeDescendedFrom infInfectee remainingEvents
+                 Right $ Branch e infectorSET infecteeSET
+         e -> Left $ errMsg <> " when first event is " <> show e
+  where errMsg = "cannot construct EpidemicTree"

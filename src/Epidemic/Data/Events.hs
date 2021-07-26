@@ -25,7 +25,7 @@ module Epidemic.Data.Events
 
 import qualified Data.Aeson               as Json
 import           Data.Function            ((&))
-import qualified Data.List.NonEmpty as NonEmpty
+import qualified Data.List.NonEmpty       as NonEmpty
 import           Epidemic.Data.Parameter  (Probability, noScheduledEvent)
 import           Epidemic.Data.Population
 import           Epidemic.Data.Time       (AbsoluteTime (..), TimeStamp (..))
@@ -198,7 +198,7 @@ epiTreeDescendedFrom p es =
                do infectorSET <-
                     case NonEmpty.nonEmpty $ derivedFrom p des of
                       (Just infectorEs) -> epiTreeDescendedFrom p infectorEs
-                      Nothing -> Right $ Shoot p
+                      Nothing           -> Right $ Shoot p
                   infecteeSET <-
                     case NonEmpty.nonEmpty $ derivedFrom infInfectee des of
                       (Just infecteeEs) -> epiTreeDescendedFrom infInfectee infecteeEs

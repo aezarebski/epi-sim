@@ -17,12 +17,11 @@ module Epidemic.Data.Observations
 import qualified Data.Aeson               as Json
 import qualified Data.List                as List
 import           Epidemic.Data.Events     (EpidemicEvent (..),
-                                           EpidemicTree (..), hasSequencedObs,
-                                           maybeEpidemicTree)
+                                           EpidemicTree (..), hasSequencedObs)
 import           Epidemic.Data.Population (asPeople, numPeople)
 import           Epidemic.Data.Time       (AbsoluteTime, TimeInterval (..),
                                            TimeStamp (..), inInterval)
-import           GHC.Generics
+import           GHC.Generics             (Generic)
 
 -- | Observations relating to sequenced samples.
 --

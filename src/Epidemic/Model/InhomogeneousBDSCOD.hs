@@ -14,8 +14,21 @@
 -- scheduled sampling and rates that are piece-wise constant in time.
 --
 -- __Example:__ we will run a simulation for one unit of time and require that
--- there be at least two sequenced samples.
+-- there be at least two sequenced samples. First we need to import the required
+-- functions.
 --
+-- >>> import qualified Data.List.NonEmpty                 as NonEmpty
+-- >>> import           Epidemic.Data.Events               (epiTree)
+-- >>> import           Epidemic.Data.Observations         (observations)
+-- >>> import           Epidemic.Data.Time                 (AbsoluteTime (..),
+-- >>>                                                      TimeDelta (..))
+-- >>> import           Epidemic.Model.InhomogeneousBDSCOD (configuration, randomEvent)
+-- >>> import           Epidemic.Utility                   (allEvents,
+-- >>>                                                      simulationWithSystem)
+--
+-- Then specify the parameters of the simulation
+--
+-- >>> startTime = AbsoluteTime 0.0
 -- >>> simDuration = TimeDelta 1.0
 -- >>> atLeastTwoSequences = True
 --
@@ -32,16 +45,26 @@
 -- them, ie there will be a scheduled sample at time 0.9 where each lineage is
 -- removed and sequenced individually with probability 0.1 and at times 0.5 and
 -- 0.75 there is a scheduled sample where individuals are removed but /not/
--- sequenced with probabilities 0.4 and 0.5 respectively.
+-- sequenced with probabilities 0.4 and 0.5 respectively. Finally, there is the
+-- probability that an individual is removed upon unscheduled sampling or
+-- occurrence.
 --
 -- >>> seqSched = [(AbsoluteTime 0.9, 0.1)]
 -- >>> unseqSched = [(AbsoluteTime 0.5, 0.4), (AbsoluteTime 0.75, 0.5)]
+-- >>> removalProbSpec = [(AbsoluteTime 0.0, 1.0)]
 --
 -- This is enough to define a 'SimulationConfiguration'. We will ignore the
 -- possibility of using a termination handler for this example.
 --
--- >>> ratesAndProbs = (birthRateSpec,deathRateSpec,sampRateSpec,seqSched,occRateSpec,unseqSched)
--- >>> (Just simConfig) = configuration simDuration atLeastTwoSequences Nothing ratesAndProbs
+-- >>> ratesAndProbs = ( birthRateSpec
+-- >>>                 , deathRateSpec
+-- >>>                 , sampRateSpec
+-- >>>                 , seqSched
+-- >>>                 , occRateSpec
+-- >>>                 , unseqSched
+-- >>>                 , removalProbSpec)
+-- >>> (Just simConfig) =
+-- >>>   configuration startTime simDuration atLeastTwoSequences Nothing ratesAndProbs
 --
 -- Then we can use this to generated a list of epidemic events in the simulation
 --
@@ -51,9 +74,11 @@
 --
 -- >>> myObservedEvents = do
 -- >>>   simState <- myEpidemicEvents
--- >>>   case simState of
--- >>>     Right es -> return $ observedEvents es
--- >>>     Left _ -> return $ Left "simulation terminated early"
+-- >>>   return $ case simState of
+-- >>>              Right es ->
+-- >>>                do myEpiTree <- epiTree $ NonEmpty.fromList es
+-- >>>                   observations myEpiTree
+-- >>>              Left _ -> Left "simulation terminated early"
 --
 
 module Epidemic.Model.InhomogeneousBDSCOD

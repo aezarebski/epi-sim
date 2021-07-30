@@ -160,6 +160,8 @@ derivedFromPeople people (e:es) =
 --     * Leaf - removal (including those without observation) or an observation.
 --     * Shoot - an active lineage at present
 --
+-- The 'epiTree' function can be used to compute the 'EpidemicTree' from the
+-- epidemic events.
 data EpidemicTree
   = Branch EpidemicEvent EpidemicTree EpidemicTree
   | Burr EpidemicEvent EpidemicTree

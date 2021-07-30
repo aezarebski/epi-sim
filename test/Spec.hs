@@ -420,7 +420,44 @@ bdscodTests =
        in do
          -- this test will occassionally fail because it relies on random
          -- numbers.
-         replicateM_ 10 (bTest 0.01) -- 10 tests at 0.01-level.
+         replicateM_ 5 (bTest 0.01) -- 5 tests at 0.01-level.
+
+     it "the reconstructed tree can be computed" $
+       let
+         -- set up the parameters that have led to a broken simulation in the
+         -- past.
+         startTime = AbsoluteTime 0.0
+         simDuration = TimeDelta 2.0
+         atLeastTwoSequences = True
+         birthRate = 5.0
+         deathRate = 0.5
+         sampRate = 2.0
+         occRate = 1.0
+         seqSched = [(AbsoluteTime 0.9, 0.1)]
+         unseqSched = [ (AbsoluteTime 0.5, 0.2)
+                      , (AbsoluteTime 0.75, 0.2)]
+         removalProb = 0.5
+         ratesAndProbs = ( birthRate
+                         , deathRate
+                         , sampRate
+                         , seqSched
+                         , occRate
+                         , unseqSched
+                         , removalProb)
+         (Just simConfig) =
+           BDSCOD.configuration startTime simDuration atLeastTwoSequences Nothing ratesAndProbs
+       in do
+         ees <- simulationWithFixedSeed simConfig (allEvents BDSCOD.randomEvent)
+         eReconTree <- return $ case mapLeft (const "broken simulation") ees of
+                                  Right es ->
+                                    do
+                                      et <- epiTree $ NonEmpty.fromList es
+                                      reconstructedTree et
+                                  Left msg -> Left msg
+         if isLeft eReconTree
+           then putStrLn $ show eReconTree
+           else return ()
+         isRight eReconTree `shouldBe` True
 
 simTypeTests =
   describe "Test Data.Simulation PRNG helpers" $

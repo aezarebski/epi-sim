@@ -6,22 +6,23 @@ import           Control.Monad                      (replicateM_)
 import qualified Data.Aeson                         as Json
 import qualified Data.ByteString                    as B
 import qualified Data.ByteString.Builder            as BBuilder
-import           Data.Either                        (isLeft, isRight)
+import           Data.Either.Combinators
+import qualified Data.List.NonEmpty                 as NonEmpty
 import           Data.Maybe                         (fromJust, isJust,
                                                      isNothing)
 import qualified Data.Vector                        as V
 import           Epidemic                           ()
 import           Epidemic.Data.Events               (EpidemicEvent (IndividualSample, Infection, PopulationSample, Removal, StoppingTime, indSampRemoved, indSampSeq),
                                                      EpidemicTree (Branch, Leaf, Shoot),
-                                                     derivedFrom,
-                                                     isIndividualSample,
-                                                     epiTree)
+                                                     derivedFrom, epiTree,
+                                                     isIndividualSample)
 import           Epidemic.Data.Newick               (Newick (asNewickString))
 import           Epidemic.Data.Observations         (Observation (..),
                                                      ReconstructedTree (..),
                                                      aggregated,
-                                                     reconstructedTree,
-                                                     eventAsObservation)
+                                                     eventAsObservation,
+                                                     observations,
+                                                     reconstructedTree)
 import           Epidemic.Data.Parameter            (Probability, Rate,
                                                      firstScheduled,
                                                      noScheduledEvent)
@@ -52,8 +53,6 @@ import           Statistics.Sample                  (mean, variance)
 import qualified System.Random.MWC                  as MWC
 import           Test.Hspec                         (SpecWith, describe, hspec,
                                                      it, shouldBe)
-import qualified Data.List.NonEmpty as NonEmpty
-import Epidemic.Data.Observations (observations)
 
 
 maybeEpidemicTree :: [EpidemicEvent] -> Either String EpidemicTree

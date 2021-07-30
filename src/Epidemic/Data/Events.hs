@@ -156,7 +156,8 @@ derivedFromPeople people (e:es) =
 --
 --     * Branch - an infection event
 --     * Burr - an individual sample without removal. If there no descendent
---       events the subtree will just be a shoot.
+--       events the subtree will just be a shoot. NOTE that this still includes
+--       unsequenced samples if they were individually observed without removal.
 --     * Leaf - removal (including those without observation) or an observation.
 --     * Shoot - an active lineage at present
 --

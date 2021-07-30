@@ -149,8 +149,9 @@ data ReconstructedTree
   | RLeaf Observation
   deriving (Show, Eq)
 
--- | The reconstructed phylogeny obtained by pruning an 'EpidemicTree' which
--- represents the whole transmission tree of the epidemic.
+-- | The reconstructed phylogeny consisting of only sequenced observations. This
+-- is obtained by pruning an 'EpidemicTree' which represents the whole
+-- transmission tree of the epidemic.
 reconstructedTree :: EpidemicTree -> Either String ReconstructedTree
 reconstructedTree et =
   case et of
@@ -171,6 +172,11 @@ reconstructedTree et =
         (True,True,True) -> do rst <- reconstructedTree st
                                Right $ RBurr (ObsBurr indSampTime indSampPerson) (Just rst)
         (True,True,False) -> Right $ RBurr (ObsBurr indSampTime indSampPerson) Nothing
+        -- Since a burr in the epidemic tree can include a non-sequenced
+        -- individual sample we need to account for this possibility by just
+        -- ignoring this node.
+        (False,True,True) -> reconstructedTree st
+        -- otherwise something has gone wrong and we do want to return a left.
         _ -> Left $ "invalid individual sample in burr: " <> show ee
     Burr ee _ -> Left $ "non-individual sample in burr: " <> show ee
 

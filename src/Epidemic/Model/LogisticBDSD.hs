@@ -1,5 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE RecordWildCards       #-}
 
 module Epidemic.Model.LogisticBDSD
   ( configuration
@@ -8,56 +8,38 @@ module Epidemic.Model.LogisticBDSD
   , LogisticBDSDPopulation(..)
   ) where
 
-import Control.Monad (replicateM)
-import Data.Maybe (fromJust)
-import qualified Data.Vector as V
-import qualified Data.Vector.Generic as G
-import Epidemic.Data.Events (EpidemicEvent(..))
-import Epidemic.Data.Time
-  ( AbsoluteTime(..)
-  , Timed(..)
-  , TimeDelta(..)
-  , asTimed
-  , timeAfterDelta
-  )
-import Epidemic.Data.Parameter
-  (  ModelParameters(..)
-  , Probability
-  , Rate
-  , firstScheduled
-  , noScheduledEvent
-  )
-import Epidemic.Data.Population
-  ( Identifier(..)
-  , People(..)
-  , Population(..)
-  , addPerson
-  , initialIdentifier
-  , newPerson
-  , nullPeople
-  , numPeople
-  )
-import Epidemic.Data.Simulation
-  ( SimulationConfiguration(..)
-  , SimulationRandEvent(..), TerminationHandler(..)
-  )
-import Epidemic.Utility
-  ( maybeToRight
-  , randomPerson
-  )
-import System.Random.MWC (GenIO)
-import System.Random.MWC.Distributions (bernoulli, categorical, exponential)
-import qualified Data.Set as Set
+import           Control.Monad                   (replicateM)
+import qualified Data.Set                        as Set
+import qualified Data.Vector                     as V
+import           Epidemic.Data.Events            (EpidemicEvent (..))
+import           Epidemic.Data.Parameter         (ModelParameters (..),
+                                                  Probability, Rate,
+                                                  firstScheduled,
+                                                  noScheduledEvent)
+import           Epidemic.Data.Population        (Identifier (..), People (..),
+                                                  Population (..), addPerson,
+                                                  initialIdentifier, newPerson,
+                                                  nullPeople, numPeople)
+import           Epidemic.Data.Simulation        (SimulationConfiguration (..),
+                                                  SimulationRandEvent (..),
+                                                  TerminationHandler (..))
+import           Epidemic.Data.Time              (AbsoluteTime (..),
+                                                  TimeDelta (..), Timed (..),
+                                                  asTimed, timeAfterDelta)
+import           Epidemic.Utility                (maybeToRight, randomPerson)
+import           System.Random.MWC               (GenIO)
+import           System.Random.MWC.Distributions (bernoulli, categorical,
+                                                  exponential)
 
 -- | The parameters of the logistic-BDSD process. This process allows for
 -- infections, removals, sampling and disasters.
 data LogisticBDSDParameters =
   LogisticBDSDParameters
-    { paramsBirthRate :: Rate
-    , paramsCapacity :: Int
-    , paramsDeathRate :: Rate
+    { paramsBirthRate    :: Rate
+    , paramsCapacity     :: Int
+    , paramsDeathRate    :: Rate
     , paramsSamplingRate :: Rate
-    , paramsDisasters :: Timed Probability
+    , paramsDisasters    :: Timed Probability
     }
   deriving (Show)
 
@@ -188,7 +170,7 @@ randomDisasterEvent ::
 randomDisasterEvent (dsstrTime, dsstrProb) (LogisticBDSDPopulation (People currPpl)) gen = do
   let nPplCurr = Set.size currPpl
       pplList = Set.toList currPpl
-      setFilterZip pred a b = Set.fromList [x | p@(x, _) <- zip a b, pred p]
+      setFilterZip predicate a b = Set.fromList [x | p@(x, _) <- zip a b, predicate p]
   randBernoullis <- replicateM nPplCurr (bernoulli dsstrProb gen)
   let sampledPeople = setFilterZip snd pplList randBernoullis
       unsampledPeople = setFilterZip (not . snd) pplList randBernoullis

@@ -20,13 +20,13 @@ module Epidemic.Data.Events
   , epiTree
   , isExtinctionOrStopping
   , isIndividualSample
+  , isPopulationSample
+  , isInfection
   , derivedFrom
   ) where
 
 import qualified Data.Aeson               as Json
-import           Data.Function            ((&))
 import qualified Data.List.NonEmpty       as NonEmpty
-import           Epidemic.Data.Parameter  (Probability, noScheduledEvent)
 import           Epidemic.Data.Population
 import           Epidemic.Data.Time       (AbsoluteTime (..), TimeStamp (..))
 import           GHC.Generics

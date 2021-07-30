@@ -15,7 +15,7 @@ module Epidemic.Utility ( allEvents
 import           Control.Monad.Primitive         (PrimMonad, PrimState)
 import qualified Data.List                       as List
 import qualified Data.Maybe                      as Maybe
-import qualified Data.Vector                     as V
+
 import           Epidemic.Data.Events
 import           Epidemic.Data.Parameter
 import           Epidemic.Data.Population

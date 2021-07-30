@@ -12,8 +12,6 @@ import           Control.Monad                   (replicateM)
 import           Data.Coerce                     (coerce)
 import qualified Data.Set                        as Set
 import qualified Data.Vector                     as V
-import qualified Data.Vector.Generic             as G
-import           Epidemic
 import           Epidemic.Data.Events            (EpidemicEvent (..))
 import           Epidemic.Data.Parameter
 import           Epidemic.Data.Population
@@ -187,6 +185,10 @@ randomEvent' params@BDSCODParameters {..} currTime currPop@(BDSCODPopulation cur
                     return (catastTime, catastEvent, postCatastPop, currId)
                 Nothing -> error "Missing a next scheduled event when there should be one."
 
+
+selectedPeople :: ((Person, b) -> Bool) -> [Person] -> [b] -> People
+selectedPeople predicate persons bools = asPeople [x | p@(x, _) <- zip persons bools, predicate p]
+
 -- | Return a randomly sampled Catastrophe event
 randomCatastropheEvent ::
      (AbsoluteTime, Probability) -- ^ Time and probability of sampling in the catastrophe
@@ -194,11 +196,10 @@ randomCatastropheEvent ::
   -> GenIO
   -> IO (EpidemicEvent, BDSCODPopulation)
 randomCatastropheEvent (catastTime, rhoProb) (BDSCODPopulation currPeople) gen = do
-  let peopleFilterZip pred a b = People $ Set.fromList [x | p@(x, _) <- zip a b, pred p]
-      currPersons = Set.toList $ coerce currPeople
+  let currPersons = Set.toList $ coerce currPeople
   rhoBernoullis <- replicateM (numPeople currPeople) (bernoulli rhoProb gen)
-  let sampledPeople = peopleFilterZip snd currPersons rhoBernoullis
-      unsampledPeople = peopleFilterZip (not . snd) currPersons rhoBernoullis
+  let sampledPeople = selectedPeople snd currPersons rhoBernoullis
+      unsampledPeople = selectedPeople (not . snd) currPersons rhoBernoullis
    in return
         ( PopulationSample catastTime sampledPeople True
         , BDSCODPopulation unsampledPeople)
@@ -212,11 +213,10 @@ randomDisasterEvent ::
   -> GenIO
   -> IO (EpidemicEvent, BDSCODPopulation)
 randomDisasterEvent (disastTime, nuProb) (BDSCODPopulation currPeople) gen = do
-  let peopleFilterZip pred a b = People $ Set.fromList [x | p@(x, _) <- zip a b, pred p]
-      currPersons = Set.toList $ coerce currPeople
+  let currPersons = Set.toList $ coerce currPeople
   nuBernoullis <- replicateM (numPeople currPeople) (bernoulli nuProb gen)
-  let sampledPeople = peopleFilterZip snd currPersons nuBernoullis
-      unsampledPeople = peopleFilterZip (not . snd) currPersons nuBernoullis
+  let sampledPeople = selectedPeople snd currPersons nuBernoullis
+      unsampledPeople = selectedPeople (not . snd) currPersons nuBernoullis
    in return
         ( PopulationSample disastTime sampledPeople False
         , BDSCODPopulation unsampledPeople)

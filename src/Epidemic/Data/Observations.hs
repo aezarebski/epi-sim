@@ -19,9 +19,9 @@ import qualified Data.Aeson               as Json
 import qualified Data.List                as List
 import           Epidemic.Data.Events     (EpidemicEvent (..),
                                            EpidemicTree (..), hasSequencedObs)
-import           Epidemic.Data.Population (People, Person, asPeople, numPeople)
+import           Epidemic.Data.Population (People, Person)
 import           Epidemic.Data.Time       (AbsoluteTime, TimeInterval (..),
-                                           TimeStamp (..), inInterval)
+                                           TimeStamp (..))
 import           GHC.Generics             (Generic)
 
 -- | Observations relating to sequenced samples.
@@ -71,7 +71,7 @@ eventAsObservation :: EpidemicEvent -> Maybe Observation
 eventAsObservation e =
   case e of
     Infection {..} -> Just $ ObsBranch infTime
-    Removal {..} -> Nothing
+    Removal {} -> Nothing
     IndividualSample {..} ->
       Just $ case (indSampSeq, indSampRemoved) of
                (True,True) -> ObsLeafRemoved indSampTime indSampPerson

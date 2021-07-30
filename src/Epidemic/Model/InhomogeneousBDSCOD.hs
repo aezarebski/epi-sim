@@ -90,14 +90,19 @@ module Epidemic.Model.InhomogeneousBDSCOD
 
 import           Control.Monad                   (replicateM)
 import           Data.Coerce                     (coerce)
-import           Data.List                       as List
+import           Data.List                       as List (nub, sort)
 import           Data.Maybe                      (fromJust)
 import qualified Data.Set                        as Set
 import qualified Data.Vector                     as V
-import qualified Data.Vector.Generic             as G
 import           Epidemic.Data.Events            (EpidemicEvent (..))
-import           Epidemic.Data.Parameter
-import           Epidemic.Data.Population
+import           Epidemic.Data.Parameter         (ModelParameters (..),
+                                                  Probability, Rate,
+                                                  noScheduledEvent)
+import           Epidemic.Data.Population        (Identifier, People (..),
+                                                  Person, Population (..),
+                                                  addPerson, asPeople,
+                                                  initialIdentifier, newPerson,
+                                                  nullPeople, numPeople)
 import           Epidemic.Data.Simulation        (SimulationConfiguration (..),
                                                   SimulationRandEvent (..),
                                                   TerminationHandler (..))
@@ -105,8 +110,9 @@ import           Epidemic.Data.Time              (AbsoluteTime (..),
                                                   TimeDelta (..), Timed (..),
                                                   allTimes, asTimed,
                                                   cadlagValue, maybeNextTimed)
-import           Epidemic.Utility
-import           System.Random.MWC
+import           Epidemic.Utility                (inhomExponential,
+                                                  randomPerson)
+import           System.Random.MWC               (GenIO)
 import           System.Random.MWC.Distributions (bernoulli, categorical)
 
 -- | Parameters of the BDSCOD process which are all allowed to vary through time
@@ -314,6 +320,9 @@ randomEvent' inhomRates@InhomBDSCODRates {..} currTime currPop currId gen =
                        return (catastTime, catastEvent, postCatastPop, currId)
                   Nothing -> error "Missing a next scheduled event when there should be one."
 
+selectedPeople :: ((Person, b) -> Bool) -> [Person] -> [b] -> People
+selectedPeople predicate persons bools = asPeople [x | p@(x, _) <- zip persons bools, predicate p]
+
 -- | Return a randomly sampled Catastrophe event and the population after that
 -- event has occurred.
 randomCatastropheEvent ::
@@ -324,10 +333,9 @@ randomCatastropheEvent ::
 randomCatastropheEvent (catastTime, rhoProb) currPop gen =
   let (Just currPeople) = infectiousPeople currPop
   in do rhoBernoullis <- replicateM (numPeople currPeople) (bernoulli rhoProb gen)
-        let setFilterZip pred a b = Set.fromList [x | p@(x, _) <- zip a b, pred p]
-            currPersons = Set.toList $ coerce currPeople
-            sampledPeople = People $ setFilterZip snd currPersons rhoBernoullis
-            unsampledPeople = People $ setFilterZip (not . snd) currPersons rhoBernoullis
+        let currPersons = Set.toList $ coerce currPeople
+            sampledPeople = selectedPeople snd currPersons rhoBernoullis
+            unsampledPeople = selectedPeople (not . snd) currPersons rhoBernoullis
             currNumCatastrophe = ipNumRemovedByCatastrophe currPop
          in return ( PopulationSample catastTime sampledPeople True
                    , currPop { ipInfectedPeople = unsampledPeople
@@ -344,9 +352,8 @@ randomDisasterEvent (disastTime, nuProb) currPop gen = do
   let (Just currPeople) = infectiousPeople currPop
       currPersons = Set.toList $ coerce currPeople
   nuBernoullis <- replicateM (numPeople currPeople) (bernoulli nuProb gen)
-  let setFilterZip pred a b = Set.fromList [x | p@(x, _) <- zip a b, pred p]
-      sampledPeople = People $ setFilterZip snd currPersons nuBernoullis
-      unsampledPeople = People $ setFilterZip (not . snd) currPersons nuBernoullis
+  let sampledPeople = selectedPeople snd currPersons nuBernoullis
+      unsampledPeople = selectedPeople (not . snd) currPersons nuBernoullis
       currNumDisaster = ipNumRemovedByDisaster currPop
    in return ( PopulationSample disastTime sampledPeople False
              , currPop { ipInfectedPeople = unsampledPeople

@@ -24,6 +24,7 @@ module Epidemic.Data.Population
   , Population(..)
   , Identifier(Identifier)
   , asPeople
+  , fromPeople
   , includesPerson
   , initialIdentifier
   , haveCommonPeople
@@ -90,6 +91,10 @@ instance Json.ToJSON People
 asPeople :: [Person] -> People
 asPeople persons = People $ Set.fromList persons
 
+-- | People as a list of persons
+fromPeople :: People -> [Person]
+fromPeople (People people) = Set.toList people
+
 -- | Predicate for whether a person is one of the people
 includesPerson :: People -> Person -> Bool
 includesPerson (People persons) person = person `Set.member` persons
@@ -108,7 +113,7 @@ numPeople (People persons) = Set.size persons
 
 -- | Add a person to a group of people if they are not already included.
 addPerson :: Person -> People -> People
-addPerson p people@(People ps) = People $ p `Set.insert` ps
+addPerson p (People ps) = People $ p `Set.insert` ps
 
 -- | Add a person to a group of people if they are not already included.
 addPersons :: [Person] -> People -> People
@@ -134,4 +139,4 @@ initialIdentifier = Identifier 1
 
 -- | A new person constructed from the given identifier and a new identifier.
 newPerson :: Identifier -> (Person, Identifier)
-newPerson id = (Person id, succ id)
+newPerson idntfr = (Person idntfr, succ idntfr)

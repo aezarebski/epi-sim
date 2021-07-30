@@ -43,7 +43,7 @@ instance Newick ReconstructedTree where
     return $ ns <> bb ';'
 
 reconTreeNewickHelper :: (AbsoluteTime,Person) -> ReconstructedTree -> Either String BBuilder.Builder
-reconTreeNewickHelper (t,p) rt =
+reconTreeNewickHelper (t,_) rt =
   case rt of
     RBranch (ObsBranch t') lrt rrt ->
       do leftNS <- reconTreeNewickHelper (t', undefined) lrt
@@ -67,6 +67,9 @@ instance Newick EpidemicTree where
     ns <- epiTreeNewickHelper p rt
     return $ ns <> bb ';'
 
+epiTreeNewickHelper :: (AbsoluteTime, Person)
+                    -> EpidemicTree
+                    -> Either [Char] BBuilder.Builder
 epiTreeNewickHelper (t, _) (Branch e lt rt) =
   case e of
     Infection {..} -> do
@@ -77,15 +80,15 @@ epiTreeNewickHelper (t, _) (Branch e lt rt) =
     _ -> Left $ "branch of epidemic tree does not contain and infection: " <> show e
 epiTreeNewickHelper (t, _) (Burr e st) =
   case (e,st) of
-    (IndividualSample {..}, Shoot p) -> do
+    (IndividualSample {..}, Shoot _) -> do
       let bl = branchLengthBuilder t indSampTime
-          id = personByteString indSampPerson
-      return $ id <> bb ':' <> bl
+          idntfr = personByteString indSampPerson
+      return $ idntfr <> bb ':' <> bl
     (IndividualSample {..}, _) -> do
       sNS <- epiTreeNewickHelper (indSampTime, undefined) st
       let bl = branchLengthBuilder t indSampTime
-          id = personByteString indSampPerson
-      return $ bb '(' <> sNS <> bb ')' <> id <> bb ':' <> bl
+          idntfr = personByteString indSampPerson
+      return $ bb '(' <> sNS <> bb ')' <> idntfr <> bb ':' <> bl
     _ -> Left $ "burr of epidemic tree does not contain an individual sample: " <> show e
 epiTreeNewickHelper (t, _) (Leaf e) =
   case e of

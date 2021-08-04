@@ -117,7 +117,7 @@ unsequencedObservations et =
     Shoot {} -> Right $ UnsequencedObs []
 
 -- | The observations due to sequenced observations.
-newtype SequencedObs = SequencedObs [Observation]
+newtype SequencedObs = SequencedObs [Observation] deriving (Show)
 
 -- | The sequenced observations from an epidemic extracted from a reconstructed
 -- tree.

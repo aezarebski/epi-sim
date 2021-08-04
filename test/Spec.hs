@@ -1,10 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 
-import           Control.Exception                  (evaluate)
 import           Control.Monad                      (replicateM_)
 import qualified Data.Aeson                         as Json
-import qualified Data.ByteString                    as B
 import qualified Data.ByteString.Builder            as BBuilder
 import           Data.Either.Combinators
 import qualified Data.List.NonEmpty                 as NonEmpty
@@ -22,7 +20,7 @@ import           Epidemic.Data.Observations         (Observation (..),
                                                      aggregated,
                                                      eventAsObservation,
                                                      observations,
-                                                     reconstructedTree)
+                                                     reconstructedTree, sequencedObservations, SequencedObs(..))
 import           Epidemic.Data.Parameter            (Probability, Rate,
                                                      firstScheduled,
                                                      noScheduledEvent)
@@ -457,6 +455,52 @@ bdscodTests =
            then putStrLn $ show eReconTree
            else return ()
          isRight eReconTree `shouldBe` True
+
+     it "the last observation is not a burr" $
+       let
+         -- set up the parameters that have led to a broken simulation in the
+         -- past. The low removal probability makes is quite likely that the
+         -- last sequenced sample corresponds to an infection that was not
+         -- consequently removed upon sampling.
+         startTime = AbsoluteTime 0.0
+         simDuration = TimeDelta 2.0
+         atLeastTwoSequences = True
+         birthRate = 5.0
+         deathRate = 0.5
+         sampRate = 2.0
+         occRate = 1.0
+         seqSched = [(AbsoluteTime 0.9, 0.1)]
+         unseqSched = [ (AbsoluteTime 0.5, 0.2)
+                      , (AbsoluteTime 0.75, 0.2)]
+         removalProb = 0.2
+         ratesAndProbs = ( birthRate
+                         , deathRate
+                         , sampRate
+                         , seqSched
+                         , occRate
+                         , unseqSched
+                         , removalProb)
+         (Just simConfig) =
+           BDSCOD.configuration startTime simDuration atLeastTwoSequences Nothing ratesAndProbs
+       in do
+         ees <- simulationWithFixedSeed simConfig (allEvents BDSCOD.randomEvent)
+         eSeqObs <- return $ case mapLeft (const "broken simulation") ees of
+                                    Right es ->
+                                      do
+                                        et <- epiTree $ NonEmpty.fromList es
+                                        rt <- reconstructedTree et
+                                        sequencedObservations rt
+                                    Left msg -> Left msg
+         -- check that we actually got a sensible value out.
+         isRight eSeqObs `shouldBe` True
+         let (Right (isLastObsBad, lastObs)) =
+               do (SequencedObs seqObs) <- eSeqObs
+                  -- check that the last one is **not** a burr.
+                  case head $ reverse seqObs of
+                    o@(ObsBurr {}) -> Right (True, o)
+                    o -> Right (False, o)
+         print lastObs
+         isLastObsBad `shouldBe` False
 
 simTypeTests =
   describe "Test Data.Simulation PRNG helpers" $

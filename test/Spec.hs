@@ -499,7 +499,6 @@ bdscodTests =
                   case head $ reverse seqObs of
                     o@(ObsBurr {}) -> Right (True, o)
                     o -> Right (False, o)
-         print lastObs
          isLastObsBad `shouldBe` False
 
 simTypeTests =

@@ -129,12 +129,25 @@ sequencedObservations rt =
          (SequencedObs lso) <- sequencedObservations lrt
          Right . SequencedObs . List.sort $ obs : rso <> lso
 
-    RBurr obs Nothing -> Right $ SequencedObs [obs]
+    -- Because the reconstructed burr represents an arbitrary non-removed
+    -- sequenced samples as a burr we need to do a little extra work to make
+    -- sure this is represented as the correct sequenced observation.
+    RBurr obs Nothing ->
+      case obs of
+        ObsBurr t p -> Right $ SequencedObs [ObsLeafNotRemoved t p]
+        ObsLeafNotRemoved {} -> Right $ SequencedObs [obs]
+        _ -> Left $ burrErrMsg obs
     RBurr obs (Just srt) ->
-      do (SequencedObs sso) <- sequencedObservations srt
-         Right . SequencedObs $ obs:sso
+      case obs of
+        ObsBurr {} ->
+          do (SequencedObs sso) <- sequencedObservations srt
+             Right . SequencedObs $ obs:sso
+        _ -> Left $ burrErrMsg obs
 
     RLeaf obs -> Right $ SequencedObs [obs]
+
+  where
+    burrErrMsg = (<>) "broken observation in RBurr: " . show
 
 -- | A representation of the reconstructed tree, ie the tree where the leaves
 -- correspond to sequenced observations.
